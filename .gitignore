@@ -1,0 +1,35 @@
+# datasets - never commit
+meteor/
+*.osm
+METEOR_Dataset.zip
+chunk_*
+data/
+
+# results and models
+results/
+*.onnx
+*.pt
+*.pth
+*.mat
+*.slxc
+
+# blender
+*.blend1
+blender/renders/
+
+# matlab
+slprj/
+codegen/
+*.asv
+*.autosave
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# os
+.DS_Store
+OpenTrafficLab/

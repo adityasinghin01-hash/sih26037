@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SIH 2026 — Idea Screening Report</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm 16mm 13mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1a1a1a; font-size: 9.4pt; line-height: 1.5; margin: 0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  h1 { font-size: 21pt; margin: 0 0 2px; letter-spacing: -0.4px; }
+  h2 { font-size: 13pt; margin: 22px 0 8px; padding-bottom: 5px;
+       border-bottom: 2px solid #1a3d5c; color: #1a3d5c; letter-spacing: -0.2px; }
+  h3 { font-size: 10.6pt; margin: 15px 0 5px; color: #14304a; }
+  p { margin: 0 0 8px; }
+  .sub { color: #5a6672; font-size: 9pt; margin-bottom: 3px; }
+  .rule { height: 3px; background: #1a3d5c; margin: 9px 0 16px; }
+  table { width: 100%; border-collapse: collapse; margin: 9px 0 13px; font-size: 8.5pt; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th { background: #1a3d5c; color: #fff; text-align: left; padding: 6px 6px; font-weight: 600; }
+  td { padding: 5px 6px; border-bottom: 1px solid #dde3e8; vertical-align: top; }
+  tr:nth-child(even) td { background: #f6f8fa; }
+  .num { text-align: center; }
+  .win { background: #e8f5ec !important; }
+  .dead { background: #fbecec !important; color: #7d2a2a; }
+  .amber { background: #fdf4e3 !important; }
+  .score { font-weight: 700; font-size: 9.5pt; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 7.6pt;
+         font-weight: 700; letter-spacing: .3px; }
+  .t-pass { background: #1f7a3d; color: #fff; }
+  .t-nov  { background: #b8860b; color: #fff; }
+  .t-dead { background: #a02525; color: #fff; }
+  .t-bar  { background: #6b7785; color: #fff; }
+  .box { border: 1px solid #cfd8e0; border-left: 4px solid #1a3d5c;
+         background: #f6f8fa; padding: 9px 12px; margin: 10px 0; }
+  .box-win { border-left-color: #1f7a3d; background: #f0f8f3; }
+  .box-red { border-left-color: #a02525; background: #fdf2f2; }
+  .box h3 { margin-top: 0; }
+  code { font-family: "SF Mono", Menlo, monospace; font-size: 8.2pt;
+         background: #eef2f6; padding: 1px 4px; border-radius: 2px; }
+  pre { font-family: "SF Mono", Menlo, monospace; font-size: 8pt; background: #f2f5f8;
+        border: 1px solid #dde3e8; padding: 8px 10px; margin: 7px 0; line-height: 1.45;
+        white-space: pre-wrap; }
+  ul { margin: 5px 0 9px; padding-left: 17px; }
+  li { margin-bottom: 3px; }
+  .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid #cfd8e0;
+          font-size: 8pt; color: #6b7785; }
+  .pb { page-break-before: always; }
+  .avoid { page-break-inside: avoid; }
+  .two { display: flex; gap: 14px; }
+  .two > div { flex: 1; }
+  .kv { font-size: 8.4pt; }
+  .kv td { padding: 3px 5px; border-bottom: 1px solid #e6ebf0; }
+  .kv td:first-child { color: #5a6672; width: 34%; }
+</style>
+</head>
+<body>
+
+<h1>Smart India Hackathon 2026</h1>
+<div class="sub">Idea Screening &amp; Verification Report &nbsp;·&nbsp; prepared 24 August 2026 &nbsp;·&nbsp; Team of 6</div>
+<div class="rule"></div>
+
+<div class="box box-win avoid">
+  <h3>Bottom line</h3>
+  <p>All <strong>226 problem statements</strong> were screened. <strong>8</strong> reached final
+  verification. <strong>2 clear every criterion</strong>, and <strong>4 more clear once the
+  novelty requirement is set aside</strong> (novelty is something we can engineer in; missing
+  data is not).</p>
+  <p style="margin-bottom:0"><strong>Recommended: SIH26011 (3D ULPIN)</strong> — its core
+  calculation has been <em>proven working on real government data</em>, not just argued on paper.
+  <strong>Strong second: substandard-drug batch alerts</strong> under an AICTE open slot.</p>
+</div>
+
+<h2>1. How we got from 226 to 8</h2>
+<table>
+  <tr><th>Stage</th><th>Count</th><th>What happened</th></tr>
+  <tr><td>All problem statements</td><td class="num">226</td><td>172 software · 54 hardware · 18 themes</td></tr>
+  <tr><td>Ministry / company PS</td><td class="num">192</td><td>Every one screened and given a written verdict</td></tr>
+  <tr><td>AICTE open slots</td><td class="num">34</td><td>No fixed title — we invent the idea. 12 software themes worked</td></tr>
+  <tr><td>Reached shortlist</td><td class="num">8</td><td>Survived competitor sweeps and criteria screening</td></tr>
+  <tr class="win"><td><strong>Passed hard verification</strong></td><td class="num"><strong>2</strong></td><td><strong>Data opened and tested by hand, not just searched</strong></td></tr>
+</table>
+
+<p><strong>Why the survival rate is low.</strong> Nine separate ideas died to a government
+product that already exists — myScheme, MAITRI 2.0, GeoMGNREGA, GeM Startup Runway,
+panchayat-level weather forecasts, C-Flood, biomedical-waste barcode tracking, YES-TECH, and the
+unified unclaimed-assets portal. Ministries write problem statements about programmes they are
+already funding. That is a structural feature of SIH, not bad luck.</p>
+
+<h2>2. How ideas were scored</h2>
+<p>Seven axes, each out of 10. Overall score is the plain average, so anyone can recheck it.
+<strong>Any single axis at 4 or below blocks the idea</strong> — a fatal weakness must never hide
+behind a good average.</p>
+<table>
+  <tr><th style="width:17%">Axis</th><th>What it asks</th></tr>
+  <tr><td><strong>Problem</strong></td><td>Is the problem real and measured by a credible published source?</td></tr>
+  <tr><td><strong>User</strong></td><td>Is the target user precise, nameable and countable — not "farmers in India"?</td></tr>
+  <tr><td><strong>Demo</strong></td><td>Is there something visible a judge can watch working live?</td></tr>
+  <tr><td><strong>Judge</strong></td><td>Can a non-expert judge grasp problem and cleverness in 60 seconds?</td></tr>
+  <tr><td><strong>Novelty</strong></td><td>Scored <em>after</em> a competitor sweep, never from memory or assumption</td></tr>
+  <tr><td><strong>Feasibility</strong></td><td>Can <em>we</em> actually obtain the data and build it?</td></tr>
+  <tr><td><strong>Impact</strong></td><td>Scale × severity, tied to the precise user group above</td></tr>
+</table>
+
+<h2 class="pb">3. Master scorecard — all 8 finalists</h2>
+<table>
+  <thead>
+  <tr>
+    <th style="width:9%">PS No.</th><th style="width:23%">Idea</th><th style="width:15%">Ministry</th>
+    <th class="num">Prob</th><th class="num">User</th><th class="num">Demo</th><th class="num">Judge</th>
+    <th class="num">Novel</th><th class="num">Feas</th><th class="num">Imp</th>
+    <th class="num">Score</th><th class="num">Status</th>
+  </tr>
+  </thead>
+  <tr class="win">
+    <td><strong>SIH26011</strong></td><td><strong>3D ULPIN — land record for every flat</strong></td><td>Rural Development</td>
+    <td class="num">8</td><td class="num">9</td><td class="num">9</td><td class="num">9</td>
+    <td class="num">6</td><td class="num">7</td><td class="num">8</td>
+    <td class="num score">8.0</td><td class="num"><span class="tag t-pass">PASS</span></td>
+  </tr>
+  <tr class="win">
+    <td><strong>SIH26196</strong></td><td><strong>Substandard-drug batch alerts</strong> <span style="color:#5a6672">(AICTE open slot)</span></td><td>AICTE — MedTech</td>
+    <td class="num">8</td><td class="num">8</td><td class="num">8</td><td class="num">9</td>
+    <td class="num">6</td><td class="num">7</td><td class="num">8</td>
+    <td class="num score">7.7</td><td class="num"><span class="tag t-pass">PASS</span></td>
+  </tr>
+  <tr class="amber">
+    <td>SIH26001</td><td>Landslide early warning, North East</td><td>MDoNER</td>
+    <td class="num">9</td><td class="num">7</td><td class="num">8</td><td class="num">8</td>
+    <td class="num dead">3</td><td class="num">6</td><td class="num">9</td>
+    <td class="num score">7.1</td><td class="num"><span class="tag t-nov">NOVELTY</span></td>
+  </tr>
+  <tr>
+    <td>SIH26100</td><td>GeM tender compliance checking</td><td>Petroleum &amp; Natural Gas</td>
+    <td class="num">7</td><td class="num">8</td><td class="num">6</td><td class="num">6</td>
+    <td class="num">6</td><td class="num">8</td><td class="num">7</td>
+    <td class="num score">6.9</td><td class="num"><span class="tag t-bar">BELOW BAR</span></td>
+  </tr>
+  <tr class="amber">
+    <td>SIH26066</td><td>OceanEmbed — subsurface ocean temperature</td><td>Earth Sciences</td>
+    <td class="num">7</td><td class="num">7</td><td class="num">8</td><td class="num">7</td>
+    <td class="num dead">3</td><td class="num">9</td><td class="num">6</td>
+    <td class="num score">6.7</td><td class="num"><span class="tag t-nov">NOVELTY</span></td>
+  </tr>
+  <tr class="amber">
+    <td>SIH26162</td><td>Industrial fire &amp; thermal source detection</td><td>NTRO</td>
+    <td class="num">6</td><td class="num">6</td><td class="num">8</td><td class="num">7</td>
+    <td class="num dead">4</td><td class="num">9</td><td class="num">6</td>
+    <td class="num score">6.6</td><td class="num"><span class="tag t-nov">NOVELTY</span></td>
+  </tr>
+  <tr>
+    <td>SIH26102</td><td>MPLAD fund anomaly detection</td><td>MoSPI</td>
+    <td class="num">8</td><td class="num">8</td><td class="num">5</td><td class="num">8</td>
+    <td class="num">4</td><td class="num dead">3</td><td class="num">7</td>
+    <td class="num">—</td><td class="num"><span class="tag t-dead">DEAD</span></td>
+  </tr>
+  <tr>
+    <td>SIH26034</td><td>Packaged-goods label compliance</td><td>Consumer Affairs</td>
+    <td class="num">6</td><td class="num">8</td><td class="num">7</td><td class="num">6</td>
+    <td class="num">5</td><td class="num dead">4</td><td class="num">5</td>
+    <td class="num">—</td><td class="num"><span class="tag t-dead">DEAD</span></td>
+  </tr>
+</table>
+<p style="font-size:8.3pt;color:#5a6672">Red cells mark a blocking score (4 or below).
+Note: SIH26011 is tagged "Space Technology" on the SIH portal — that is a data-entry error on
+their side; it is a land-records problem statement.</p>
+
+<h2>4. Second pass — with novelty switched off</h2>
+<p>Three ideas failed <em>only</em> on novelty. Since we can design novelty into a solution but
+cannot conjure data that does not exist, they were re-scored on the remaining six axes. MPLAD and
+Legal Metrology are excluded — they failed on <strong>data</strong>, which no amount of clever
+design repairs.</p>
+<table>
+  <tr><th style="width:10%">PS No.</th><th style="width:30%">Idea</th>
+      <th class="num">Prob</th><th class="num">User</th><th class="num">Demo</th>
+      <th class="num">Judge</th><th class="num">Feas</th><th class="num">Imp</th><th class="num">Score</th></tr>
+  <tr class="win"><td><strong>SIH26011</strong></td><td><strong>3D ULPIN</strong></td>
+      <td class="num">8</td><td class="num">9</td><td class="num">9</td><td class="num">9</td><td class="num">7</td><td class="num">8</td><td class="num score">8.3</td></tr>
+  <tr class="win"><td><strong>SIH26196</strong></td><td><strong>Drug batch alerts</strong></td>
+      <td class="num">8</td><td class="num">8</td><td class="num">8</td><td class="num">9</td><td class="num">7</td><td class="num">8</td><td class="num score">8.0</td></tr>
+  <tr><td>SIH26001</td><td>Landslide warning, NER</td>
+      <td class="num">9</td><td class="num">7</td><td class="num">8</td><td class="num">8</td><td class="num">6</td><td class="num">9</td><td class="num score">7.8</td></tr>
+  <tr><td>SIH26066</td><td>OceanEmbed</td>
+      <td class="num">7</td><td class="num">7</td><td class="num">8</td><td class="num">7</td><td class="num">9</td><td class="num">6</td><td class="num score">7.3</td></tr>
+  <tr><td>SIH26100</td><td>GeM compliance</td>
+      <td class="num">7</td><td class="num">8</td><td class="num">6</td><td class="num">6</td><td class="num">8</td><td class="num">7</td><td class="num score">7.0</td></tr>
+  <tr><td>SIH26162</td><td>Industrial fires</td>
+      <td class="num">6</td><td class="num">6</td><td class="num">8</td><td class="num">7</td><td class="num">9</td><td class="num">6</td><td class="num score">7.0</td></tr>
+</table>
+
+<div class="pb"></div>
+
+<h2>5. First choice — SIH26011, 3D ULPIN</h2>
+<table class="kv">
+  <tr><td>Problem statement</td><td><strong>3D ULPIN Generation and Vertical Property Mapping System</strong></td></tr>
+  <tr><td>Ministry</td><td>Ministry of Rural Development · Software</td></tr>
+  <tr><td>Score</td><td><strong>8.0</strong> with novelty · <strong>8.3</strong> without</td></tr>
+</table>
+
+<h3>The problem in one line</h3>
+<p>Land records in India were designed for fields, not towers. If you own a flat, the land under
+your building is recorded in the <em>builder's</em> or the <em>society's</em> name — you have no
+documented share of it. Maharashtra made the <strong>Vertical Property Card mandatory from
+1 January 2026</strong>, and existing societies can apply until December 2027. But for older
+buildings, someone has to actually compute every flat's land share, and nobody has automated it.</p>
+
+<h3>Why this is the strongest option: we proved the maths works</h3>
+<p>We did not merely argue this is feasible. We opened MahaRERA's public portal, pulled a real
+registered project — <strong>P50500000005, "GREEN CITY 3", Nagpur</strong> — and computed the
+official land share for every unit in it.</p>
+<pre>Units in project        : 232
+Total carpet area       : 10,570.88 sq.m
+Total land area         :  8,120.96 sq.m
+
+Example results
+  52.49 sq.m flat  →  40.32 sq.m of land
+  43.12 sq.m flat  →  33.13 sq.m of land
+  12.09 sq.m shop  →   9.29 sq.m of land
+
+Sum of all 232 land shares :  8,120.96 sq.m
+Reconciliation error       :  0.000000 sq.m</pre>
+<p>We then independently confirmed that the official Maharashtra method <em>is</em> this formula —
+land share proportional to carpet area over total carpet area, held as an undivided share.
+<strong>Our calculation matches the government's own method exactly.</strong></p>
+
+<h3>What the public data gives us — verified on screen</h3>
+<ul>
+  <li>Total land area of the approved layout, and sanctioned built-up area</li>
+  <li>Every building/wing with its sanctioned floor count</li>
+  <li>Every unit type with carpet area in sq.m and how many of them exist</li>
+  <li>GPS coordinates, survey/CTS number, and boundary descriptions</li>
+  <li>Document library including Layout Approval and Building Plan Approval</li>
+</ul>
+
+<h3>Limits we will state ourselves, before a judge finds them</h3>
+<ul>
+  <li><strong>CAPTCHA on each project page.</strong> Fine for a demo and for society-by-society
+      use; it does block mass automation.</li>
+  <li><strong>RERA began in 2017.</strong> Older buildings are not on it — and those are exactly
+      the societies the scheme most needs. Their plans sit with municipal bodies, obtainable one
+      at a time via RTI.</li>
+  <li>Document quality varies; some builders upload the same PDF into several slots.</li>
+</ul>
+
+<h2>6. Second choice — substandard-drug batch alerts (AICTE slot SIH26196)</h2>
+<table class="kv">
+  <tr><td>Slot</td><td>AICTE Student Innovation · MedTech / BioTech / HealthTech · Software</td></tr>
+  <tr><td>Score</td><td><strong>7.7</strong> with novelty · <strong>8.0</strong> without</td></tr>
+</table>
+
+<h3>The pitch</h3>
+<p><em>"Seventy bad medicine batches are found every month. Nobody tells your chemist. We do."</em></p>
+
+<h3>Verified data — we downloaded it</h3>
+<ul>
+  <li>CDSCO's March-2025 alert contains <strong>70 flagged batches in that month alone</strong>,
+      and parses cleanly to structured text</li>
+  <li>Every record carries the <strong>batch number</strong>, product, manufacturer with full
+      address, expiry date and the exact test it failed</li>
+  <li>Real examples: Pantoprazole batch <code>SP240165</code> (dissolution failure), Nitrazepam
+      batch <code>AXI23003P</code> flagged <strong>spurious</strong></li>
+  <li>The live searchable database covers <strong>2019 to 2026</strong>, currently updated to
+      July 2026, with a <strong>separate tab for fake drugs</strong></li>
+</ul>
+<p>Batch numbers being present was the make-or-break question for this idea. They are present.</p>
+
+<h3>What we would build</h3>
+<p>Scan a medicine strip → read the batch number → check it against eight years of government
+records → tell the user instantly if that exact batch was flagged. Plus a dashboard of repeat
+offenders across those eight years.</p>
+
+<h3>Honest limitation</h3>
+<p>The strongest feature — <em>"your shop is currently holding 40 strips of a recalled batch"</em>
+— needs pharmacies to share their stock list. The consumer scan-a-strip version needs no
+cooperation from anyone and still works.</p>
+
+<h2>7. The two that are permanently dead — and why it is not about novelty</h2>
+<div class="box box-red avoid">
+  <h3>SIH26102 — MPLAD fund monitoring</h3>
+  <p style="margin-bottom:0">The idea was to check MP-funded works against satellite imagery,
+  since the CAG found works that do not physically exist. We opened the eSAKSHI portal. It
+  publishes <strong>only MP-level allocation</strong> — state, MP name, constituency, amount.
+  <strong>There are no individual work records and no locations.</strong> Without work locations
+  there is nothing to verify from space. Data that does not exist cannot be designed around.</p>
+</div>
+<div class="box box-red avoid">
+  <h3>SIH26034 — Packaged-goods label compliance</h3>
+  <p style="margin-bottom:0">There is <strong>no public dataset of product labels</strong>. We
+  would have to photograph packets ourselves or scrape retail sites against their terms. The
+  penalty for non-compliance is only ₹25,000, so there is little money behind the problem either.</p>
+</div>
+
+<h2>8. If we want a third option — how to engineer the missing novelty</h2>
+<p>Three ideas have working data and fail only on novelty. Novelty can be designed in:</p>
+<table>
+  <tr><th style="width:12%">PS No.</th><th style="width:26%">Idea</th><th>How to make it genuinely new</th></tr>
+  <tr><td>SIH26001</td><td>Landslide warning, NER</td>
+      <td>GSI already predicts <em>slopes failing</em>. Nobody connects that to <strong>road
+      severance</strong> — which village loses its only access route, and for how long. Different
+      output, different mathematics (graph connectivity, not slope physics).</td></tr>
+  <tr><td>SIH26066</td><td>OceanEmbed</td>
+      <td>Published work builds global models. An <strong>Indian-Ocean-specific model validated
+      against INCOIS moorings</strong>, with honest error bars by depth, is a contribution MoES
+      judges would recognise.</td></tr>
+  <tr><td>SIH26162</td><td>Industrial fires</td>
+      <td>NASA FIRMS tells you <em>a fire exists</em>. Linking persistent heat sources to
+      <strong>registered industrial units</strong> changes the question to "which plant is burning
+      continuously, and is it permitted?"</td></tr>
+</table>
+<div class="box avoid">
+  <p style="margin-bottom:0"><strong>Note on SIH26001 (landslide):</strong> it scores highest on
+  impact of all eight, but its data access is <strong>not yet verified</strong> — GSI's Bhukosh
+  portal did not respond during testing. <strong>Verify before committing to it.</strong></p>
+</div>
+
+<h2>9. Data access — what was actually tested</h2>
+<table>
+  <tr><th style="width:12%">PS No.</th><th style="width:24%">Data source</th><th style="width:14%">Result</th><th>Evidence</th></tr>
+  <tr><td>SIH26011</td><td>MahaRERA public portal</td><td><span class="tag t-pass">WORKS</span></td><td>Real project pulled; land shares computed for 232 units, zero error</td></tr>
+  <tr><td>SIH26196</td><td>CDSCO NSQ database</td><td><span class="tag t-pass">WORKS</span></td><td>Live database 2019–2026; alert PDF downloaded and parsed; batch numbers present</td></tr>
+  <tr><td>SIH26066</td><td>Argo floats + NOAA sea-surface temp</td><td><span class="tag t-pass">WORKS</span></td><td>Argo index downloaded live (timestamped 24 Aug 2026); NOAA file valid</td></tr>
+  <tr><td>SIH26162</td><td>NASA FIRMS fire feed</td><td><span class="tag t-pass">WORKS</span></td><td>1,046 live detections, no API key needed, includes fire radiative power</td></tr>
+  <tr><td>SIH26100</td><td>GeM public bid listing</td><td><span class="tag t-pass">WORKS</span></td><td>48,266 bids listed; a real bid document downloaded and read</td></tr>
+  <tr><td>SIH26001</td><td>GSI Bhukosh / NASA rainfall</td><td><span class="tag t-nov">UNVERIFIED</span></td><td>Portal timed out twice; recorded honestly rather than assumed working</td></tr>
+  <tr><td>SIH26102</td><td>MPLADS eSAKSHI</td><td><span class="tag t-dead">FAILS</span></td><td>Allocation data only — no work-level records exist</td></tr>
+  <tr><td>SIH26034</td><td>Product label images</td><td><span class="tag t-dead">FAILS</span></td><td>No public dataset exists anywhere</td></tr>
+</table>
+
+<h2>10. What the team needs to decide</h2>
+<ol>
+  <li><strong>Pick one primary idea.</strong> Recommendation: <strong>SIH26011</strong>. It is the
+      only one whose core calculation has been demonstrated working on real government data.</li>
+  <li><strong>Pick a backup.</strong> Recommendation: <strong>drug batch alerts</strong> — easiest
+      to build, clearest one-line pitch, eight years of ready data.</li>
+  <li><strong>Confirm with the college SPOC:</strong> SIH requires an internal college hackathon to
+      shortlist teams before portal registration, and each team may submit at most
+      <strong>two ideas</strong>. Idea submission closes <strong>20 September 2026</strong>.</li>
+  <li><strong>If a third is wanted</strong>, verify SIH26001's data access first — highest impact
+      of all eight, but unproven access.</li>
+</ol>
+
+<div class="box avoid">
+  <h3>Why we are handing over 2 strong ideas rather than 20</h3>
+  <p style="margin-bottom:0">A longer list was achievable by relaxing the bar — but the extra
+  entries would be ideas a judge dismantles with one question. Every score here was set
+  <em>after</em> checking competitors and <em>after</em> opening the actual data source. Three of
+  our earlier front-runners were killed at exactly this stage, which is the point: better to lose
+  an idea in August than in the finals.</p>
+</div>
+
+<div class="foot">
+  Smart India Hackathon 2026 · Idea screening report · 24 August 2026<br>
+  Full working notes, every rejected problem statement with its reason, and the complete 226-PS
+  dataset: <code>~/dev/sih2026/</code>
+</div>
+
+</body>
+</html>
