@@ -141,7 +141,7 @@ not *"it says something about a null value"*. The complete message.
 
 **Two things to refuse if your agent suggests them:**
 
-1. **Editing section 7 of `docs/PRD.md`** (the frozen contract) — four other people build against it
+1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — four other people build against it
 2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
 
 **And never let it write a number you have not produced.** If the agent puts a figure in a comment
@@ -161,7 +161,7 @@ three toolboxes we already have.
 
 Copy it into `matlab/baseline/` and then **never edit anything in that folder. Ever.**
 
-Write down in `docs/baseline.md`: the exact example name, the MATLAB version, and the date.
+Write down in `BASELINE.md`: the exact example name, the MATLAB version, and the date.
 
 **Why this matters more than it sounds.** If we adjust their planner to make it perform worse, a
 judge calls it a rigged fight and every number we produce becomes worthless. We picked their
@@ -188,7 +188,7 @@ results/<run-name>/
 
 ### E3 — Implement the ten measurements
 
-They are defined in `docs/PRD.md` section 8. **Implement them exactly as written.**
+They are defined in the PRD (PDF). **Implement them exactly as written.**
 
 **Do not add measurements. Do not change definitions.** They were fixed before anyone ran anything
 precisely so that nobody can say we chose flattering measurements afterwards. That is the whole
@@ -219,7 +219,7 @@ a genuine advantage — your job is to make it true.**
 
 ### E7 — Write the technical report
 
-A required deliverable. **Every claim in it must appear in section 9 of `docs/PRD.md` with its
+A required deliverable. **Every claim in it must appear in the claim ledger in the PRD (PDF) with its
 evidence.** If a number is not in that table, it does not go in the report.
 
 ---
@@ -227,7 +227,7 @@ evidence.** If a number is not in that table, it does not go in the report.
 # Part 4 — The contract
 
 You read **everything** and produce the numbers. Your one output format is fixed in
-section 7 of `docs/PRD.md`:
+section 3 of `AGENTS.md`:
 
 - `results/<run>/metrics.json` — keys are the metric IDs `M1` to `M10`
 - `results/<run>/trajectories.csv` — columns `t,actor_id,class_id,x,y,z,yaw`, all in metres,
@@ -243,7 +243,7 @@ Stream F reads that CSV directly, so the column names and order cannot change.
 
 | Task | Done means |
 |---|---|
-| E1 | `docs/baseline.md` names the exact example and version, and records it as unmodified |
+| E1 | `BASELINE.md` names the exact example and version, and records it as unmodified |
 | E2 | One command produces the results folder with metrics **and** a copy of the config |
 | E3 | All ten measurements computed, matching section 8 exactly |
 | E4 | Three graphs plotted from real runs, not placeholders |
@@ -254,7 +254,7 @@ Stream F reads that CSV directly, so the column names and order cannot change.
 **And four things are true of every task:**
 1. It runs from a fresh copy of the repo, following only what is written down
 2. A test covers it, or a script prints the evidence
-3. It matches section 7 of `docs/PRD.md` exactly
+3. It matches section 3 of `AGENTS.md` exactly
 4. **Someone else could run it without asking you a question**
 
 *"It works on my machine"* is not done. *"I know how to run it"* is not done.
@@ -266,7 +266,7 @@ above. MATLAB does all the computing; Blender only draws what you produce.
 
 **You are waiting on everyone (H5)** — you cannot measure a pipeline until it runs end to end.
 
-**But E1 needs nothing but MATLAB.** Set up the baseline and write `docs/baseline.md` on day one.
+**But E1 needs nothing but MATLAB.** Set up the baseline and write `BASELINE.md` on day one.
 That is real progress while the others build.
 
 ---
@@ -276,9 +276,9 @@ That is real progress while the others build.
 1. **Never edit `matlab/baseline/`.** That folder holds MathWorks' own planner, unmodified. It is
    what we compare against. If we change it, a judge calls it a rigged comparison and every result
    we have becomes worthless.
-2. **Never invent a number.** If it is not in section 9 of `docs/PRD.md`, it does not go in a
+2. **Never invent a number.** If it is not in the claim ledger in the PRD (PDF), it does not go in a
    document, a comment, or a slide.
-3. **Never change section 7 of `docs/PRD.md`** (the frozen contract). If you genuinely need it
+3. **Never change section 3 of `AGENTS.md`** (the frozen contract). If you genuinely need it
    changed, stop and ask Aditya. Do not edit it and hope.
 4. **Never push code with a known bug.** We lost a previous hackathon by demoing something that
    had a bug we already knew about.
@@ -290,10 +290,10 @@ That is real progress while the others build.
 
 | You want | Look at |
 |---|---|
-| The whole idea, in plain language | `docs/PRD.md` sections 1–5 |
-| **The contract you must match** | `docs/PRD.md` **section 7** |
-| What we measure | `docs/PRD.md` section 8 |
-| What we are allowed to claim | `docs/PRD.md` section 9 |
-| Who is waiting on you | `docs/PRD.md` section 11 |
+| The whole idea, in plain language | the PRD (PDF) |
+| **The contract you must match** | `AGENTS.md` **section 3** |
+| What we measure | the PRD (PDF) |
+| What we are allowed to claim | the PRD (PDF) |
+| Who is waiting on you | the PRD (PDF) |
 
-**`docs/PRD.md` is the only other document.** Everything else is code.
+**The PRD is a PDF — ask Aditya for it.** Everything in this repo is code plus `AGENTS.md`.

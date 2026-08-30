@@ -9,11 +9,14 @@
 
 ## Start here
 
-**1. Read [`docs/PRD.md`](docs/PRD.md).** It is the only project document. Problem, solution, the
-frozen contract, what we measure, what we may claim, the phases, the whole tech stack.
+1. **Read the PRD.** It is distributed as a PDF — ask Aditya. Problem, solution, what the judge
+   sees, the metrics, and what we are allowed to claim.
+2. **Open your own file in [`teammates/`](teammates/)** and follow it from the top. Each is
+   self-contained: installing everything, how to work, what to build, who is waiting on you.
+3. **Read section 3 of [`AGENTS.md`](AGENTS.md)** before writing code — the frozen contract.
 
-**2. Open your own file in [`teammates/`](teammates/) and follow it from the top.** Each one is
-self-contained: how to install everything, how to work, what to build, and who is waiting on you.
+**Open the repository root in your editor, not a subfolder.** `AGENTS.md` and `GEMINI.md` only
+load from the root, and without them your AI assistant works blind.
 
 | Stream | Owns | File |
 |---|---|---|
@@ -22,17 +25,12 @@ self-contained: how to install everything, how to work, what to build, and who i
 | **C** | Dataset, LSTM, training | [`teammates/C-prediction.md`](teammates/C-prediction.md) |
 | **D** | The negotiating planner | [`teammates/D-planner.md`](teammates/D-planner.md) |
 | **E** | Baseline, metrics, results | [`teammates/E-evidence.md`](teammates/E-evidence.md) |
-| **F** | Blender, renders, demo | Aditya |
-
-**Open the repository root in your editor, not a subfolder** — `AGENTS.md` and `GEMINI.md` only
-load from the root, and without them your AI assistant works blind.
 
 ## Layout
 
 ```
-docs/PRD.md         the only project document
-docs/problem-statement.md   what MathWorks actually asked for
-docs/research/      the research findings behind every claim
+AGENTS.md           project rules + THE FROZEN CONTRACT (section 3)
+GEMINI.md           Antigravity-specific rules
 teammates/          five workstream files, one each
 matlab/+sih/        planner, perception, prediction, metrics
 matlab/baseline/    MathWorks' shipped planner - NEVER EDIT
@@ -45,15 +43,15 @@ blender/            rendering
 ## Five rules
 
 1. **Never edit `matlab/baseline/`** — a tuned baseline is a strawman and kills the result
-2. **Never invent a number** — if it is not in PRD section 9, it does not go on a slide
-3. **Never change PRD section 7** (the frozen contract) without telling everyone
+2. **Never invent a number** — if you did not run something to get it, do not write it
+3. **Never change section 3 of `AGENTS.md`** without telling everyone
 4. **Nothing ships with a bug already reproduced in the demo flow**
 5. **Errors are reported in full** — never a summary
 
 ## Credits
 
 Built on [`mathworks/OpenTrafficLab`](https://github.com/mathworks/OpenTrafficLab).
-METEOR dataset (Chandra et al., ICRA 2023). COLREGs formulation after Kuwata et al.
-and Tam & Bucknall. Cattle parameters from published GPS-collar studies.
+METEOR dataset (Chandra et al., ICRA 2023). COLREGs formulation after Kuwata et al. and
+Tam & Bucknall. Cattle parameters from published GPS-collar studies.
 3D assets CC-Attribution (Sketchfab); environment maps CC0 (Poly Haven).
 **Borrow freely, cite loudly.**

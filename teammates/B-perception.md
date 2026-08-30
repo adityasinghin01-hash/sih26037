@@ -141,7 +141,7 @@ not *"it says something about a null value"*. The complete message.
 
 **Two things to refuse if your agent suggests them:**
 
-1. **Editing section 7 of `docs/PRD.md`** (the frozen contract) — four other people build against it
+1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — four other people build against it
 2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
 
 **And never let it write a number you have not produced.** If the agent puts a figure in a comment
@@ -169,7 +169,7 @@ returns that all belong to one big vehicle.
 
 ### B3 — Produce the TrackList
 
-This is your one real deliverable. It must match section 7 (S1) of `docs/PRD.md` **exactly**.
+This is your one real deliverable. It must match section 7 (S1) of the PRD (PDF) **exactly**.
 Four rules you must not break:
 
 1. Sorted by track number, smallest first
@@ -214,7 +214,7 @@ dashcam frame. By 25 m it is smaller than most detectors can reliably handle.
 
 # Part 4 — The contract
 
-**You produce S1 (TrackList).** Read section 7 of `docs/PRD.md` before writing a line.
+**You produce S1 (TrackList).** Read section 3 of `AGENTS.md` before writing a line.
 Get the field names and types exactly right — Streams C and D both read it, and if you rename one
 field you break both of them at once.
 
@@ -236,7 +236,7 @@ field you break both of them at once.
 **And four things are true of every task:**
 1. It runs from a fresh copy of the repo, following only what is written down
 2. A test covers it, or a script prints the evidence
-3. It matches section 7 of `docs/PRD.md` exactly
+3. It matches section 3 of `AGENTS.md` exactly
 4. **Someone else could run it without asking you a question**
 
 *"It works on my machine"* is not done. *"I know how to run it"* is not done.
@@ -258,9 +258,9 @@ the PRD and write the empty-list test — that work does not need a scenario.
 1. **Never edit `matlab/baseline/`.** That folder holds MathWorks' own planner, unmodified. It is
    what we compare against. If we change it, a judge calls it a rigged comparison and every result
    we have becomes worthless.
-2. **Never invent a number.** If it is not in section 9 of `docs/PRD.md`, it does not go in a
+2. **Never invent a number.** If it is not in the claim ledger in the PRD (PDF), it does not go in a
    document, a comment, or a slide.
-3. **Never change section 7 of `docs/PRD.md`** (the frozen contract). If you genuinely need it
+3. **Never change section 3 of `AGENTS.md`** (the frozen contract). If you genuinely need it
    changed, stop and ask Aditya. Do not edit it and hope.
 4. **Never push code with a known bug.** We lost a previous hackathon by demoing something that
    had a bug we already knew about.
@@ -272,10 +272,10 @@ the PRD and write the empty-list test — that work does not need a scenario.
 
 | You want | Look at |
 |---|---|
-| The whole idea, in plain language | `docs/PRD.md` sections 1–5 |
-| **The contract you must match** | `docs/PRD.md` **section 7** |
-| What we measure | `docs/PRD.md` section 8 |
-| What we are allowed to claim | `docs/PRD.md` section 9 |
-| Who is waiting on you | `docs/PRD.md` section 11 |
+| The whole idea, in plain language | the PRD (PDF) |
+| **The contract you must match** | `AGENTS.md` **section 3** |
+| What we measure | the PRD (PDF) |
+| What we are allowed to claim | the PRD (PDF) |
+| Who is waiting on you | the PRD (PDF) |
 
-**`docs/PRD.md` is the only other document.** Everything else is code.
+**The PRD is a PDF — ask Aditya for it.** Everything in this repo is code plus `AGENTS.md`.

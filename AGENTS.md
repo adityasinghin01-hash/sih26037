@@ -1,87 +1,126 @@
 # SIH26037 — agent rules
 
-Read by Antigravity, Cursor and Claude Code. Project-wide, always applies.
+Read by Antigravity, Cursor and Claude Code. Always applies.
+**Section 3 below is the frozen contract. It is the reason five people can work at once.**
 
-## What this is
-Smart India Hackathon 2026, problem statement **SIH26037** (MathWorks, Smart Vehicles):
-adaptive path planning and collision avoidance on unstructured Indian roads.
+## The project
+Smart India Hackathon 2026, problem statement **SIH26037** (MathWorks): adaptive path planning on
+unstructured Indian roads.
 
-**One line:** an Indian junction has no controller; we built the planner that negotiates instead
-of waiting — in MATLAB, against a cow that behaves like a cow.
+> An Indian junction has no controller. We built the planner that negotiates instead of waiting —
+> in MATLAB, against a cow that behaves like a cow.
 
-## Read before writing any code
-1. **`docs/PRD.md` — the only project document.** Section 7 is the **frozen contract**: every
-   struct that crosses a module boundary. Section 8 is what we measure. Section 9 is what we are
-   allowed to claim.
-2. `teammates/<your-stream>.md` — your own tasks and handoffs.
-3. `~/Desktop/SIH26037-Research.html` — full research, 18 sections, every claim sourced.
+The full PRD is distributed as a PDF, not kept in this repo. Your own tasks are in
+`teammates/<stream>.md`.
 
-## Hard rules
+## 1 · Hard rules
 
-**Never change section 7 of `docs/PRD.md` (the frozen contract) without telling everyone.**
-Five people build in parallel against it. A silent change breaks four of them.
+**Never change section 3.** Five people build against it. A silent change breaks four of them.
+If you think it needs changing, stop and ask a human.
 
-**Verify, do not assume.** Before writing any number into a doc, slide or comment, run the thing
-that produces it. This project's whole pitch is that its claims are checkable. If you cannot run
-it, write `TODO(unverified)` and say so.
+**Never edit `matlab/baseline/`.** That is MathWorks' shipped planner, unmodified, and it is our
+control arm. A tuned baseline is a strawman and kills the result.
 
-**The baseline is sacred.** `matlab/baseline/` holds MathWorks' shipped planner
-("Motion Planning in Urban Environments Using Dynamic Occupancy Grid Map"), **completely
-unmodified**. Never edit, tune or "fix" anything in that folder. A tuned baseline is a strawman
-and kills the result.
+**Verify, do not assume.** Never write a number you have not produced by running something.
+`TODO(unverified)` is acceptable; a plausible-sounding number is not.
 
-**Novelty phrasing is always "no public work we could find"** — never "this has never been done."
+**Errors are reported in full.** Never summarise a stack trace. A trimmed error costs a day.
 
-**Nothing ships with a bug already reproduced in the demo flow.** A previous hackathon was lost
-exactly that way.
+**Nothing ships with a bug already reproduced in the demo flow.**
 
-**Errors are reported in full.** Never summarise a stack trace.
+## 2 · Settled — do not reopen
+- **No RoadRunner.** `drivingScenario` + `roadNetwork(...,'OpenStreetMap',f)` + OpenDRIVE export
+- **Lidar and radar in the loop; camera offline.** The cuboid environment emits object lists, not
+  pixels. Measured: a cow at 9.2 m is 77×63 px in a 140° dashcam frame
+- **LSTM, not GNN.** ONNX import lacks Gather/Scatter. The adjacency matrix is emitted anyway
+- **Do not import YOLO.** Use MATLAB's built-in YOLOX
+- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete `TrafficController`
+- **Dataset is METEOR**, not IDD-X
+- **Project the simulation down to the image plane. Never lift METEOR up to 3-D**
 
-## Stack
-| Layer | Tool |
-|---|---|
-| Scenarios, planner, simulation | MATLAB R2024b+ / Simulink / Stateflow |
-| Toolboxes | Automated Driving, Computer Vision, Image Processing, Deep Learning, Sensor Fusion & Tracking, Navigation, Lidar, Stateflow |
-| Data pipeline, model training | Python 3.11, PyTorch, ONNX |
-| Model in the loop | ONNX → `importNetworkFromONNX` → Simulink **Predict** block |
-| Rendering | Blender 4.x, Cycles |
-| **No RoadRunner** | not on our licence. Scenes are built with the `drivingScenario` API and exported as OpenDRIVE |
+## 3 · THE FROZEN CONTRACT
 
-## Settled — do not reopen
-- **No RoadRunner.** Everything via `drivingScenario`. Real geometry via
-  `roadNetwork(scenario,'OpenStreetMap',f)`.
-- **In-loop perception is lidar, not camera.** The cuboid environment emits point clouds, not
-  pixels. Measured: a cow at 9.2 m is only 77×63 px in a 140° dashcam frame.
-- **The prediction model is an LSTM.** GNNs need Gather/Scatter, unsupported by ONNX import.
-  LSTM/GRU import cleanly. The GNN is a parallel upgrade track only.
-- **Do not import YOLO.** Use MATLAB's built-in YOLOX.
-- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete
-  `TrafficController` and replace it with COLREGs role negotiation.
-- **Dataset is METEOR.** IDD-X labels why the *ego* acted — wrong direction of causality.
-- **Two scenarios perfect** — the unsignalled junction and the cattle crossing. Not five rough.
-- **Project the simulation down to the image plane. Never lift METEOR up to 3D.** Lifting needs
-  monocular depth; 1° of camera pitch error is ~31% depth error at 30 m.
+### S1 TrackList — Perception → everyone
+Sensor-agnostic: lidar and radar are fused *before* this struct.
 
-## MATLAB conventions
-- All project code lives in the package `matlab/+sih/`. Call it as `sih.planner.assignRoles(...)`.
-- **`lanespec` is lowercase.** `laneSpec` does not exist. This has already cost us once.
-- One function per file, named the same as the file.
-- Every public function starts with a comment block: purpose, inputs with units, outputs, and
-  which struct from `docs/PRD.md` it produces or consumes.
-- Units are **SI, always**: metres, seconds, radians, m/s. Put the unit in the variable name when
-  it could be ambiguous — `dist_m`, `angle_rad`, `t_s`.
-- No `clear all`, no `close all`, no `clc` inside functions.
-- Prefer `arguments` blocks for validation over manual `if nargin`.
+| Field | Type | Units |
+|---|---|---|
+| `TrackID` | uint32 | stable across frames, never reused |
+| `ClassID` | uint8 | see S5 |
+| `Position` | 1x3 double | m, ego frame: x fwd, y left, z up |
+| `Velocity` | 1x3 double | m/s |
+| `Extent` | 1x3 double | m — length, width, height |
+| `Yaw` | double | rad |
+| `Existence` | double | 0–1 |
+| `Age` | uint32 | frames |
+| `SensorMask` | uint8 | bit0 lidar, bit1 radar, bit2 camera |
 
-## Python conventions
-- `python/meteor/` — dataset parsing and the feature builder.
-- `python/model/` — the LSTM. `python/export/` — ONNX export only.
-- Type hints on every public function. `pathlib.Path`, never string paths.
-- The feature builder must produce **byte-identical** vectors to the MATLAB one for the same
-  input. `python/tests/test_parity.py` is the check that proves it. Keep it passing.
+Four guarantees: sorted by `TrackID` · never contains the ego · **may be empty, and consumers must
+not error** · no `NaN`/`Inf` in `Position` — drop the track instead.
 
-## Never
-- Never commit dataset files, `.onnx` weights, or anything in `results/` — see `.gitignore`.
-- Never hardcode a path under `/Users/` or `C:\`. Use `configs/paths.json`.
-- Never invent a number. Never write "approximately" where a measured value belongs.
-- Never edit `matlab/baseline/`.
+### S2 FeatureFrame — 31 dims, depth-free
+`1-2` u_c, v_c (box centre ÷ image size) · `3` v_bottom · `4-5` w, h · `6` log(w/h) ·
+`7-9` du, dv, dh · **`10` tau = h/(dh/dt)** clamp ±100 · `11` lateral closure ·
+`12-27` 16-way class one-hot · `28-30` ego speed, yaw rate, accel · `31` candidate action.
+
+```
+.Data [N x 31 single]  .Adjacency [N x N single]  .TrackIDs [N x 1 uint32]  .Timestamp double
+```
+Sequence: `[T x 31]`, T = 20 at 10 Hz. Front-pad when younger than T.
+**`Adjacency` is always emitted even though the LSTM ignores it.** Do not remove it.
+
+### S3 YieldPrediction
+`.TrackIDs [N x 1 uint32]` · `.PYield [N x 1 double]` in [0,1] · `.Valid [N x 1 logical]`.
+**When `Valid` is false the planner uses the geometric role alone — never 0.5.**
+
+### S4 Role and EgoCommand
+```
+Role: .TrackID uint32  .Role uint8(S7)  .Beta double rad  .Lambda double rad  .TCPA double s
+EgoCommand: .Accel double [-6,+3] m/s^2  .SteerAngle double [-0.6,+0.6] rad  .Mode uint8(S8)  .Reason string
+```
+`beta = asin(dMin/d)`, `lambda = acos((v_r . r)/(|v_r| d))`. **Collision iff lambda < beta.**
+Log `h = lambda - beta` every step — it is our safety evidence.
+
+### S5 ClassID — never renumber
+`0` unknown · `1` car · `2` truck · `3` bus · **`4` auto-rickshaw** · `5` motorbike · `6` scooter ·
+`7` van · `8` pedestrian · `9` bicycle · **`10` cow** · `11` dog · **`12` pushcart** ·
+**`13` animal-drawn cart** · `14` tractor · `15` static obstacle.
+`drivingScenario` reserves its own 1–6 — use `sih.util.toSimClassID()`. **Never hardcode either.**
+
+### S6 Candidate action (feature 31)
+`0.0` hold · `1.0` accelerate/commit · `-1.0` decelerate/give way · `0.5` creep (probe)
+
+### S7 Role codes
+`0` SAFE · `1` GIVE_WAY (early, substantial; pass astern) · `2` STAND_ON (**hold course and speed**) ·
+`3` HEAD_ON · `4` OVERTAKING. Sector boundaries **22.5°, 90°, 112.5°**; sign of tCPA disambiguates.
+
+### S8 Planner mode
+`0` STRUCTURED (lanes exist — defer) · `1` UNSTRUCTURED (ours) · `2` EMERGENCY (`h < 0`).
+
+### File formats
+`results/<run>/trajectories.csv` → `t,actor_id,class_id,x,y,z,yaw`, SI units, header row ·
+`results/<run>/metrics.json` → keys `M1`–`M10` · `results/<run>/config.json` → **a copy of the
+inputs; a number without its config is not a result** ·
+`python/export/yield_lstm_opset<N>.onnx` → in `sequence [1,20,31]`, out `yield_logits [1,2]`.
+
+## 4 · Stack
+MATLAB R2024b+ / Simulink / Stateflow · Automated Driving, Computer Vision, Image Processing,
+Deep Learning, Sensor Fusion & Tracking, Navigation, Lidar toolboxes · Python 3.11 + PyTorch +
+ONNX · Blender 4.x Cycles · ONNX → `importNetworkFromONNX` → Simulink **Predict** block
+(not ONNX Model Predict — that is simulation-only). Opsets: R2024b 6–18, R2025a+ 6–20.
+
+## 5 · Conventions
+- All project code in `matlab/+sih/`. Call as `sih.planner.assignRoles(...)`
+- **`lanespec` is lowercase.** `laneSpec` does not exist. This has already cost us once
+- One function per file. Every public function documents its inputs with units and names the
+  contract struct it produces or consumes
+- **SI units always.** Put the unit in the name where ambiguous: `dist_m`, `angle_rad`, `t_s`
+- Prefer `arguments` blocks over manual `nargin` checks
+- Python: type hints on public functions, `pathlib.Path` not strings
+- `python/meteor/features.py` and its MATLAB twin must produce identical vectors
+
+## 6 · Never
+- Never commit datasets, `.onnx` weights, or `results/`
+- Never hardcode a path under `/Users/` or `C:\`
+- Never invent a number
+- Never edit `matlab/baseline/`
