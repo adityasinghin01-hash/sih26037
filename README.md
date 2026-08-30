@@ -31,6 +31,8 @@ load from the root, and without them your AI assistant works blind.
 
 ```
 docs/PRD.md         the only project document
+docs/problem-statement.md   what MathWorks actually asked for
+docs/research/      the research findings behind every claim
 teammates/          five workstream files, one each
 matlab/+sih/        planner, perception, prediction, metrics
 matlab/baseline/    MathWorks' shipped planner - NEVER EDIT
