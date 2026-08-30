@@ -1,5 +1,7 @@
 # datasets - never commit
-meteor/
+# NOTE: anchored with a leading slash. A bare 'meteor/' also matched
+# python/meteor/, which silently excluded our own source folder.
+/meteor/
 *.osm
 METEOR_Dataset.zip
 chunk_*
