@@ -46,6 +46,29 @@ junctions are unsupported for HD-map export. Test it early and report what break
 - Do not build all five scenarios. Two perfect ones beat five rough ones.
 - Do not hand-place traffic where recorded trajectories will do.
 
+
+## Done when
+
+| Task | Done means |
+|---|---|
+| A1 | All six de-risk checks reported, full output sent |
+| A2 | `check03_osm_import` prints >0 roads and saves the map image |
+| A3 | Both scenarios run start to finish with a density parameter that visibly changes agent count |
+| A4 | A road exists with `laneMarking('Unmarked')` and no painted lines appear in the plot |
+| A5 | Non-ego agents follow **recorded** trajectories, not hand-written waypoints |
+| A6 | `export(...,'OpenDRIVE')` produces a `.xodr` that reopens without error |
+
+**Four conditions apply to every task** (`docs/WORKFLOW.md`): it runs from a clean clone, a test
+covers it, it matches `docs/INTERFACES.md` exactly, and someone else could run it without asking
+you a question.
+
+## Your handoff
+
+**H1 → B:** tell Stream B the moment a scenario has actors in it. They cannot attach sensors to nothing.
+
+**Read `docs/WORKFLOW.md` before your first commit** — branch naming, commit format, how to report
+a blocker, and what to do when the contract is not enough.
+
 ---
 
 ## What you use

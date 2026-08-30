@@ -32,6 +32,7 @@ every such system today is validated against Western scenarios.
 | **Setting up** | [`docs/SETUP.md`](docs/SETUP.md) — 20 minutes |
 | **Picking a workstream** | [`teammates/README.md`](teammates/README.md) |
 | **Writing code** | [`docs/INTERFACES.md`](docs/INTERFACES.md) — **frozen contract, read first** |
+| **Before your first commit** | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — branches, done criteria, handoffs |
 
 ## Documentation map
 
@@ -47,6 +48,7 @@ every such system today is validated against Western scenarios.
 | `docs/MODEL-PIPELINE.md` | Video → features → LSTM → ONNX → Simulink |
 | `docs/SUPERCOMPUTER.md` | DGX access, METEOR download, training |
 | `docs/OPENTRAFFICLAB.md` | Where we cut, and the R2020b risk |
+| `docs/WORKFLOW.md` | **How we work** — git, definition of done, handoffs |
 | `docs/PITCH.md` | Six-minute demo script |
 
 ## Layout

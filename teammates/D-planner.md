@@ -47,6 +47,28 @@ is the guarantee.
 `h = lambda - beta` **is** a control barrier function. We do not bolt a safety filter onto the
 planner — the planner is already written in the filter's own variable. Research section 15.
 
+
+## Done when
+
+| Task | Done means |
+|---|---|
+| D1 | `runtests('matlab/tests/testPlannerGeometry.m')` — **13 passed**, full output sent |
+| D2 | Give-way produces one decisive manoeuvre; stand-on produces **no** control change |
+| D3 | Stateflow chart runs inside the scenario with `TrafficController` deleted |
+| D4 | Planner switches to `STRUCTURED` when lane markings exist |
+| D5 | `h = lambda - beta` logged every step, per track, and plottable |
+
+**Four conditions apply to every task** (`docs/WORKFLOW.md`): it runs from a clean clone, a test
+covers it, it matches `docs/INTERFACES.md` exactly, and someone else could run it without asking
+you a question.
+
+## Your handoff
+
+**H5 → E:** tell Stream E when the planner runs end to end. They cannot measure a pipeline that does not complete.
+
+**Read `docs/WORKFLOW.md` before your first commit** — branch naming, commit format, how to report
+a blocker, and what to do when the contract is not enough.
+
 ---
 
 ## What you use

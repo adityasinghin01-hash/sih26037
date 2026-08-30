@@ -34,6 +34,17 @@ Two things to do before you start:
 
 Point your agent at your own brief in this folder. Everything it needs is referenced from there.
 
+## Before your first commit
+
+**Read [`docs/WORKFLOW.md`](../docs/WORKFLOW.md).** It covers the things that are not in your brief:
+
+- **One branch per stream** — `stream-a-world`, `stream-b-perception`, etc. **Never push to `main`**
+- **Commit format** — `<task-id>: <what changed>`, e.g. `B3: TrackList emits SensorMask`
+- **Run the tests before every push.** Do not push red and hope
+- **Definition of done** — four conditions, and "it works on my machine" is not one of them
+- **Handoffs** — who is waiting on you, and to tell them when you are unblocked
+- **What to do when the contract is not enough** — you do not edit it, you ask
+
 ## Three rules that apply to everyone
 
 **Never edit `matlab/baseline/`.** That is MathWorks' shipped planner, unmodified, and it is our

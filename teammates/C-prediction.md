@@ -53,6 +53,28 @@ That number gates the whole in-loop integration.
 - Do not swap the LSTM for a transformer or GNN in the shipped path. ONNX import will fail.
 - Do not change `docs/INTERFACES.md` S2. Stream D is building against those 31 columns.
 
+
+## Done when
+
+| Task | Done means |
+|---|---|
+| C1 | METEOR extracted, `df -h` output reported before and after |
+| C2 | **The ego-vs-agent question answered from a real XML**, with the snippet pasted |
+| C3 | Loader emits `[T,31]` sequences **and** the `[N,N]` adjacency, shapes verified |
+| C4 | Precision and recall reported **separately** for yield and no-yield, on held-out clips |
+| C5 | At least one `.onnx` file that MATLAB imports without error |
+
+**Four conditions apply to every task** (`docs/WORKFLOW.md`): it runs from a clean clone, a test
+covers it, it matches `docs/INTERFACES.md` exactly, and someone else could run it without asking
+you a question.
+
+## Your handoff
+
+**H3 → D:** report the working opset number as soon as you have it. It is one number and it gates all in-loop integration. Do not wait until training finishes.
+
+**Read `docs/WORKFLOW.md` before your first commit** — branch naming, commit format, how to report
+a blocker, and what to do when the contract is not enough.
+
 ---
 
 ## What you use

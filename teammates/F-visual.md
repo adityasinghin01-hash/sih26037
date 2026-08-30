@@ -33,6 +33,28 @@ video.** This is the hero shot.
 All four models are CC Attribution. Poly Haven is CC0. Names go in the repo. Borrow freely,
 cite loudly.
 
+
+## Done when
+
+| Task | Done means |
+|---|---|
+| F1 | Blender reads a real `trajectories.csv` and places agents at the right positions |
+| F2 | The zebu's armature is driven by the two-state model, not a hand keyframe |
+| F3 | A real METEOR frame and our render sit side by side at matching FOV and resolution |
+| F4 | Meerut footage with the planner overlay composited on |
+| F5 | Every asset author credited in the repo |
+
+**Four conditions apply to every task** (`docs/WORKFLOW.md`): it runs from a clean clone, a test
+covers it, it matches `docs/INTERFACES.md` exactly, and someone else could run it without asking
+you a question.
+
+## Your handoff
+
+**Waits on H6.** Until `trajectories.csv` exists, build the asset library and lighting setup — that work is independent.
+
+**Read `docs/WORKFLOW.md` before your first commit** — branch naming, commit format, how to report
+a blocker, and what to do when the contract is not enough.
+
 ---
 
 ## What you use

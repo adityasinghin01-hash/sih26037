@@ -55,6 +55,29 @@ YOLOX, MATLAB's built-in. Trained on IDD, benchmarked on real Indian video. **Do
 YOLO from ONNX** — NMS is unsupported, dynamic shapes fail. This never enters the loop; it is
 an offline benchmark we report separately.
 
+
+## Done when
+
+| Task | Done means |
+|---|---|
+| B1 | A non-empty point cloud with returns off a non-vehicle mesh |
+| B2 | Tracks persist across frames with stable IDs and estimated extent |
+| B3 | `TrackList` matches S1 exactly — sorted, no ego, no NaN, **and the empty case returns without erroring** |
+| B3b | Radar detections fused; `SensorMask` correctly reports which sensors contributed |
+| B4 | Three noise knobs, each independently sweepable from a config file |
+| B5 | YOLOX trained on IDD, mAP reported on held-out Indian video |
+
+**Four conditions apply to every task** (`docs/WORKFLOW.md`): it runs from a clean clone, a test
+covers it, it matches `docs/INTERFACES.md` exactly, and someone else could run it without asking
+you a question.
+
+## Your handoff
+
+**H2 → C and D:** the moment `TrackList` is stable, tell both. They are blocked on it and can work in parallel once it exists.
+
+**Read `docs/WORKFLOW.md` before your first commit** — branch naming, commit format, how to report
+a blocker, and what to do when the contract is not enough.
+
 ---
 
 ## What you use
