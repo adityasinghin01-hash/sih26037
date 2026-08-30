@@ -1,87 +1,299 @@
-# Stream E · Evidence
+# Stream E — Evidence
 
-**You own the reason anyone believes us.** A working planner with no numbers loses to a worse
-planner with a curve.
+**You own the reason anyone believes us.**
 
-## The baseline is sacred
-`matlab/baseline/` holds **"Motion Planning in Urban Environments Using Dynamic Occupancy Grid
-Map"** — MathWorks' shipped example, **completely unmodified**.
+A working planner with no numbers loses to a worse planner that has a graph. Every claim we make
+in the final presentation comes from your work.
 
-Requires Automated Driving + Sensor Fusion and Tracking + Navigation Toolbox. All three are on
-licence 41087767.
-
-**Never edit anything in that folder.** If we tune the baseline to fail, a judge calls it a
-strawman and the entire result dies. Record its exact example name and MATLAB version in
-`docs/baseline.md` — that file is your first deliverable.
-
-### Why it is a fair fight, and worth being able to say out loud
-We picked their **strongest** relevant planner, not their weakest. It uses lidar like us, handles
-pedestrians and bicycles like us, and targets an urban intersection like us. It fails at an
-unmarked junction for a **structural** reason: it requires `referencePathFrenet` — Cartesian
-waypoints defining a path to follow — and an unsignalled Indian junction supplies none. Its cost
-function has no term for progress through a contested junction. Research section 14.
-
-## Your job, in order
-
-### E1 — `docs/baseline.md`. Exact example name, MATLAB release, date run, unmodified checksum.
-### E2 — The experiment runner
-`matlab/+sih/runExperiment.m`. One command, a config file in, `results/<run>/` out containing
-`metrics.json` and a copy of `config.json`. **A number without its config is not a result.**
-### E3 — The ten metrics
-`docs/metrics.md`, pre-registered, M1 to M10. Implement them exactly as written.
-**Do not add metrics. Do not change definitions.** They were fixed before any run precisely so
-nobody can say we chose metrics that flattered us.
-### E4 — The three curves
-- **M1** time-to-enter, ours vs baseline
-- **M2** completion vs traffic density — the headline
-- **M3** completion vs perception degradation — the one nobody publishes
-
-### E5 — Guard against winning the wrong way
-**M4 and M5 must not regress against the baseline.** A faster car that is less safe is a failed
-project, and we report it as one if that is what the numbers say.
-
-### E6 — Reproducibility
-One command regenerates every number from scratch. A judge can re-run ours in twelve minutes;
-they cannot re-run B-GAP. That is a real advantage — make it true.
-
-
-## Done when
-
-| Task | Done means |
-|---|---|
-| E1 | `docs/baseline.md` names the exact example and MATLAB release, and records that it is unmodified |
-| E2 | One command produces `results/<run>/` with `metrics.json` **and** a copy of the config |
-| E3 | All ten metrics computed, matching `docs/metrics.md` definitions exactly |
-| E4 | Three curves plotted from real runs, not placeholders |
-| E5 | M4 and M5 compared against the baseline and **reported even if we lose** |
-| E6 | A clean clone reproduces every number with one command |
-
-**Four conditions apply to every task** (`docs/WORKFLOW.md`): it runs from a clean clone, a test
-covers it, it matches `docs/INTERFACES.md` exactly, and someone else could run it without asking
-you a question.
-
-## Your handoff
-
-**H6 → F:** write `results/<run>/trajectories.csv` in the exact schema in S8. Blender only reads it — MATLAB does all the computing.
-
-**Read `docs/WORKFLOW.md` before your first commit** — branch naming, commit format, how to report
-a blocker, and what to do when the contract is not enough.
+**Your machine:** Windows
+**Your branch:** `stream-e-evidence`
 
 ---
 
-## What you use
+# Part 1 — Getting started
 
-| | |
+Do these in order. Do not skip ahead. If a step fails, **stop and report it** — do not carry on
+and hope.
+
+### Step 1 — Get the code
+
+Install **Git** if you do not have it (git-scm.com), then open a terminal and type:
+
+```bash
+git clone https://github.com/adityasinghin01-hash/sih26037.git
+cd sih26037
+```
+
+If it says *"repository not found"*, you have not been invited yet. Ask Aditya for an invite to
+the GitHub repo.
+
+### Step 2 — Open it in Antigravity
+
+**Open the folder `sih26037` itself.** Not a subfolder. Not `matlab/`. The top folder.
+
+This matters more than it sounds. Three files sit in that top folder that your AI assistant reads
+automatically:
+
+| File | What it does for you |
 |---|---|
-| **Stack** | MATLAB + Simulink (Automated Driving, Sensor Fusion & Tracking, Navigation) |
-| **Machine** | Windows |
-| **IDE / agent** | Antigravity |
-| **Key functions & tools** | `trackerGridRFS` · `trajectoryGeneratorFrenet` · `referencePathFrenet` (the baseline) · `runtests` |
+| **`AGENTS.md`** | The project rules. Your agent reads this by itself — the stack, our conventions, and the decisions that are already settled so it does not re-argue them |
+| **`GEMINI.md`** | Antigravity-specific rules. Overrides `AGENTS.md` where they disagree |
+| **`README.md`** | The front door. One page, tells you where everything is |
 
-**Setup:** `docs/SETUP.md` — 20 minutes.
-**Before you write any code:** read `docs/INTERFACES.md`. It is frozen; five other people build
-against it. If your agent proposes editing it, the answer is no.
+**If you open a subfolder instead, none of these load and your agent works blind.** It will invent
+things, use wrong function names, and propose changes that break other people's work.
 
-**Reference docs you will need:**
-`docs/PRD.md` (the whole idea) · `docs/ROADMAP.md` (phases and gates) ·
-`docs/metrics.md` (M1–M10) · `docs/CLAIM-LEDGER.md` (never state a number that is not in it)
+You do not have to read `AGENTS.md` or `GEMINI.md` yourself. The agent reads them. You just have
+to open the right folder.
+
+### Step 3 — Install MATLAB
+
+Go to **mathworks.com**, sign in with your **college email**, and associate licence **41087767**.
+
+When the installer asks which products to install, tick **all seven**:
+
+> MATLAB · Simulink · Automated Driving Toolbox · Computer Vision Toolbox ·
+> Image Processing Toolbox · Deep Learning Toolbox · Stateflow
+
+Then, inside MATLAB: **Home → Add-Ons → Get Add-Ons**, search for
+**"Deep Learning Toolbox Converter for ONNX Model Format"** and install it. It is free.
+
+**Now prove it worked.** In MATLAB, type:
+
+```matlab
+cd <where-you-cloned>/sih26037/derisk
+check01_environment
+```
+
+You should see seven lines saying `[ OK ]`.
+**If any line says `MISSING`, stop and tell Aditya.** Nothing else will work until it is fixed.
+
+---
+
+# Part 2 — How to work
+
+### Your branch
+
+**Never save your work directly to `main`.** Five people are working at once and you would
+overwrite each other. You get your own branch:
+
+```bash
+git checkout -b stream-e-evidence
+```
+
+Do that once. From then on you are on your own branch and cannot break anyone.
+
+### Saving your work
+
+Do this **several times a day**, not once a week:
+
+```bash
+git add -A
+git commit -m "E2: OSM import working, 14 roads found"
+git push -u origin stream-e-evidence
+```
+
+The message format is **`<task number>: <what you did>`**. That is it. It tells everyone which
+item in this file moved.
+
+**Before every push, run the tests:**
+
+```matlab
+runtests('matlab/tests')
+```
+
+If a test fails, either fix it or say so when you push. **Do not push broken code quietly.**
+
+### Getting your work into the project
+
+On GitHub, click **Compare & pull request**. Aditya reviews and merges. That is the only way code
+reaches `main`.
+
+### How to talk to the rest of the team
+
+**Use task numbers.** Instead of *"I did the thing with the roads"*, say:
+
+> *"E2 done. E3 blocked — I need check02 to pass first."*
+
+Everyone knows what E2 and E3 are, because they are in this file.
+
+**When you finish something someone is waiting for, tell them immediately.** They cannot see your
+screen. Part 5 says exactly who is waiting on you.
+
+**When you are stuck, say so the same day.** Being stuck quietly for two days is the most
+expensive thing that can happen on a small team.
+
+**When something breaks, send the WHOLE error.** Every line of it. Not a screenshot of part of it,
+not *"it says something about a null value"*. The complete message.
+
+> A trimmed error message costs the team a day. This is the single most expensive habit to get
+> wrong, and it is the easiest one to fix.
+
+### Working with your AI assistant
+
+**It writes the code. You check whether the code is right.**
+
+| The agent does | You do |
+|---|---|
+| Writes functions, boilerplate, tests | Run it and read what actually happens |
+| Refactors, documents | Decide whether the output is correct |
+| Explains errors | Judge whether a scenario looks like a real Indian road |
+
+**Two things to refuse if your agent suggests them:**
+
+1. **Editing section 7 of `docs/PRD.md`** (the frozen contract) — four other people build against it
+2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
+
+**And never let it write a number you have not produced.** If the agent puts a figure in a comment
+or a document, ask yourself: did something actually compute that? If not, it should say
+`TODO(unverified)` instead. Invented numbers are how projects like this lose.
+
+
+---
+
+# Part 3 — Your tasks
+
+### E1 — Set up the comparison car, and never touch it again
+
+We compare our planner against **MathWorks' own shipped planner**, completely unmodified. It is
+called **"Motion Planning in Urban Environments Using Dynamic Occupancy Grid Map"** and it needs
+three toolboxes we already have.
+
+Copy it into `matlab/baseline/` and then **never edit anything in that folder. Ever.**
+
+Write down in `docs/baseline.md`: the exact example name, the MATLAB version, and the date.
+
+**Why this matters more than it sounds.** If we adjust their planner to make it perform worse, a
+judge calls it a rigged fight and every number we produce becomes worthless. We picked their
+*strongest* planner on purpose — it uses lasers like us, handles pedestrians and cyclists like us,
+and targets a city intersection like us.
+
+It fails at an unmarked junction for a **structural** reason: it needs a reference path — a set of
+waypoints saying roughly where the road goes — and an unsignalled Indian junction does not provide
+one. The coordinate system it thinks in does not exist there. **That is a real finding. Tuning it
+to fail would not be.**
+
+### E2 — Build the experiment runner
+
+`matlab/+sih/runExperiment.m`. One command in, a folder out:
+
+```
+results/<run-name>/
+    metrics.json      all ten numbers
+    config.json       a copy of exactly what was fed in
+    trajectories.csv  for Stream F to render
+```
+
+**A number without its configuration is not a result.** Always save the config alongside.
+
+### E3 — Implement the ten measurements
+
+They are defined in `docs/PRD.md` section 8. **Implement them exactly as written.**
+
+**Do not add measurements. Do not change definitions.** They were fixed before anyone ran anything
+precisely so that nobody can say we chose flattering measurements afterwards. That is the whole
+point, and it is worth more than any individual number.
+
+### E4 — Produce the three graphs
+
+1. **How long the car sits waiting** — ours against theirs
+2. **Success rate as traffic gets heavier** — the headline
+3. **How performance holds up as the sensors get worse** — Stream B gives you the noise dials
+
+**Nobody in this field publishes the third graph.** That is why it is one of our three headline
+results.
+
+### E5 — Guard against winning the wrong way
+
+**Collisions (M4) and near-misses (M5) must not get worse than the baseline.**
+
+A car that gets through faster but is less safe is a **failed project**, and if that is what the
+numbers say, **that is what we report.** Your job includes being willing to deliver bad news.
+
+### E6 — Make it reproducible
+
+A stranger with a fresh copy of the repo should regenerate every number with one command.
+
+A judge can re-run ours in twelve minutes. They cannot re-run the published competitors. **That is
+a genuine advantage — your job is to make it true.**
+
+### E7 — Write the technical report
+
+A required deliverable. **Every claim in it must appear in section 9 of `docs/PRD.md` with its
+evidence.** If a number is not in that table, it does not go in the report.
+
+---
+
+# Part 4 — The contract
+
+You read **everything** and produce the numbers. Your one output format is fixed in
+section 7 of `docs/PRD.md`:
+
+- `results/<run>/metrics.json` — keys are the metric IDs `M1` to `M10`
+- `results/<run>/trajectories.csv` — columns `t,actor_id,class_id,x,y,z,yaw`, all in metres,
+  seconds and radians, with a header row
+
+Stream F reads that CSV directly, so the column names and order cannot change.
+
+---
+
+# Part 5 — Done, and who is waiting
+
+## A task is done when
+
+| Task | Done means |
+|---|---|
+| E1 | `docs/baseline.md` names the exact example and version, and records it as unmodified |
+| E2 | One command produces the results folder with metrics **and** a copy of the config |
+| E3 | All ten measurements computed, matching section 8 exactly |
+| E4 | Three graphs plotted from real runs, not placeholders |
+| E5 | Safety compared against the baseline and **reported even if we come out worse** |
+| E6 | A fresh copy of the repo reproduces every number with one command |
+| E7 | Technical report written, every claim traceable to section 9 |
+
+**And four things are true of every task:**
+1. It runs from a fresh copy of the repo, following only what is written down
+2. A test covers it, or a script prints the evidence
+3. It matches section 7 of `docs/PRD.md` exactly
+4. **Someone else could run it without asking you a question**
+
+*"It works on my machine"* is not done. *"I know how to run it"* is not done.
+
+## Your handoff
+
+**You owe Stream F (handoff H6): `results/<run>/trajectories.csv`** in exactly the format
+above. MATLAB does all the computing; Blender only draws what you produce.
+
+**You are waiting on everyone (H5)** — you cannot measure a pipeline until it runs end to end.
+
+**But E1 needs nothing but MATLAB.** Set up the baseline and write `docs/baseline.md` on day one.
+That is real progress while the others build.
+
+---
+
+# Part 6 — Never do these
+
+1. **Never edit `matlab/baseline/`.** That folder holds MathWorks' own planner, unmodified. It is
+   what we compare against. If we change it, a judge calls it a rigged comparison and every result
+   we have becomes worthless.
+2. **Never invent a number.** If it is not in section 9 of `docs/PRD.md`, it does not go in a
+   document, a comment, or a slide.
+3. **Never change section 7 of `docs/PRD.md`** (the frozen contract). If you genuinely need it
+   changed, stop and ask Aditya. Do not edit it and hope.
+4. **Never push code with a known bug.** We lost a previous hackathon by demoing something that
+   had a bug we already knew about.
+5. **Never summarise an error.** Send all of it.
+
+---
+
+# Where everything is
+
+| You want | Look at |
+|---|---|
+| The whole idea, in plain language | `docs/PRD.md` sections 1–5 |
+| **The contract you must match** | `docs/PRD.md` **section 7** |
+| What we measure | `docs/PRD.md` section 8 |
+| What we are allowed to claim | `docs/PRD.md` section 9 |
+| Who is waiting on you | `docs/PRD.md` section 11 |
+
+**`docs/PRD.md` is the only other document.** Everything else is code.

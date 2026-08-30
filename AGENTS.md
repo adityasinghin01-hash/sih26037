@@ -10,15 +10,16 @@ adaptive path planning and collision avoidance on unstructured Indian roads.
 of waiting — in MATLAB, against a cow that behaves like a cow.
 
 ## Read before writing any code
-1. `docs/INTERFACES.md` — **the frozen contract.** Every struct that crosses a module boundary.
-2. `docs/ARCHITECTURE.md` — the picture and the module owners.
-3. `docs/metrics.md` — what we measure. Pre-registered; do not add or change metrics.
-4. `~/Desktop/SIH26037-Research.html` — full research, 17 sections, every claim sourced.
+1. **`docs/PRD.md` — the only project document.** Section 7 is the **frozen contract**: every
+   struct that crosses a module boundary. Section 8 is what we measure. Section 9 is what we are
+   allowed to claim.
+2. `teammates/<your-stream>.md` — your own tasks and handoffs.
+3. `~/Desktop/SIH26037-Research.html` — full research, 18 sections, every claim sourced.
 
 ## Hard rules
 
-**Never change `docs/INTERFACES.md` without a written reason in `docs/CHANGELOG.md`.**
-Six people build in parallel against it. A silent change breaks five of them.
+**Never change section 7 of `docs/PRD.md` (the frozen contract) without telling everyone.**
+Five people build in parallel against it. A silent change breaks four of them.
 
 **Verify, do not assume.** Before writing any number into a doc, slide or comment, run the thing
 that produces it. This project's whole pitch is that its claims are checkable. If you cannot run
@@ -66,7 +67,7 @@ exactly that way.
 - **`lanespec` is lowercase.** `laneSpec` does not exist. This has already cost us once.
 - One function per file, named the same as the file.
 - Every public function starts with a comment block: purpose, inputs with units, outputs, and
-  which struct from `docs/INTERFACES.md` it produces or consumes.
+  which struct from `docs/PRD.md` it produces or consumes.
 - Units are **SI, always**: metres, seconds, radians, m/s. Put the unit in the variable name when
   it could be ambiguous — `dist_m`, `angle_rad`, `t_s`.
 - No `clear all`, no `close all`, no `clc` inside functions.
