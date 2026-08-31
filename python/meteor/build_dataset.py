@@ -24,7 +24,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from meteor.features import FEATURE_DIM, SEQ_LEN, EgoState, frame_features, to_sequence  # noqa: E402
-from meteor.parse_xml import ecef_to_speed, frame_index, parse_frame                     # noqa: E402
+from meteor.parse_xml import (action_from_accel, ecef_to_speed, ecef_to_yaw_rate,        # noqa: E402
+                              frame_index, parse_frame)
 
 FRAME_DIR = "Frame XML Annotations"
 STRIDE = 3               # 30 Hz -> 10 Hz
@@ -37,6 +38,8 @@ def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0):
     hist: dict[int, deque] = defaultdict(lambda: deque(maxlen=SEQ_LEN))
     prev_boxes: dict = {}
     prev_ecef = None
+    prev_prev_ecef = None
+    prev_speed = 0.0
     xs, ys, adjs, tids, fidxs = [], [], [], [], []
 
     for n in names:
@@ -50,7 +53,12 @@ def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0):
 
         dt = STRIDE / 30.0
         speed = ecef_to_speed(prev_ecef, fr.ego_ecef, dt)
-        ego = EgoState(speed=speed, yaw_rate=0.0, accel=0.0, cand_action=cand_action)
+        yaw_rate = ecef_to_yaw_rate(prev_prev_ecef, prev_ecef, fr.ego_ecef, dt)
+        accel = (speed - prev_speed) / dt
+        # feature 31 carries the action the ego ACTUALLY took, since METEOR never shows the
+        # counterfactual. Overridden by the caller when a hypothetical action is being scored.
+        action = cand_action if cand_action else action_from_accel(accel)
+        ego = EgoState(speed=speed, yaw_rate=yaw_rate, accel=accel, cand_action=action)
         data, adj, ids = frame_features(fr.boxes, prev_boxes, ego, fr.width, fr.height)
 
         for i, tid in enumerate(ids):
@@ -66,7 +74,9 @@ def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0):
             fidxs.append(fr.index)
 
         prev_boxes = {b.track_id: b for b in fr.boxes}
+        prev_prev_ecef = prev_ecef
         prev_ecef = fr.ego_ecef or prev_ecef
+        prev_speed = speed
 
     if not xs:
         return None
@@ -114,6 +124,20 @@ def main() -> int:
         if i % 25 == 0 or i == len(zips):
             print(f"  [{i}/{len(zips)}] clips={written} samples={total:,} positives={pos:,}",
                   flush=True)
+
+    # A constant feature carries no information. METEOR's ECEF is a single clip-level location
+    # tag, not a trajectory, so features 28-31 cannot be filled from these annotations.
+    # Say so loudly rather than let someone train on dead columns without knowing.
+    if written:
+        import glob as _g
+        sample = np.load(sorted(_g.glob(str(args.out / "*.npz")))[0])["x"].reshape(-1, FEATURE_DIM)
+        dead = [i + 1 for i in range(FEATURE_DIM) if sample[:, i].min() == sample[:, i].max()]
+        if dead:
+            print(f"\nWARNING: features {dead} are CONSTANT and carry no information.")
+            print("  28-31 (ego speed, yaw rate, acceleration, candidate action) are expected to")
+            print("  be dead: METEOR's ECEF field is one clip-level location tag, not a per-frame")
+            print("  trajectory, and the annotations contain no ego motion at all. The model is")
+            print("  effectively training on 27 features. Report this; do not silently ignore it.")
 
     print(f"\nwritten={written} skipped={skipped}")
     print(f"samples={total:,}  positives={pos:,}  "
