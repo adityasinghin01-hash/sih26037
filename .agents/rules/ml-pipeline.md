@@ -55,3 +55,53 @@ Class weighting is applied automatically by `train.py`, but weighting cannot inv
 - **`RuleBreak` is not boolean** — it holds `false` or a reason such as `WrongLane`.
 - Clean: no zero-area or out-of-bounds boxes, no frame-number gaps, image size always 1920x1080,
   no track ID changes class, every class name maps.
+
+## Using the 93 GB of video — one rule decides everything
+
+**Use the video to produce numbers the simulator can ALSO produce. Never numbers only the video
+has.** Storage is not a constraint; this is not about disk or time.
+
+**Permitted, and both are valuable:**
+
+1. **Check whether the labels are trustworthy.** `Yield` is ticked 1 in 1,262. That is either
+   genuinely rare, or annotators under-applied it - and those need opposite responses. Fetch ~20
+   clips and look. This settles a decision that is currently blocking the whole stream, so **do it
+   before anything else involving video.**
+   ```bash
+   python3 python/meteor/fetch_annotations.py --out <path> --videos 20
+   ```
+2. **Recover the ego's own motion.** METEOR records the car's position once per clip, not as it
+   moves, so S2 features 28-31 are empty. The video shows ego motion through how the static
+   background flows past the camera. The simulator knows its own speed exactly, so **both sources
+   can produce this number** - it is safe to use.
+
+**Forbidden, and the second one is dangerous:**
+
+3. **Do not train a model that reads pixels.** The cuboid simulator emits an object list, not an
+   image. A pixel model would have nothing to read at the moment the car drives. It could never be
+   connected to the thing we are building.
+4. **Do not add a feature the simulator cannot reproduce** - brake lights, indicator lamps, hand
+   signals. A model that learns "brake lights on means they will yield" works on real footage, then
+   meets a simulation with no brake lights, where that input is permanently blank. **The model then
+   behaves differently from the one that was tested, with no error and no crash.** It looks like a
+   planner fault and costs days to find. Object *orientation* is acceptable, because simulated
+   actors have a yaw angle.
+
+**Redundant:** do not train the detector on METEOR video. IDD Detection is 40,000 images already
+prepared for exactly that.
+
+## task: test-model
+**Trigger:** "evaluate the model" / "is it ready for MATLAB"
+**PRECONDITION:** a trained checkpoint exists. **Run this before `export-onnx`, never after.**
+```bash
+python3 python/model/evaluate.py --features <path> --model <checkpoint.pt> [--onnx <file>]
+```
+**What it decides:** not whether the model is accurate, but **whether it fails in the safe
+direction**. The two mistakes are not equal - predicting yield when they do not is a car pulling
+out in front of someone; predicting no-yield when they would have is a few seconds of waiting. The
+script picks the threshold that keeps the dangerous error under 1%.
+**Validation:** it prints READY FOR MATLAB or NOT READY.
+**If NOT READY:** stop. Do not export. Report the whole output and wait.
+**On success report three things:** the threshold, the dangerous-error rate, and the degradation
+table. Below that threshold the planner treats the prediction as unusable and falls back to
+geometry alone - S3 says never 0.5.
