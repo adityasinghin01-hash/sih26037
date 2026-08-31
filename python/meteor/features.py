@@ -98,7 +98,16 @@ def frame_features(
         row[5] = float(np.log(max(w, 1e-6) / max(h, 1e-6)))
         row[6], row[7], row[8] = du, dv, dh
         row[9] = tau
-        row[10] = du            # lateral closure: ego is the frame origin, so d(u-u_ego)/dt = du
+        # feature 11: lateral time-to-cross. Seconds until this agent's centre reaches our own
+        # path line (the image centre), from its current sideways drift. The lateral twin of
+        # feature 10's looming, and like it, computable without any distance.
+        #   positive  -> closing on our path, and how soon
+        #   TAU_CLAMP -> drifting away, or not moving sideways
+        # Plain du was used here before, which made this an exact copy of feature 7.
+        lat_gap = u_c - 0.5
+        lat_rate = -du if lat_gap >= 0 else du        # rate at which the gap shrinks
+        row[10] = float(np.clip(_safe_div(abs(lat_gap), lat_rate, default=TAU_CLAMP),
+                                -TAU_CLAMP, TAU_CLAMP))
         cid = b.class_id if 0 <= b.class_id < N_CLASSES else 0
         row[11 + cid] = 1.0     # 12..27 one-hot (0-indexed 11..26)
         row[27] = ego.speed
