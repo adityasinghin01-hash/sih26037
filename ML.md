@@ -82,6 +82,10 @@ pip3 install --user torch numpy onnx
 ```
 
 Paths: data lives **outside the repo**. Default `~/meteor-data`. On the DGX use `/raid/<user>/`.
+
+**If the task runs on the supercomputer, read `DGX.md` first.** It has the machine's real
+specification, the rules for `/raid` (RAID 0, not backed up), and the list of things that must
+be measured rather than assumed.
 **Never write data, `.onnx`, `.pt` or `.mat` files inside the repo** — `.gitignore` blocks them and
 committing them is forbidden.
 
