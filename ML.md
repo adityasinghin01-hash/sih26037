@@ -133,7 +133,7 @@ and inflates every score.
 ### task: train-model-1
 **Trigger:** "train the LSTM" / "train model 1"
 **What it is:** sequence model over `[T=20, 31]`, binary output.
-**Steps:** run `python/model/yield_lstm.py` with the operator's arguments. Do not change
+**Steps:** run `python/model/train.py --model lstm` with the operator's arguments. Do not change
 architecture, defaults or hyperparameters unless told.
 **Validation:** loss decreases; report **precision and recall separately for each class**. Never
 report accuracy alone.
