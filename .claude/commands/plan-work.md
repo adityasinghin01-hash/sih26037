@@ -11,6 +11,21 @@ Then check `plan/CONTRACT-AB.md` — Stream D is two people and they do not shar
 a state and return a command. **You never open the Simulink model** — that is Person B's, it is
 a binary file, and two people editing it cannot merge. One of you simply loses their work.
 
+## Stay inside the planner
+
+| Yours | NOT yours — say so in one sentence and stop |
+|---|---|
+| `matlab/+sih/+planner/` (A) and the Simulink model (B) | **`ml/` and everything in it** |
+| | `matlab/+sih/+prediction/`, `+models/` — Stream C |
+| | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| | `matlab/baseline/` — the competitor. **Never** |
+
+**The yield predictor is not yours.** You consume `S3 PYield` through the contract and never open
+the model that produced it. If `PYield` looks wrong, report it to Stream C — do not retrain
+anything, and do not go reading `ml/` to work out why.
+
+---
+
 ## Step 0 — setup, and the one dependency that is not in the repo
 
 **`NegotiatingStrategy.m` is `classdef NegotiatingStrategy < DrivingStrategy`, and

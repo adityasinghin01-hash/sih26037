@@ -16,6 +16,21 @@ conflict marker. That is why the split exists.
 
 ---
 
+## Stay inside the planner
+
+| Yours | NOT yours — say so in one sentence and stop |
+|---|---|
+| `matlab/+sih/+planner/` (A) and the Simulink model (B) | **`ml/` and everything in it** |
+| | `matlab/+sih/+prediction/`, `+models/` — Stream C |
+| | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| | `matlab/baseline/` — the competitor. **Never** |
+
+**The yield predictor is not yours.** You consume `S3 PYield` through the contract and never open
+the model that produced it. If `PYield` looks wrong, report it to Stream C — do not retrain
+anything, and do not go reading `ml/` to work out why.
+
+---
+
 ## Step 0 — setup, and the one dependency that is not in the repo
 
 **`NegotiatingStrategy.m` is `classdef NegotiatingStrategy < DrivingStrategy`, and

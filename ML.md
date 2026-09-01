@@ -42,7 +42,7 @@ every error we have already hit with its real cause; check it before diagnosing 
 |---|---|
 | `ml/python/meteor/`, `ml/python/model/`, `ml/python/export/`, `ml/python/tests/` | the planner, scenarios, sensors |
 | `matlab/+sih/+prediction/`, `matlab/+sih/+models/` — the twin and the trainers | the planner, `matlab/+sih/+scenario/` |
-| The 31-feature vector (S2) and the prediction output (S3) | the Simulink model |
+| The 31-feature vector (S2) and the prediction output (S3) | the Simulink model, `matlab/+sih/+planner/`, **`plan/`** |
 
 **Never write to `matlab/baseline/`.** That is a third-party planner used as a control. Editing it
 invalidates the entire result.

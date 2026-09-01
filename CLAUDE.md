@@ -43,6 +43,20 @@ behaves like a real cow. Smart India Hackathon 2026, problem statement **SIH2603
 **A Simulink `.slx` is a binary file. Two people editing it cannot merge** — one person's work is
 simply lost. That is why B is the only one who opens it.
 
+### The two big folders are separate on purpose
+
+| If you are doing | Read | **Do not open** |
+|---|---|---|
+| machine learning | `ml/ReadThis.md`, `ML.md` | `plan/`, `matlab/+sih/+planner/`, the Simulink model |
+| the planner | `plan/ReadThis.md`, `plan/CONTRACT-AB.md` | **`ml/`**, `matlab/+sih/+prediction/`, `+models/` |
+
+**They meet at the contract and nowhere else.** The planner consumes `S3 PYield`; it never opens
+the model that produced it. The ML stream produces `S3`; it never opens the planner. If one side
+thinks the other is wrong, that is a message to a human, not a reason to go and read their files.
+
+Reading across that line is how two people end up with two different versions of the same thing
+and nobody knows which one the demo used.
+
 **Before you edit a file, ask whether it belongs to the stream you are working for.** If it does
 not, say so in one sentence and stop. Acting across that line is the most expensive mistake
 available in this repository.

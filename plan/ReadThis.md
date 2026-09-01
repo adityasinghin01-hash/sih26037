@@ -44,7 +44,22 @@ The full rules are in **`plan/CONTRACT-AB.md`**. Read it before you write anythi
 
 ---
 
-# 2 · Before anything: clone OpenTrafficLab
+# 2 · What is yours, and what is not
+
+| Yours | Not yours |
+|---|---|
+| `matlab/+sih/+planner/` — Person A | **`ml/`** — Stream C's folder, do not read it to debug your work |
+| the Simulink model and chart — Person B | `matlab/+sih/+prediction/`, `+models/` — Stream C |
+| | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| | **`matlab/baseline/`** — the competitor we compare against. Never |
+
+**You consume the yield predictor, you do not own it.** It reaches you as `S3 PYield` through the
+contract. If it looks wrong, tell Stream C. Do not open `ml/` and do not retrain anything — that
+is how two people end up with two different models and nobody knows which one the demo used.
+
+---
+
+# 3 · Before anything: clone OpenTrafficLab
 
 **It is not in this repository and nothing in `+planner` loads without it.**
 `NegotiatingStrategy.m` extends `DrivingStrategy`, which is OpenTrafficLab's class. It is
@@ -65,7 +80,7 @@ runtests('matlab/tests')
 
 ---
 
-# 3 · What already works — build on it, do not rewrite it
+# 4 · What already works — build on it, do not rewrite it
 
 | File | What it gives you |
 |---|---|
@@ -91,7 +106,7 @@ you build exists to keep it above zero.
 
 ---
 
-# 4 · The mechanism, in the order it happens
+# 5 · The mechanism, in the order it happens
 
 Every cycle, roughly ten times a second:
 
@@ -137,7 +152,7 @@ So `dMin` is larger on the drop side — **weighted by consequence, not by proba
 
 ---
 
-# 5 · Speed is one number for three reasons
+# 6 · Speed is one number for three reasons
 
 ```
 v_max = min( sqrt(aLat * R),                             hold the road
@@ -152,7 +167,7 @@ that already falls out of the first.
 
 ---
 
-# 6 · The question nobody usually asks
+# 7 · The question nobody usually asks
 
 Everything above asks *is this safe*. Almost nothing in the literature asks:
 
@@ -174,7 +189,7 @@ an exit. Most planners model only the entry.
 
 ---
 
-# 7 · What you consume and what you produce
+# 8 · What you consume and what you produce
 
 `AGENTS.md` section 3 is the contract. **Read it, and name in every function header which struct
 you consume or produce.**
@@ -199,7 +214,7 @@ you consume or produce.**
 
 ---
 
-# 8 · Where to start
+# 9 · Where to start
 
 **Person A:** type `/plan-work`. It has the build order and the maths already specified.
 Start with D2 — turning a role into a command. Small, and it gets you oriented.
@@ -212,7 +227,7 @@ pieces drop into slots that already work.
 
 ---
 
-# 9 · Never do these
+# 10 · Never do these
 
 1. **Never open a file the other person owns.** A does not open the `.slx`; B does not edit
    `+planner/*.m`
@@ -227,7 +242,7 @@ pieces drop into slots that already work.
 
 ---
 
-# 10 · If you remember five things
+# 11 · If you remember five things
 
 1. **The trunk is the probe.** The car's movement is the question, not a signal beside it.
 2. **`h = lambda - beta`, and it never goes below zero.** Log it every step.
