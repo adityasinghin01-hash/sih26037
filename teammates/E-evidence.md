@@ -1,5 +1,30 @@
 # Stream E — Evidence
 
+> ## You are **Role 2 · The Driver**, working with Stream D.
+>
+> You cannot measure a planner you do not understand, so you sit with the planner pair rather
+> than alone. Read [`plan/ReadThis.md`](../plan/ReadThis.md) — the mechanism you are measuring is
+> explained there.
+>
+> ### Your first task needs nobody, and it is blocking everyone
+>
+> **`matlab/baseline/` is EMPTY.** It is supposed to hold MathWorks' shipped planner,
+> completely unmodified — the thing we compare ourselves against.
+>
+> ```bash
+> # from the repo root, and then CHANGE NOTHING inside it
+> ```
+> Find the shipped example named in [`AGENTS.md`](../AGENTS.md) section 2, copy it in unmodified,
+> and record the exact example name and MATLAB version alongside it.
+>
+> **Until that exists, no number this project produces is comparable to anything**, and the
+> claim the whole project rests on has nothing behind it. It is a clone-and-don't-touch job,
+> not a build, and it does not wait for WORLD or the planner.
+>
+> **If we tune the baseline so it fails, a judge calls it a strawman and every result we have
+> dies.** That is why it must go in untouched and why nobody may edit it afterwards.
+
+
 **You own the reason anyone believes us.**
 
 A working planner with no numbers loses to a worse planner that has a graph. Every claim we make

@@ -23,13 +23,18 @@ behaves like a real cow. Smart India Hackathon 2026, problem statement **SIH2603
 
 ## 2 · Who is doing what — check this before editing any file
 
+**The five streams are grouped into two roles.** Role 1 (A + B) builds everything the car drives
+in and everything it sees. Role 2 (D + E) builds everything the car decides and the proof it
+works. **The only interface between the two roles is `S1 TrackList`**, frozen in `AGENTS.md`
+section 3 — which is why the halves cannot break each other.
+
 | Stream | Owns | Files they own |
 |---|---|---|
-| **A · World** | Scenarios, roads, junction, galli, ghat, cow, pedestrians | `matlab/+sih/+scenario/` |
-| **B · Perception** | Lidar, radar, tracking, the near-field ring | `matlab/+sih/+perception/` |
+| **A · World** *(Role 1)* | Scenarios, roads, junction, galli, ghat, cow, pedestrians | `matlab/+sih/+scenario/` |
+| **B · Perception** *(Role 1)* | Lidar, radar, tracking, the near-field ring | `matlab/+sih/+perception/` |
 | **C · Prediction (ML)** | METEOR, the yield models, ONNX export, the 3 MATLAB models | `ml/`, `matlab/+sih/+models/`, `matlab/+sih/+prediction/` |
-| **D · Planner** | The brain: roles, barriers, contingency paths, Stateflow | `matlab/+sih/+planner/`, the Simulink model |
-| **E · Evidence** | Three baselines, metrics, the report | `matlab/+sih/+metrics/`, `matlab/baseline/` |
+| **D · Planner** *(Role 2)* | The brain: roles, barriers, contingency paths, Stateflow | `matlab/+sih/+planner/`, the Simulink model |
+| **E · Evidence** *(Role 2)* | Three baselines, metrics, the report | `matlab/+sih/+metrics/`, `matlab/baseline/` |
 | **F · Integration** | Aditya. Merging, the demo, the pitch | everything, but he reviews rather than writes |
 
 **Stream D is two people and they do NOT share files.**

@@ -39,13 +39,47 @@ Type the slash command in Antigravity, or just open the file and tell your agent
 Antigravity reads `.agents/workflows/`; Claude Code reads `.claude/commands/`. **Both are kept
 in sync**, so either tool gets the same commands.
 
+## How the team is organised
+
+The five streams are grouped into **two roles**. This is the split that matters day to day —
+the streams still describe *what* is owned, but the roles describe *who works together*.
+
+| Role | Streams | What it is |
+|---|---|---|
+| **1 · The World** | **A + B** | Everything the car drives in, and everything it sees |
+| **2 · The Driver** | **D + E** | Everything the car decides, and the proof it works |
+| Stream C · ML | on its own | Mostly running workflows now — see [`ml/ReadThis.md`](ml/ReadThis.md) |
+| Stream F · Integration | Aditya | Merging, the demo, the pitch, on the main machine |
+
+**Why grouped this way**
+
+- **Sensors go with scenarios, not with the planner.** A sensor is meaningless without actors to
+  point at, so the same pair builds both and the handoff that usually kills small teams does not
+  exist.
+- **Metrics go with the planner, not on their own.** You cannot measure a planner you do not
+  understand. An isolated metrics person measures the wrong thing.
+- **There is exactly ONE interface between the two roles: `S1 TrackList`.** It is frozen in
+  `AGENTS.md` section 3, so the two halves cannot break each other.
+
+**Role 1 is the critical path** — nobody can test anything until a scenario exists.
+**Role 2 is not blocked**, because the baseline can be cloned today.
+
+### Two jobs that need nobody and are blocking everyone
+
+1. **Fill `matlab/baseline/`** *(Role 2)* — clone MathWorks' shipped planner, **change nothing**.
+   It is currently EMPTY. Until it is there, no number this project produces is comparable to
+   anything and the "we beat the baseline" claim has nothing behind it. This is a
+   clone-and-don't-touch job, not a build.
+2. **The RoadRunner licence email** *(Aditya)* — the one problem-statement requirement we cannot
+   currently meet.
+
 | Stream | Owns | File |
 |---|---|---|
-| **A** | Scenarios, roads, junctions | [`teammates/A-world.md`](teammates/A-world.md) |
-| **B** | Lidar, radar, tracking | [`teammates/B-perception.md`](teammates/B-perception.md) |
+| **A** | Scenarios, roads, junctions · **Role 1, with B** | [`teammates/A-world.md`](teammates/A-world.md) |
+| **B** | Lidar, radar, tracking · **Role 1, with A** | [`teammates/B-perception.md`](teammates/B-perception.md) |
 | **C** | Dataset, LSTM, training | **[`ml/ReadThis.md`](ml/ReadThis.md)** — start here, then [`teammates/C-prediction.md`](teammates/C-prediction.md) |
-| **D** | The negotiating planner | **[`plan/ReadThis.md`](plan/ReadThis.md)** — start here, then [`teammates/D-planner.md`](teammates/D-planner.md) |
-| **E** | Baseline, metrics, results | [`teammates/E-evidence.md`](teammates/E-evidence.md) |
+| **D** | The negotiating planner · **Role 2, with E** | **[`plan/ReadThis.md`](plan/ReadThis.md)** — start here, then [`teammates/D-planner.md`](teammates/D-planner.md) |
+| **E** | Baseline, metrics, results · **Role 2, with D** | [`teammates/E-evidence.md`](teammates/E-evidence.md) |
 
 ## Layout
 

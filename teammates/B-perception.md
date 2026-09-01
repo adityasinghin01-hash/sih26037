@@ -1,5 +1,19 @@
 # Stream B — Perception
 
+> ## You are **Role 1 · The World**, working with Stream A.
+>
+> Sensors attach to actors, so you and Stream A are one pair, not two people passing work over a
+> wall. **Build together in the same sessions** — a scene appears, you put sensors on it, and
+> what the sensors see immediately tells A whether the scene is right.
+>
+> **You produce `S1 TrackList` and `S9 DrivableSpace`** — and `S1` is the *only* interface
+> between Role 1 and Role 2. Everything the planner knows about the world arrives through it.
+> Get it right and the two halves of the team cannot break each other.
+>
+> **Do not open** `matlab/+sih/+planner/`, the Simulink model, `plan/`, or `ml/`. Those belong to
+> other streams. If something there looks wrong, say so — do not go and fix it.
+
+
 **You turn sensor data into a list of what is around the car.**
 
 Everything downstream eats your output, so the shape of that output matters more than anything
