@@ -1,5 +1,8 @@
 # ReadThis — the planner, start to finish
 
+
+**Install your fence before you start.** `cp .claude/fences/planner.settings.local.json .claude/settings.local.json`
+It refuses reads outside your stream instead of relying on you to remember. See `.claude/fences/README.md`.
 **You are Stream D. This folder is yours.** You are building the part of the project everything
 else exists to serve: **the thing that decides what the car does.**
 

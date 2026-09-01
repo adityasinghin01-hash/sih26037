@@ -1,5 +1,8 @@
 # ReadThis — the ML stream, start to finish
 
+
+**Install your fence before you start.** `cp .claude/fences/ml.settings.local.json .claude/settings.local.json`
+It refuses reads outside your stream instead of relying on you to remember. See `.claude/fences/README.md`.
 **You are Stream C. This folder is yours.** Everything the machine-learning side of SIH26037
 needs is here or linked from here.
 

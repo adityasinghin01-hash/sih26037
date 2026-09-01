@@ -65,6 +65,19 @@ thinks the other is wrong, that is a message to a human, not a reason to go and 
 Reading across that line is how two people end up with two different versions of the same thing
 and nobody knows which one the demo used.
 
+**Make the line real — install your fence.** `.claude/fences/` holds one small permission file per
+stream. Copy the one for your stream to `.claude/settings.local.json` and the boundary stops
+depending on anyone reading this carefully:
+
+```bash
+cp .claude/fences/ml.settings.local.json      .claude/settings.local.json   # Stream C
+cp .claude/fences/planner.settings.local.json .claude/settings.local.json   # Stream D
+```
+
+Tested 1 Sep 2026: with the planner fence on, a read of `ml/ReadThis.md` is refused outright, and
+`plan/ReadThis.md` still opens. It covers `cat`/`head`/`sed` in Bash too. Streams A, B, E and
+Aditya install neither — integration has to read everything. Full note: `.claude/fences/README.md`.
+
 **Before you edit a file, ask whether it belongs to the stream you are working for.** If it does
 not, say so in one sentence and stop. Acting across that line is the most expensive mistake
 available in this repository.

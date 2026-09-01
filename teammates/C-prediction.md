@@ -12,6 +12,16 @@
 >
 > **This file is your task list and who is waiting on you.** The roadmap is how to do the work.
 
+> ### Stay inside the ML stream
+>
+> **Yours:** `ml/`, `matlab/+sih/+prediction/`, `matlab/+sih/+models/`.
+> **Not yours, and you must not open them:** `matlab/+sih/+planner/`, the Simulink model, `plan/`,
+> `matlab/+sih/+scenario/`, `+perception/`, and `matlab/baseline/`.
+>
+> You produce `S3 PYield`. The planner consumes it through the frozen contract and never opens
+> your model — and you never open theirs. If the planner looks like it is misusing your output,
+> **say so to a human**; do not go and read their files to find out why.
+
 **You build the model that answers one question: will that vehicle let us in?**
 
 This is the stream with the most computer time and the least MATLAB. If you like training models
@@ -330,8 +340,13 @@ Confirmed by reading the archive directly, without downloading it:
   third frame for the contract's 10 Hz.
 - **The `x-axis/y-axis/z-axis` fields in `<bndbox>` are ECEF, and they are the EGO's position
   repeated on every object** (identical across objects, |r| = 6380.7 km). So there is **no
-  per-agent 3-D** — which independently confirms the frozen "never lift METEOR to 3-D" rule. But it
-  does give **ego speed and yaw rate for free** by differentiating. Use `ecef2enu` (Mapping Toolbox).
+  per-agent 3-D** — which independently confirms the frozen "never lift METEOR to 3-D" rule.
+- **CORRECTED 1 Sep 2026 — the ECEF does NOT give you ego motion.** This file previously said ego
+  speed and yaw rate came "for free" by differentiating it. **Measured, and wrong:** the value is
+  **constant across every frame of a clip** — one clip-level location tag, not a trajectory. The
+  clip-level Video XML has no GPS, speed or ego motion either. **So S2 features 28-31 cannot be
+  filled from METEOR at all.** Do not spend time on `ecef2enu`. The choice of what to do instead
+  is **Aditya's, not yours** — see issue #1.
 - **Class names in the wild:** `Car`, `MotorBike`, `Bus`, **`MotorizedTricycle`** (= auto-rickshaw,
   our ClassID 4), `EgoVehicle`.
 

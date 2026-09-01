@@ -37,3 +37,6 @@ venv/
 # os
 .DS_Store
 OpenTrafficLab/
+
+# Personal per-stream permission fence — see .claude/fences/README.md
+.claude/settings.local.json

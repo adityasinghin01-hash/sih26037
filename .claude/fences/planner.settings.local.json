@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(/ml/**)",
+      "Edit(/ml/**)",
+      "Read(/ML.md)",
+      "Edit(/ML.md)",
+      "Read(/matlab/+sih/+prediction/**)",
+      "Edit(/matlab/+sih/+prediction/**)",
+      "Read(/matlab/+sih/+models/**)",
+      "Edit(/matlab/+sih/+models/**)",
+      "Read(/matlab/tests/testFeatureParity.m)",
+      "Edit(/matlab/tests/testFeatureParity.m)",
+      "Edit(/matlab/baseline/**)"
+    ]
+  }
+}

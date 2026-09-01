@@ -6,6 +6,22 @@ description: Prove the Python feature builder and its MATLAB twin still produce 
 stream. Point them at it rather than re-explaining. `ml/TROUBLESHOOTING.md` has every error we
 have already hit, with its real cause.
 
+## Stay inside the ML stream
+
+| Yours | NOT yours — say so in one sentence and stop |
+|---|---|
+| `ml/` and everything in it | `matlab/+sih/+planner/` and the Simulink model — Stream D |
+| `matlab/+sih/+prediction/` — the feature twin | `plan/` and `plan/CONTRACT-AB.md` — Stream D's roadmap |
+| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `ml/python/tests/` | `matlab/baseline/` — the competitor. **Never** |
+
+**You produce `S3 PYield`. You never consume it.** The planner reads it through the contract and
+never opens your model; you never open theirs. If the planner looks like it is misusing your
+output, that is a message to a human — **not** a reason to go and read `matlab/+sih/+planner/`.
+
+Reading across that line is how two people end up with two versions of the same thing, and nobody
+knows which one the demo used.
+
 # /ml-parity — keep the two feature builders identical
 
 ## Why this exists

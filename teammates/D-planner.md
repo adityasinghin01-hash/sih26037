@@ -12,6 +12,19 @@
 > **You are two people and you must not share files.** A Simulink `.slx` is binary — git cannot
 > merge two people's edits, so one of you silently loses a day's work.
 >
+> ### Stay inside the planner
+>
+> **Yours:** `matlab/+sih/+planner/` (Person A), the Simulink model and chart (Person B), `plan/`.
+> **Not yours, and you must not open them:** `ml/` and everything in it, `matlab/+sih/+prediction/`,
+> `+models/`, `matlab/+sih/+scenario/`, `+perception/`, and `matlab/baseline/`.
+>
+> **The yield predictor is not yours.** You consume `S3 PYield` through the frozen contract and
+> never open the model that produced it. If `PYield` looks wrong, **say so to a human** — do not
+> retrain anything, and do not go reading `ml/` to work out why.
+>
+> Install the fence so this does not depend on memory:
+> `cp .claude/fences/planner.settings.local.json .claude/settings.local.json`
+>
 > | | Person A | Person B |
 > |---|---|---|
 > | Writes | `matlab/+sih/+planner/*.m` | the Simulink model and Stateflow chart |

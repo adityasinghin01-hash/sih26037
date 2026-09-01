@@ -19,6 +19,18 @@ re-deriving them wastes a day each.
 
 They live in `.agents/workflows/`. Open the file and follow it if a slash command does not resolve.
 
+## Stay inside the ML stream
+
+| Yours | NOT yours — say so and stop |
+|---|---|
+| `ml/` and everything in it | `matlab/+sih/+planner/` and the Simulink model — Stream D |
+| `matlab/+sih/+prediction/` — the feature twin | `plan/` — Stream D's roadmap |
+| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| | `matlab/baseline/` — the competitor. **Never** |
+
+**You produce `S3 PYield`. You never consume it.** If the planner looks like it is misusing your
+output, that is a message to a human — not a reason to read `matlab/+sih/+planner/`.
+
 ## Five facts that cause the most damage when guessed
 
 - **There is no per-agent 3-D in METEOR.** The `x-axis/y-axis/z-axis` fields are the ego vehicle's

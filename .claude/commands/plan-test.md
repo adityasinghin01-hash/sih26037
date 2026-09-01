@@ -11,6 +11,10 @@ runtests('matlab/tests/testPlannerGeometry')
 **12 tests. They all pass today** — they are the oldest and best-verified code in the repository,
 so a failure means something you just changed, not something that was already broken.
 
+**Stay inside the planner.** These tests are Stream D's. `ml/`, `matlab/+sih/+prediction/` and
+`+models/` belong to Stream C — if a test failure looks like it comes from the predictor, say so
+in one sentence and stop. Do not open their files to investigate.
+
 ## What each group is checking
 
 | Tests | What breaks if they fail |
