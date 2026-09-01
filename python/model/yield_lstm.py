@@ -4,7 +4,7 @@ An LSTM, not a GNN, and that is a hard constraint rather than a preference:
 importNetworkFromONNX does not support Gather/Scatter, which message-passing GNNs depend on.
 LSTM and GRU import cleanly. See AGENTS.md, settled decisions.
 
-Input  : [B, 20, 31]  the sequence from docs/INTERFACES.md S2
+Input  : [B, 20, 31]  the sequence from AGENTS.md section 3 S2
 Output : [B, 2]       logits -> softmax -> P(yield)
 """
 from __future__ import annotations

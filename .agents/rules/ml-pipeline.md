@@ -30,7 +30,7 @@ They live in `.agents/workflows/`. Open the file and follow it if a slash comman
 - **torch lies about the opset.** Requesting 9, 11 or 13 writes a file stamped 18. Always read the
   opset back out of the file before reporting it — that number unblocks the planner stream.
 - **The label is far too rare to train on as it stands**: 109 positives in 68,011 samples, 6 of
-  them in validation, measured over 39 of METEOR's 2,502 clips. Reporting a precision or recall
+  them in validation, measured over 39 of METEOR's 1,251 clips. Reporting a precision or recall
   from a set that size without saying so is misleading, not merely incomplete.
 
 ## Never download without being asked

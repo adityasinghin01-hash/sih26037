@@ -85,6 +85,19 @@ get answers to these six questions. **Paste the raw output — do not summarise 
 
 ---
 
+### Before you trust any MATLAB in this repo — run `/first-run`
+
+Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
+name and signature was checked against the MathWorks documentation, but **checked is not run**.
+Four real defects were already found that way and there are probably more.
+
+The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
+everything that has never been executed, in the right order, and says what to look for.
+
+**Expect something to break.** That is the workflow doing its job, not the repo being broken.
+Send the whole error, every line.
+
+
 # Part 2 — How to work
 
 ### Your branch
@@ -218,14 +231,24 @@ settle it** — we have to look.
 **Both answers are fine.** We built the design to survive either. But **report it before writing
 the loader**, because it changes what the labels mean.
 
-### C3 — Write the loader
+### C3 — ~~Write the loader~~ ALREADY DONE  *(superseded 1 Sep)*
 
-`python/meteor/loader.py`. Read the XML files, group boxes into per-vehicle tracks over time, feed
-them through `frame_features()` (already written for you), and produce sequences plus labels.
+`python/meteor/loader.py` was never written and is not needed. `python/meteor/build_dataset.py`
+does the whole job — reads the XML, groups boxes into per-vehicle tracks, runs `frame_features()`
+and writes sequences plus labels.
 
-Ask your agent to write it. **You check the output** — print the shapes, and spot-check ten
-examples against the actual video by eye. A loader that runs but produces nonsense is worse than
-one that crashes.
+```bash
+python3 python/meteor/build_dataset.py --data <path> --out <path>/features --label <yield|assert>
+```
+
+**`--force` is required after any change to `features.py`.** Without it the script skips clips
+that already have an `.npz`, and your run silently measures the old code. That failure looks
+exactly like a training problem and it is not one.
+
+Read the three things it prints: the positive count, the dead-feature list, and the **ego feature
+ranges**. If an ego speed is above ~40 m/s the physical guard in `parse_xml.py` has been removed
+— stop and say so.
+
 
 ### C4 — Train
 
@@ -342,7 +365,7 @@ stops, send Aditya what it printed rather than pushing past it.
 
 **Two things it will stop on right now:**
 
-1. **We only have about 79 of METEOR's 2,502 clips.** On that slice the whole dataset holds
+1. **We only have about 79 of METEOR's 1,251 clips.** On that slice the whole dataset holds
    **109 yields in 68,011 samples, and only 6 land in validation.** Every accuracy number from a
    set that small is noise. The fix is the full download — 1.81 GB, 10.28 GB on disk.
 2. **The `Yield` label may be the wrong target.** At 1 in 620 it may not be learnable at all. The

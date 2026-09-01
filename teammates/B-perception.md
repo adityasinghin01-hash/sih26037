@@ -70,6 +70,19 @@ You should see seven lines saying `[ OK ]`.
 
 ---
 
+### Before you trust any MATLAB in this repo — run `/first-run`
+
+Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
+name and signature was checked against the MathWorks documentation, but **checked is not run**.
+Four real defects were already found that way and there are probably more.
+
+The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
+everything that has never been executed, in the right order, and says what to look for.
+
+**Expect something to break.** That is the workflow doing its job, not the repo being broken.
+Send the whole error, every line.
+
+
 # Part 2 — How to work
 
 ### Your branch
@@ -187,6 +200,32 @@ design — that was our mistake, not yours. It also genuinely helps: radar measu
 directly** instead of calculating it, and it fails in different weather than lidar does.
 
 Set the `SensorMask` field so we can tell which sensors saw each object.
+
+### B3c — The near-field lidar ring  *(added 31 Aug)*
+
+The roof lidar is like standing on top of the car with a torch: you see far down the street, but
+**you cannot see your own feet.** There is a blind ring right around the car where the beams pass
+over the top of anything close.
+
+That blind ring is exactly where the scooty's mirror is when we squeeze past it in a galli.
+
+**Add a ring of short-range lidars** — front, rear, both sides — that only look at the first
+couple of metres. Same object, `lidarPointCloudGenerator`, just mounted low with a short
+`MaxRange` and a wide vertical field of view. Real cars do this with parking sensors; it is not an
+exotic claim.
+
+**Rule of thumb: the roof lidar is how we DECIDE. The near-field ring is how we DON'T SCRATCH.**
+
+What it must deliver:
+- Free width beside the car, left and right, to a few centimetres
+- The kerb, the wall, a dog, a child standing next to the door
+- Enough coverage that there is **no blind sector within 2 m** of the body
+
+Set **bit 3 of `SensorMask`** on any track a near-field sensor contributed to. The planner needs to
+know a clearance measurement came from a sensor that can actually see that close — see S1.
+
+Report the blind-zone geometry you measure: for each sensor, the nearest range at which it returns
+points. **That number is what the squeeze manoeuvre is trusted against**, so do not estimate it.
 
 ### B4 — Make the sensors worse, on purpose
 

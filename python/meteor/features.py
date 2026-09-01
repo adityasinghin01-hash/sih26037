@@ -1,4 +1,4 @@
-"""Feature builder — the 31-dimension vector defined in docs/INTERFACES.md S2.
+"""Feature builder — the 31-dimension vector defined in AGENTS.md section 3 S2.
 
 The whole point: every quantity here is computable BOTH from a METEOR bounding-box track
 (monocular dashcam, image plane) AND from a simulated lidar track projected through a
@@ -32,7 +32,7 @@ class Box:
     v_min: float
     u_max: float
     v_max: float
-    class_id: int          # docs/INTERFACES.md S5
+    class_id: int          # AGENTS.md section 3 S5
     track_id: int
     t: float               # seconds
 
@@ -42,7 +42,7 @@ class EgoState:
     speed: float          # m/s
     yaw_rate: float       # rad/s
     accel: float          # m/s^2
-    cand_action: float    # docs/INTERFACES.md S6
+    cand_action: float    # AGENTS.md section 3 S6
 
 
 def _safe_div(a: float, b: float, default: float = 0.0) -> float:
@@ -129,7 +129,7 @@ def frame_features(
 
 def to_sequence(history: Sequence[np.ndarray], seq_len: int = SEQ_LEN) -> np.ndarray:
     """Stack per-frame rows for ONE agent into [T, 31], front-padded with the earliest
-    frame when the track is younger than seq_len. Matches docs/INTERFACES.md S2."""
+    frame when the track is younger than seq_len. Matches AGENTS.md section 3 S2."""
     if not history:
         return np.zeros((seq_len, FEATURE_DIM), dtype=np.float32)
     arr = np.stack(history[-seq_len:]).astype(np.float32)

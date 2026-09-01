@@ -25,7 +25,7 @@ On the DGX use `/raid/<user>/` and read `DGX.md` first.
 ls "$DATA"/METEOR_Dataset/*/*.zip | wc -l
 ```
 
-METEOR has **2,502 annotation clips**. Report the fraction you hold.
+METEOR has **1,251 clips**. Report the fraction you hold.
 
 **If it is under about 500 clips, STOP and say so.** Training on a small slice produces numbers
 that mean nothing: on 39 clips the whole dataset yielded **109 positives and only 6 in

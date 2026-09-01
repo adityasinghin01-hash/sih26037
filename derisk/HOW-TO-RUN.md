@@ -50,19 +50,32 @@ Send back: `check03_output.txt` and `check03_osm_map.png`
 
 ---
 
-## Step 4 — Can our LSTM get into MATLAB? (10 minutes)
+## Step 4 — Can our REAL model get into MATLAB? (10 minutes)
 In a **terminal** (not MATLAB):
 ```
-pip install torch onnx
-python3 check04_onnx_lstm.py
+pip install torch onnx onnxruntime onnxscript
+python3 python/export/to_onnx.py --model <checkpoint.pt>
 ```
-Then in MATLAB:
+`onnxscript` is not optional — without it the export dies with
+`ModuleNotFoundError: No module named 'onnxscript'`.
+
+Then in MATLAB, from the repository root:
 ```
 check04_onnx_lstm
 ```
 Send back: `check04_output.txt`
 
-We need to know **which opset number works**. That decides how we train the model.
+**Two things changed on 1 Sep 2026 and both matter.**
+`check04_onnx_lstm.py` is gone — it built a *toy* LSTM, and a toy importing tells you nothing
+about our real model, which also carries LayerNorm, baked-in normalisation constants and a
+Slice + Flatten. Those are the parts that fail.
+It also swept opsets 13, 11 and 9, and torch **silently upconverts all three to 18** — three
+files, one opset, three misleading names. We now write 17, 18 and 20 only.
+
+**Read the output for PLACEHOLDER layers, not just for "succeeded".** An operator MATLAB cannot
+convert does not throw; it arrives as a custom layer with a function a human must write.
+
+**Send Stream D the opset number immediately.** It is the one thing blocking them.
 
 ---
 
@@ -83,3 +96,17 @@ Send back: `check05_output.txt`, whether the example ran, and any figure it prod
 
 ## Step 6 — The supercomputer (ask, don't run)
 Not a script. Get answers to `check06-dgx-questions.md` from whoever runs the DGX.
+
+---
+
+## Step 7 — Can the cuboid world hold a drop-off? (10 minutes)
+In MATLAB:
+```
+check07_negative_obstacle
+```
+Send back `check07_output.txt` **and every figure**.
+
+**This one decides whether the ghat scenario is buildable at all.** A khai returns no lidar
+points, so it can never be an S1 track — it has to be S9 ground geometry instead. If the cuboid
+world models nothing beside the road, a drop-off cannot be represented and we need a fallback.
+Answer the questions the script prints; they are the point of it, not the numbers.

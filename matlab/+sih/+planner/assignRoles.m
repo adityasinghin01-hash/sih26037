@@ -12,12 +12,12 @@ function roles = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
 %     egoPos 1x2 double  ego position, m
 %     egoVel 1x2 double  ego velocity, m/s
 %     egoYaw double      ego heading, rad
-%     tracks struct array  TrackList  (docs/INTERFACES.md S1)
+%     tracks struct array  TrackList  (AGENTS.md section 3 S1)
 %     opts.dMin_m      minimum separation, default 2.5 m
 %     opts.maxRange_m  ignore agents beyond this, default 50 m
 %
 %   OUTPUT
-%     roles  struct array  Role (docs/INTERFACES.md S4), same order as tracks
+%     roles  struct array  Role (AGENTS.md section 3 S4), same order as tracks
 
 arguments
     egoPos (1,2) double

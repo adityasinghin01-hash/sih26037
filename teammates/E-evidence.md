@@ -70,6 +70,19 @@ You should see seven lines saying `[ OK ]`.
 
 ---
 
+### Before you trust any MATLAB in this repo — run `/first-run`
+
+Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
+name and signature was checked against the MathWorks documentation, but **checked is not run**.
+Four real defects were already found that way and there are probably more.
+
+The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
+everything that has never been executed, in the right order, and says what to look for.
+
+**Expect something to break.** That is the workflow doing its job, not the repo being broken.
+Send the whole error, every line.
+
+
 # Part 2 — How to work
 
 ### Your branch
@@ -223,6 +236,47 @@ A required deliverable. **Every claim in it must appear in the claim ledger in t
 evidence.** If a number is not in that table, it does not go in the report.
 
 ---
+
+### E8 — Three baselines, not one  *(NEW 31 Aug)*
+
+One baseline is attackable as strawman-by-selection. Three is not.
+
+| Baseline | Why it fails here |
+|---|---|
+| MathWorks Frenet + occupancy grid, **handed the reference path it needs** | No progress term for a contested junction. Give it its best case and beat it anyway |
+| **ORCA / reciprocal velocity obstacles** | Splits avoidance 50/50 and **assumes every agent runs the same algorithm. A cow does not** |
+| **Always-yield** — what real AVs actually do | Perfect safety, never arrives. Makes the M1-vs-M4 trade visible instead of asserted |
+
+**A benchmark everyone passes is useless.** Three planners failing three different ways is the
+evidence that ours discriminates — that is the scientific contribution, and it costs nothing extra
+because we are building all three anyway.
+
+### E9 — Prove it, then break it  *(NEW — we have the whole licence)*
+
+**Simulink Design Verifier** does automatic theorem proving on Stateflow. **Prove `h >= 0` holds
+inside our own chart** instead of borrowing a CBF from a paper.
+*Caveat: the literature reports Stateflow has limited formal-analysis support and incomplete
+coverage. Test it on a toy chart in week one before anyone promises it on a slide.*
+
+**Simulink Fault Analyzer** injects faults **without modifying the design**, with sensitivity
+sweeps and FMEA linked to requirements. **M3 becomes a standards-form safety analysis** instead of
+hand-rolled noise — and weather (rain, fog, dust) becomes a *physically meaningful* x-axis rather
+than abstract noise. Report the severity at which we stop working; do not pretend there isn't one.
+
+**Requirements Toolbox + Simulink Test + Simulink Coverage** — link every PS requirement to a test
+case to a result, auto-generate the traceability report. **This is what makes "the missing ADAS
+test suite for India" a literal artefact rather than a framing.** Highest-value item on this list.
+
+**Embedded Coder + PIL** — generate C, run it on a real chip, report **measured** replanning latency
+per layer. Everyone else will report simulation time.
+
+### E10 — Two metrics changed  *(NEW)*
+
+- **M9 is now `handover rate`**, not "deadlock rate". Same measurement, but for an ADAS product it
+  is the headline quality number rather than an apology.
+- **M11 handover lead time** — seconds of warning before the driver must act.
+  **A handover requested after the point of no return counts as a FAILURE.**
+
 
 # Part 4 — The contract
 

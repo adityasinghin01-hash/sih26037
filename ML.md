@@ -47,7 +47,7 @@ invalidates the entire result.
 ## 2 · Ground truth — verified by running code. Do not re-derive.
 
 **Dataset.** `huggingface.co/datasets/XijunWang/METEOR`, public, ungated. One zip in 5 chunks,
-93.4 GB. **We take annotations only: 2,502 clips, 1.81 GB down, 10.28 GB on disk.** The 91.6 GB of
+93.4 GB. **We take annotations only: 1,251 clips (2,502 XML files - one Frame and one Video set each), 1.81 GB down, 10.28 GB on disk.** The 91.6 GB of
 video is not used. Annotations sit contiguously at both ends of the archive and
 `fetch_annotations.py` pulls them with HTTP range requests — **do not modify or rewrite it**; a
 replacement will not match the byte layout. Sizes must come from the central directory because
@@ -76,7 +76,7 @@ between them. **Report both and wait. Never choose it yourself.**
 **The label is too rare to train on as it stands.** Over 39 clips: **109 positives in 68,011
 samples (0.160%)**, and the by-clip split leaves **6 positives in validation**. Every figure
 `evaluate.py` prints on a set that small is noise. `check_balance.py` verdict: **SEVERE**.
-**We hold only ~79 of 2,502 clips — about 3% of the dataset.** Do not conclude anything about the
+**We hold only ~79 of 1,251 clips — about 3% of the dataset.** Do not conclude anything about the
 label from that sample, and do not re-tune the model against it.
 
 **27 of 31 features are alive.** Dead across all clips: **23, 24, 25, 27** — one-hot slots for S5
@@ -182,7 +182,7 @@ Positions 1-31 are frozen; this would have to be position 32. Confirm and I will
 <example id="4" name="a task needs data you do not have">
 <operator>Train the LSTM.</operator>
 <correct>
-Blocked. `~/meteor-data/features` holds 39 clips of 2,502. Training on 3% of the data will produce
+Blocked. `~/meteor-data/features` holds 39 clips of 1,251. Training on 3% of the data will produce
 a number that means nothing. Task fetch-data would take 1.81 GB down and 10.28 GB on disk — say
 the word and I will run it.
 </correct>

@@ -107,7 +107,7 @@ def main() -> int:
     else:
         print(f"  WORKABLE. Best is '{best}' at 1 in {objects/n_best:,.0f}.")
 
-    print(f"\nSampled {clips} clips. METEOR has 2,502 - a verdict from a small sample is a")
+    print(f"\nSampled {clips} clips. METEOR has 1,251 - a verdict from a small sample is a")
     print("hint, not an answer. Say how many clips this covered whenever you quote it.")
     print("\nThis is ADITYA'S DECISION, not yours. Report and wait.")
     return 0

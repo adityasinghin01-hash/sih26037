@@ -7,7 +7,7 @@ classdef NegotiatingStrategy < DrivingStrategy
 %   WHAT THE BASE CLASS DOES THAT WE REPLACE
 %     DrivingStrategy calls getNextNodeState(); the Node answers from its TrafficController's
 %     IsOpen flag; the vehicle obeys. That is a signal. We delete the query and decide from
-%     geometry instead. See docs/OPENTRAFFICLAB.md.
+%     geometry instead. See AGENTS.md section 2.
 %
 %   OVERRIDDEN
 %     determineDrivingMode    - mode from lane structure and role
@@ -19,7 +19,7 @@ classdef NegotiatingStrategy < DrivingStrategy
 %     move()          - the base class integration loop
 %     carFollowing()  - Gipps/IDM is a perfectly good longitudinal model
 %
-%   See docs/INTERFACES.md S4 (Role, EgoCommand), S7 (role codes), S8 (planner mode).
+%   See AGENTS.md section 3 S4 (Role, EgoCommand), S7 (role codes), S8 (planner mode).
 
     properties
         Roles       = struct('TrackID',{},'Role',{},'Beta',{},'Lambda',{},'TCPA',{})
@@ -56,7 +56,7 @@ classdef NegotiatingStrategy < DrivingStrategy
 
         function mode = determineDrivingMode(obj, tNow)
             % TODO(stream-D): detect lane structure and return STRUCTURED where it exists.
-            % "Our planner knows when it isn't needed." docs/INTERFACES.md S8.
+            % "Our planner knows when it isn't needed." AGENTS.md section 3 S8.
             tracks          = obj.localTracks(tNow);
             [pos, vel, yaw] = obj.egoState();
             obj.Roles       = sih.planner.assignRoles(pos, vel, yaw, tracks, ...

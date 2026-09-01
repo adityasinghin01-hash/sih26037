@@ -50,13 +50,22 @@ to open the right folder.
 
 Go to **mathworks.com**, sign in with your **college email**, and associate licence **41087767**.
 
-When the installer asks which products to install, tick **all seven**:
+**Do not tick every product.** There are 110+ on this licence and that is where the
+"MATLAB needs 30-40 GB" story comes from. MATLAB itself is about 4-6 GB for a normal install.
 
-> MATLAB · Simulink · Automated Driving Toolbox · Computer Vision Toolbox ·
-> Image Processing Toolbox · Deep Learning Toolbox · Stateflow
+Tick these:
+
+> MATLAB · Simulink · Stateflow · **Automated Driving Toolbox** ·
+> **Navigation Toolbox** · **Sensor Fusion and Tracking Toolbox** ·
+> Computer Vision Toolbox · Image Processing Toolbox · Deep Learning Toolbox
+
+Navigation and Sensor Fusion are on that list because the **baseline** we compare against needs
+them, and you are the one who builds the scene it runs in. Leaving them out means discovering it
+much later.
 
 Then, inside MATLAB: **Home → Add-Ons → Get Add-Ons**, search for
-**"Deep Learning Toolbox Converter for ONNX Model Format"** and install it. It is free.
+**"Deep Learning Toolbox Converter for ONNX Model Format"** and install it. It is free, and the
+product installer does not include it.
 
 **Now prove it worked.** In MATLAB, type:
 
@@ -153,9 +162,9 @@ or a document, ask yourself: did something actually compute that? If not, it sho
 
 # Part 3 — Your tasks
 
-### A1 — Run the six checks  *(do this first, today)*
+### A1 — Run the seven checks  *(do this first, today)*
 
-Open `derisk/HOW-TO-RUN.md` and follow it exactly. Six checks, about an hour in total.
+Open `derisk/HOW-TO-RUN.md` and follow it exactly. Seven checks, about an hour in total.
 
 **Check 2 is the most important thing in this entire project.** It puts an unmarked road, a
 cow-shaped mesh and a simulated lidar together and asks one question: do laser returns actually
@@ -163,6 +172,11 @@ come off the cow? If the answer is no, the whole design changes — and we need 
 two months.
 
 Send back **the full text output and the saved image**, whatever the result.
+
+**Then run `/first-run`.** Most of the MATLAB in this repo has been checked against the MathWorks
+documentation but **never actually executed** — it was written on a machine with no MATLAB. That
+workflow runs it in the right order and tells you what to look for. **Expect something to break.
+That is the point of it, not a sign the repo is broken.**
 
 ### A2 — Get a real Meerut road into MATLAB
 
@@ -227,6 +241,34 @@ All five must ship — the problem statement requires five.
 
 ---
 
+### A8 — The galli, the ghat and the ground  *(NEW 31 Aug)*
+
+**A8a · The galli squeeze.** A narrow lane, a scooty blocking one side, centimetres to spare. This
+is our *dense market* scenario and **the Frenet baseline cannot even start** — no lane, no
+reference path, no gap in a traffic stream. Build it narrow enough that mirrors matter.
+
+**A8b · The ghat road.** `road()` takes elevation in the z column, so a climbing road with hairpins
+is buildable. **First run `derisk/check07_negative_obstacle.m`** — we do not yet know whether the
+cuboid world models any ground *beside* the road, and if it does not, a drop-off cannot be
+represented geometrically. Report which fallback is needed. Real Indian terrain elevation is
+available through Mapping Toolbox.
+
+**A8c · Potholes and speed breakers.** The PS says "potholes are common". They are **not the same
+thing**: a pothole is a *cost* (sometimes hitting it beats swerving into a scooter), a speed
+breaker is a *speed limit pinned at a place*. Both are small vertical features — model them as
+geometry, not as actors.
+
+**A8d · Pedestrians need behaviour, not just boxes.** The cow has an internal state; our
+pedestrians are currently just cuboids, which is backwards for a market scene. Give them a
+**social force model** for crowd avoidance plus a small state machine —
+`waiting -> committing -> crossing -> hesitating` — and an **assertive/deferent parameter** swept
+exactly like the cow's habituation. **The hesitater** (steps out, sees the car, stops) is the
+dangerous one.
+
+**A8e · Wrong-way drivers.** The PS background says drivers "drive against traffic." Add one. Our
+`HEAD_ON` role already handles it — this scenario just proves it.
+
+
 # Part 4 — The contract
 
 You produce a **scenario**, not a struct. But Stream B attaches sensors to your actors,
@@ -244,7 +286,7 @@ so two things must be true:
 
 | Task | Done means |
 |---|---|
-| A1 | All six checks run, full output and the image sent |
+| A1 | All seven checks run, full output and every image sent |
 | A2 | `check03_osm_import` prints more than 0 roads and saves the map picture |
 | A3 | Both scenarios run start to finish, and turning the density up visibly adds traffic |
 | A4 | A road exists with no painted lines in the plot |

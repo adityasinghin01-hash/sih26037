@@ -69,6 +69,19 @@ You should see seven lines saying `[ OK ]`.
 
 ---
 
+### Before you trust any MATLAB in this repo — run `/first-run`
+
+Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
+name and signature was checked against the MathWorks documentation, but **checked is not run**.
+Four real defects were already found that way and there are probably more.
+
+The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
+everything that has never been executed, in the right order, and says what to look for.
+
+**Expect something to break.** That is the workflow doing its job, not the repo being broken.
+Send the whole error, every line.
+
+
 # Part 2 — How to work
 
 ### Your branch
@@ -209,6 +222,105 @@ which means our negotiation logic and our safety guarantee are the same equation
 safety system on top; the planner is already written in its language.
 
 ---
+
+### D6 — The contingency planner  *(NEW 31 Aug — this is now the biggest job on the project)*
+
+The old design checked "is my speed safe right now" and nothing more. **That is a reactive layer
+with nothing above it.** The PS asks for a *path* that can be replanned in real time.
+
+Every cycle:
+1. `trajectoryGeneratorFrenet` generates **several candidate paths** 3–5 s ahead
+2. Roll each forward under **two futures per agent — they yield, they assert** — weighted by
+   `P(yield)` from Stream C
+3. Collision-check with `dynamicCapsuleList`
+4. **Commit only the shared trunk** — the first piece safe under *both* futures
+5. Throw it away and redo it
+
+**The trunk IS the probe.** Creeping forward is not a special behaviour; it is the committed part
+of a plan that is safe whichever way they behave.
+
+This is **branch / contingency MPC**, whose standard form models exactly two modes, *Yield* and
+*Assert* — precisely what our predictor outputs. Start from MathWorks' *Highway Trajectory Planning
+Using Frenet Reference Path* example: it already uses all three objects, 5 s horizon, checked every
+0.5 s. **This is integration, not invention.**
+
+**When forward is blocked, bias generation toward LATERAL candidates** instead of giving up. Going
+around is just another candidate path.
+
+### D7 — Three rates, and why latency stays small  *(NEW)*
+
+| layer | rate | may be slow? |
+|---|---|---|
+| Route (S10) | 2–5 Hz | yes, ~100 ms is fine |
+| Contingency (D6) | ~10 Hz | yes |
+| **Barriers (D8)** | **50–100 Hz** | **no — closed form, microseconds** |
+
+Deliberation is allowed to be slow **because the barrier underneath always runs and can veto
+anything.** Do not try to make the whole system fast; make the bottom layer fast.
+
+### D8 — The second barrier: the ground itself  *(NEW — S9)*
+
+A khai is not an object. **Lidar returns nothing from a drop-off**, so it can never appear in S1.
+Stream B gives you `DrivableSpace` (S9).
+
+```
+h_agent = lambda - beta            >= 0    moving things
+h_road  = d_edge - d_min(side,v)   >= 0    the ground
+```
+Both must hold. **No mode switch** — on a 3 m ghat road `h_road` binds, at an open junction
+`h_agent` binds, geometry decides.
+
+- **`d_min` is asymmetric AND speed-dependent.** Bigger on the drop side than the wall side — a
+  wall dents a panel, a drop is fatal, so weight by **consequence**, not collision probability.
+  Bigger with speed: 2 km/h needs centimetres, 40 km/h needs ~1.5 m.
+- **Footprint is the real body including mirrors**, and shrinks when `MirrorsFolded` is true.
+  Check the **swept path of the whole body**, not the centreline.
+- **Speed is the minimum of three limits:**
+  `v_max = min( sqrt(aLat*R), sqrt(2*aBrake*(VisibleRange - v*tReact)), vRoute )`
+  On a hairpin the first two bind at once. **Weather needs no special mode** — bad weather shrinks
+  `VisibleRange`, so the car slows by itself.
+
+### D9 — Reversibility: do not drive somewhere you cannot leave  *(NEW)*
+
+Everything above asks *is this safe?* This asks **if it goes wrong, can I get out?**
+
+1. **Escape memory** — S10 carries breadcrumbs of every point wide enough to turn around in. When
+   blocked you do not ask "can I turn here", you already know where the last place was.
+2. **Point of no return + `Committed`** — compute the moment after which aborting is worse than
+   continuing. Before it, abort freely. After it, **stop re-deciding.** A 10 Hz planner will dither
+   halfway across a cut unless you forbid it, and dithering in the middle is what causes the crash.
+3. **Blockage triage ends in a DECISION, not a stop:**
+   `creep -> wait -> short horn -> long horn -> flash -> GO AROUND -> request driver handover`
+   If it has not moved in T seconds after being asked, treat as permanent, mark the edge blocked in
+   S10, and re-route — possibly a U-turn, possibly reverse to the last escape point.
+4. **Nose-to-nose deadlock rule:** two cars meet in a galli, someone must reverse.
+   **Whoever is nearer a passing place reverses.** Geometric, legible, and the same shape as the
+   uphill-priority rule.
+
+### D10 — Turning  *(NEW)*
+
+**One planner, not five.** Only which constraint binds changes.
+
+| turn | binds | needs |
+|---|---|---|
+| Normal | nothing | — |
+| Roundabout | conflict — it's a merge | existing probe-commit |
+| **U-turn** | **minimum turning radius** | multi-point turn, **needs `Gear = -1`** |
+| **Side cut** | crossing two streams while exposed | **refuge points** — end the trunk at a safe intermediate stop that does not block the stream you already crossed |
+| **Sharp at speed** | **lateral grip** | the `sqrt(aLat*R)` term in D8 |
+
+**Turn type is DERIVED from `S10.GoalHeading`, never classified.** ~180° + tight radius = U-turn.
+~90° across a stream = cut. **No sign detection.**
+
+### D11 — Handover is the terminal state  *(NEW)*
+
+India requires a driver in effective control, so **we need no remote operator.** When the car runs
+out of moves it raises `Signal = 6`.
+
+**The rule that matters: raise it BEFORE `Committed` goes true.** Handing over after the point of
+no return is the known Level-3 failure mode — the human cannot help any more. A late handover is
+logged as a **failure** (M11), not a handover.
+
 
 # Part 4 — The contract
 
