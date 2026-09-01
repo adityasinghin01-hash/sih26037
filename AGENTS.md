@@ -10,8 +10,9 @@ unstructured Indian roads.
 > An Indian junction has no controller. We built the planner that negotiates instead of waiting -
 > in MATLAB, against a cow that behaves like a cow.
 
-PRD: a PDF, ask Aditya. Your tasks: your stream folder, `world/` `ml/` or `plan/`.
-Who does what: `TEAM.md`.
+PRD: a PDF, ask Aditya. Your tasks: your stream folder, `ml/` or `plan/`.
+Who does what: `TEAM.md`. **The World is Aditya's, not a folder here** - `S1` and `S9` come
+from him.
 
 **Machine-learning task? Read `ml/ML.md` first.** Planner task? Read `plan/ReadThis.md` first.
 Neither loads automatically, and both carry facts you must not re-derive.

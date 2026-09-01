@@ -9,8 +9,8 @@ conflict.
 you start blind — wrong function names, invented APIs, edits that break other people's work.
 
 ## Do not touch
-- **Section 3 of `AGENTS.md`** — the frozen contract. Four other people build against it. If you
-  think it needs changing, stop and ask a human
+- **Section 3 of `AGENTS.md`** — the frozen contract. Everyone else on the team builds against it.
+  If you think it needs changing, stop and ask a human
 - **`matlab/baseline/`** — MathWorks' shipped planner, unmodified. Never edit, never "fix", never tune
 
 ## Before proposing MATLAB code

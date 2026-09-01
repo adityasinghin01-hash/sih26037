@@ -26,15 +26,18 @@ behaves like a real cow. Smart India Hackathon 2026, problem statement **SIH2603
 **`TEAM.md` is the one-page version of this section** — point the person there when they ask
 who does what, rather than re-explaining.
 
-**The five streams are grouped into two roles.** Role 1 (A + B) builds everything the car drives
-in and everything it sees. Role 2 (D + E) builds everything the car decides and the proof it
-works. **The only interface between the two roles is `S1 TrackList`**, frozen in `AGENTS.md`
-section 3 — which is why the halves cannot break each other.
+**Two streams are handed out through this repository. The World is not.** Stream C works from
+`ml/`, streams D and E work from `plan/`. **The World — the scenarios and the sensing — is
+Aditya's own work**, coordinated by call rather than through the repo, so there is no folder to
+send anyone to and no task list here to follow.
+
+It still matters to everyone else, because **the World produces `S1 TrackList`** — the single
+interface the planner consumes, frozen in `AGENTS.md` section 3. That is why the two halves of
+the team cannot break each other. Treat `S1` as arriving from Aditya.
 
 | Stream | Owns | Files they own |
 |---|---|---|
-| **A · World** *(Role 1)* | Scenarios, roads, junction, galli, ghat, cow, pedestrians | `matlab/+sih/+scenario/` |
-| **B · Perception** *(Role 1)* | Lidar, radar, tracking, the near-field ring | `matlab/+sih/+perception/` |
+| **The World** *(Aditya — not handed out)* | Scenarios, roads, junction, galli, ghat, cow, pedestrians · lidar, radar, tracking, the near-field ring · produces **`S1`** and **`S9`** | `matlab/+sih/+scenario/`, `matlab/+sih/+perception/` |
 | **C · Prediction (ML)** | METEOR, the yield models, ONNX export, the 3 MATLAB models | `ml/`, `matlab/+sih/+models/`, `matlab/+sih/+prediction/` |
 | **D · Planner** *(Role 2)* | The brain: roles, barriers, contingency paths, Stateflow | `matlab/+sih/+planner/`, the Simulink model |
 | **E · Evidence** *(Role 2)* | Three baselines, metrics, the report | `matlab/+sih/+metrics/`, `matlab/baseline/` |
@@ -75,8 +78,9 @@ cp .claude/fences/planner.settings.local.json .claude/settings.local.json   # St
 ```
 
 Tested 1 Sep 2026: with the planner fence on, a read of `ml/ReadThis.md` is refused outright, and
-`plan/ReadThis.md` still opens. It covers `cat`/`head`/`sed` in Bash too. Streams A, B, E and
-Aditya install neither — integration has to read everything. Full note: `.claude/fences/README.md`.
+`plan/ReadThis.md` still opens. It covers `cat`/`head`/`sed` in Bash too. Stream E and Aditya
+install neither — integration and the World have to read everything.
+Full note: `.claude/fences/README.md`.
 
 **Before you edit a file, ask whether it belongs to the stream you are working for.** If it does
 not, say so in one sentence and stop. Acting across that line is the most expensive mistake
@@ -201,5 +205,5 @@ Type these. They live in `.claude/commands/`.
 | The planner's roadmap | `plan/ReadThis.md` |
 | The ML stream's roadmap | `ml/ReadThis.md` |
 | Errors we already hit, with real causes | `ml/TROUBLESHOOTING.md` |
-| A stream's task list | inside its own folder: `world/`, `ml/` or `plan/` |
+| A stream's task list | inside its own folder: `ml/` or `plan/` |
 | The de-risk checks | `derisk/HOW-TO-RUN.md` |
