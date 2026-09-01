@@ -1,11 +1,19 @@
 # ReadThis — the World, start to finish
 
-**You are Role 1 — Streams A and B. This folder is yours.** Everything the car drives *on* and
-everything it *sees* is built here.
+> ## This folder is not handed out.
+>
+> **Aditya builds the World himself** and briefs the world teammate on a call, not through this
+> repository. Nothing in `README.md` or `TEAM.md` sends anyone here.
+>
+> It is kept because **`B-perception.md` is where the rules for producing `S1 TrackList` and
+> `S9 DrivableSpace` are written down**, and the planner consumes both. If you are on another
+> stream, you do not need this folder — treat `S1` and `S9` as arriving from Aditya.
 
-Streams A and B are one pair, not two people passing work over a wall. Sensors attach to actors,
-so a scene appears and the sensors go straight onto it — and what they see tells A immediately
-whether the scene is right. **Build in the same sessions.**
+Everything the car drives *on* and everything it *sees* is built here.
+
+The scenarios and the sensing are one job, not two. Sensors attach to actors, so a scene appears
+and the sensors go straight onto it — and what they see tells you immediately whether the scene
+is right. **Build them in the same sessions.**
 
 ---
 

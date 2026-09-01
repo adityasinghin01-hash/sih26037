@@ -15,10 +15,12 @@ single file you open, and what is blocked on a human right now.
 
 1. **Read the PRD.** It is distributed as a PDF — ask Aditya. Problem, solution, what the judge
    sees, the metrics, and what we are allowed to claim.
-2. **Open your own folder and read the `ReadThis.md` at the top of it.** There are three:
-   [`world/`](world/) for streams A and B, [`ml/`](ml/) for stream C,
-   [`plan/`](plan/) for streams D and E. Everything your stream needs is inside one of them —
-   installing, how to work, what to build, who is waiting on you. You do not need the others.
+2. **Open your own folder and read the `ReadThis.md` at the top of it.** There are two:
+   [`ml/`](ml/) for stream C, [`plan/`](plan/) for streams D and E. Everything your stream needs
+   is inside one of them — installing, how to work, what to build, who is waiting on you. You do
+   not need the other one.
+   *(The World — the scenarios and the sensing — is Aditya's own work and is not handed out here.
+   It still produces `S1 TrackList`; treat that as arriving from him.)*
 3. **Read section 3 of [`AGENTS.md`](AGENTS.md)** before writing code — the frozen contract.
 4. **The first time you have MATLAB on a machine, run [`/first-run`](.agents/workflows/first-run.md).**
    Most of the MATLAB here has been checked against the MathWorks documentation but **never
@@ -55,7 +57,7 @@ the streams still describe *what* is owned, but the roles describe *who works to
 
 | Role | Streams | What it is |
 |---|---|---|
-| **1 · The World** | **A + B** | Everything the car drives in, and everything it sees |
+| **1 · The World** | **Aditya, not handed out** | Everything the car drives in, and everything it sees. Coordinated by call, not through this repo |
 | **2 · The Driver** | **D + E** | Everything the car decides, and the proof it works |
 | Stream C · ML | on its own | Mostly running workflows now — see [`ml/ReadThis.md`](ml/ReadThis.md) |
 | Stream F · Integration | Aditya | Merging, the demo, the pitch, on the main machine |
@@ -84,8 +86,7 @@ the streams still describe *what* is owned, but the roles describe *who works to
 
 | Stream | Owns | File |
 |---|---|---|
-| **A** | Scenarios, roads, junctions · **Role 1, with B** | [`world/A-world.md`](world/A-world.md) |
-| **B** | Lidar, radar, tracking · **Role 1, with A** | [`world/B-perception.md`](world/B-perception.md) |
+| **The World** | Scenarios, roads, junctions, the cow · lidar, radar, tracking | **Aditya's own work — nothing to open here.** Produces `S1` and `S9` |
 | **C** | Dataset, LSTM, training | **[`ml/ReadThis.md`](ml/ReadThis.md)** — start here, then [`ml/C-prediction.md`](ml/C-prediction.md) |
 | **D** | The negotiating planner · **Role 2, with E** | **[`plan/ReadThis.md`](plan/ReadThis.md)** — start here, then [`plan/D-planner.md`](plan/D-planner.md) |
 | **E** | Baseline, metrics, results · **Role 2, with D** | [`plan/E-evidence.md`](plan/E-evidence.md) |
@@ -100,11 +101,7 @@ THE ROOT - rules that apply to everyone, and nothing else
   CLAUDE.md         what Claude Code loads - who owns what, and the build state
   GEMINI.md         Antigravity-specific rules
 
-THE THREE STREAM FOLDERS - open ONE, the one that is yours
-  world/            STREAMS A + B - scenarios, roads, the cow, lidar and radar
-    ReadThis.md       start here
-    A-world.md        Stream A's task list
-    B-perception.md   Stream B's task list
+THE TWO STREAM FOLDERS - open ONE, the one that is yours
   ml/               STREAM C - the dataset and the prediction models
     ReadThis.md       start here
     C-prediction.md   Stream C's task list
@@ -118,6 +115,10 @@ THE THREE STREAM FOLDERS - open ONE, the one that is yours
     D-planner.md      Stream D's task list
     E-evidence.md     Stream E's task list
     CONTRACT-AB.md    the boundary between Stream D's two people
+
+ADITYA'S OWN - not handed out, do not work from it
+  world/            the scenarios and the sensing. His working notes, kept here
+                    because B-perception.md is where the S1 and S9 rules live
 
 SHARED - code and tooling, not owned by one stream
   matlab/+sih/      planner, prediction, models, util

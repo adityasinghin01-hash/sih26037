@@ -12,7 +12,7 @@ together*.
 
 | Role | Streams | What it is |
 |---|---|---|
-| **1 · The World** | A + B | Everything the car drives in, and everything it sees |
+| **1 · The World** | Aditya — **not handed out** | Everything the car drives in, and everything it sees. Coordinated by call, not through this repo |
 | **2 · The Driver** | D + E | Everything the car decides, and the proof it works |
 
 **There is exactly ONE interface between them: `S1 TrackList`**, frozen in `AGENTS.md` section 3.
@@ -25,7 +25,7 @@ That is why the two halves cannot break each other.
 | Who | Role | Owns | Machine | Reads first |
 |---|---|---|---|---|
 | **Aditya** | 1 + F | **WORLD and Perception in MATLAB.** Plus integration, the demo and the pitch | Mac for WORLD, Windows main for integration | — |
-| **World teammate** | 1 | Meerut footage, OSM exports, PPT, docs, the claim ledger, judging whether a scene looks Indian | any | `world/A-world.md` |
+| **World teammate** | 1 | Meerut footage, OSM exports, PPT, docs, the claim ledger, judging whether a scene looks Indian | any | **nothing here — Aditya briefs them on a call** |
 | **ML person** | C | METEOR, both yield models, ONNX export, the three MATLAB models | roomiest machine — datasets are tens of GB | **`ml/ReadThis.md`** |
 | **Planner A** | 2 | `matlab/+sih/+planner/*.m` — pure functions | Windows | **`plan/ReadThis.md`** then `/plan-work` |
 | **Planner B** | 2 | The Simulink model and Stateflow chart, **and the baseline** | **Windows — the MAIN machine** | **`plan/ReadThis.md`** then `/plan-harness` |
@@ -49,7 +49,7 @@ so it does not matter which one you are holding.
 
 ```
 Aditya         -> nothing, we work session by session
-World teammate -> world/A-world.md
+World teammate -> nothing here, Aditya briefs them on a call
 ML person      -> ml/ReadThis.md
 Planner A      -> plan/ReadThis.md, then plan/CONTRACT-AB.md
 Planner B      -> plan/ReadThis.md, then plan/CONTRACT-AB.md
