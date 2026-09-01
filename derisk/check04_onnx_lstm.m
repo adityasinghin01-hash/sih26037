@@ -26,7 +26,7 @@ if exist('importNetworkFromONNX', 'file') ~= 2 && exist('importONNXNetwork', 'fi
 end
 
 here = fileparts(mfilename('fullpath'));
-roots = {pwd, here, fullfile(here, '..', 'python', 'export')};
+roots = {pwd, here, fullfile(here, '..', 'ml', 'python', 'export')};
 files = [];
 for r = 1:numel(roots)
     files = [files; dir(fullfile(roots{r}, 'yield_*_opset*.onnx'))]; %#ok<AGROW>
