@@ -1,31 +1,21 @@
-# CHECK 4, PART A — build a toy LSTM and export it to ONNX.
-# Run this in a terminal:  python3 check04_onnx_lstm.py
-# Needs: pip install torch onnx
-import torch, torch.nn as nn
+"""CHECK 4, PART A - superseded. Use the real exporter instead.
 
-FEATURES, HIDDEN, CLASSES, SEQ = 8, 32, 2, 20   # 2 classes = yield / no-yield
+This used to build a toy LSTM and export it at opsets 13, 11 and 9. Both halves of that are
+now known to be wrong:
 
-class YieldNet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.lstm = nn.LSTM(FEATURES, HIDDEN, batch_first=True)
-        self.fc   = nn.Linear(HIDDEN, CLASSES)
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        return self.fc(out[:, -1, :])
+  * A toy of nn.LSTM + nn.Linear imports easily and proves nothing about our real model, which
+    also carries LayerNorm, normalisation constants, and a Slice + Flatten. Those are the parts
+    that fail.
+  * torch >= 2.9 SILENTLY UPCONVERTS opsets 9, 11 and 13 to 18, so the sweep produced three
+    identical files under three misleading names. Stream D is blocked on that number.
 
-model = YieldNet().eval()
-dummy = torch.randn(1, SEQ, FEATURES)
+Do this instead:
 
-for opset in (13, 11, 9):
-    name = f"toy_lstm_opset{opset}.onnx"
-    try:
-        torch.onnx.export(model, dummy, name,
-                          input_names=["sequence"], output_names=["yield_logits"],
-                          opset_version=opset,
-                          dynamic_axes={"sequence": {0: "batch"}})
-        print(f"  [OK]      wrote {name}")
-    except Exception as e:
-        print(f"  [FAILED]  opset {opset}: {e}")
+    python3 python/export/to_onnx.py --model <checkpoint.pt>     # writes opsets 17, 18, 20
+    # then, in MATLAB:
+    check04_onnx_lstm
+"""
+import sys
 
-print("\nNow copy the .onnx files next to the MATLAB scripts and run check04_onnx_lstm.m")
+print(__doc__)
+sys.exit(1)

@@ -36,17 +36,43 @@ validation**. Tell the operator that `/ml-run` needs `fetch-data` first, and giv
 
 ---
 
+## Step 0b — measure BOTH candidate labels, then stop
+
+```bash
+python3 python/meteor/check_balance.py --data "$DATA" --clips <all of them> --every 10
+```
+
+It reports `yield` and `assert` side by side on the same objects. Measured on 79 clips,
+1 Sep 2026:
+
+| label | rate | 1 in N |
+|---|---|---|
+| `yield` | 0.172% | **1 in 581** |
+| `assert` = OverTaking OR LaneChanging OR Cutting | 7.166% | **1 in 14** |
+
+`assert` has roughly **42x more signal**, and for a planner "they will not assert" carries
+nearly the same meaning as "they will yield".
+
+**This is Aditya's decision, not yours and not the agent's.** Report both numbers on the full
+dataset and STOP. When he answers, pass it through as `--label yield` or `--label assert` in
+step 1. **Changing the label requires `--force`** - otherwise the old `.npz` files survive and
+you train on the previous label without any warning.
+
+---
+
 ## Step 1 — build the feature vectors
 
 ```bash
-python3 python/meteor/build_dataset.py --data "$DATA" --out "$DATA"/features [--force]
+python3 python/meteor/build_dataset.py --data "$DATA" --out "$DATA"/features \
+      --label <yield|assert> [--force]
 ```
 
 **`--force` is REQUIRED if `features.py`, `parse_xml.py` or the ego helpers changed since the last
 build.** Without it the script skips clips that already have an `.npz` and the whole run silently
 measures stale vectors — a failure that looks like a training problem for days.
 
-**Report from its output, all three:**
+**Report from its output, all four:**
+0. The **label mode** it printed. Every number below means something different depending on it.
 1. `samples=` and `positives=` with the percentage.
 2. The **dead-feature list**. Expected: `[23, 24, 25, 27]` — the one-hot slots for S5 ClassID 11
    dog, 12 pushcart, 13 animal-drawn cart, 15 static obstacle. METEOR contains none of them, so

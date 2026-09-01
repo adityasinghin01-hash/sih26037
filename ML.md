@@ -67,6 +67,12 @@ never use monocular depth.**
 
 ### Measured 1 Sep 2026 — the numbers that decide what to do next
 
+**THE ONE DECISION THAT IS ADITYA'S.** `check_balance.py` reports two candidate labels on the
+same objects. Measured over 79 clips: `yield` is **1 in 581**, `assert`
+(`OverTaking OR LaneChanging OR Cutting`) is **1 in 14** - about 42x more signal, and to a
+planner "they will not assert" means nearly the same thing. `build_dataset.py --label` switches
+between them. **Report both and wait. Never choose it yourself.**
+
 **The label is too rare to train on as it stands.** Over 39 clips: **109 positives in 68,011
 samples (0.160%)**, and the by-clip split leaves **6 positives in validation**. Every figure
 `evaluate.py` prints on a set that small is noise. `check_balance.py` verdict: **SEVERE**.

@@ -24,7 +24,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from meteor.features import FEATURE_DIM, SEQ_LEN, EgoState, frame_features, to_sequence  # noqa: E402
-from meteor.parse_xml import (action_from_accel, clamp_accel, ecef_to_speed, ecef_to_yaw_rate,        # noqa: E402
+from meteor.parse_xml import (LABEL_MODES, action_from_accel, clamp_accel, ecef_to_speed,
+                              ecef_to_yaw_rate, label_value,        # noqa: E402
                               frame_index, parse_frame)
 
 FRAME_DIR = "Frame XML Annotations"
@@ -32,7 +33,7 @@ STRIDE = 3               # 30 Hz -> 10 Hz
 MAX_AGENTS = 16          # A, the cap the graph model needs. Fixed at export.
 
 
-def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0):
+def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0, label_mode: str = "yield"):
     names = sorted((n for n in zf.namelist() if n.lower().endswith(".xml")),
                    key=lambda n: frame_index(n))[::STRIDE]
     hist: dict[int, deque] = defaultdict(lambda: deque(maxlen=SEQ_LEN))
@@ -68,7 +69,7 @@ def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0):
             k = min(len(ids), MAX_AGENTS)
             a[:k, :k] = adj[:k, :k]
             xs.append(seq)
-            ys.append(fr.labels.get(tid, 0))
+            ys.append(label_value(fr.flags.get(tid, {}), label_mode))
             adjs.append(a)
             tids.append(tid)
             fidxs.append(fr.index)
@@ -94,6 +95,10 @@ def main() -> int:
                     help="rebuild clips that already have an .npz. REQUIRED after any "
                          "change to features.py or the ego helpers - otherwise the old "
                          "vectors survive silently and the run measures stale code.")
+    ap.add_argument("--label", choices=sorted(LABEL_MODES), default="yield",
+                    help="which behaviour to predict. 'yield' is the intended target; "
+                         "'assert' is roughly 35x more common and means nearly the same "
+                         "thing to a planner. Changing this REQUIRES --force.")
     args = ap.parse_args()
 
     src = args.data / "METEOR_Dataset" / FRAME_DIR
@@ -115,7 +120,7 @@ def main() -> int:
             continue
         try:
             with zipfile.ZipFile(z) as zf:
-                built = build_clip(zf)
+                built = build_clip(zf, label_mode=args.label)
         except Exception as exc:                             # noqa: BLE001
             print(f"  FAILED {z.name}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
@@ -123,7 +128,8 @@ def main() -> int:
             continue
         x, y, adj, tid, fidx = built
         assert x.shape[1:] == (SEQ_LEN, FEATURE_DIM), f"BAD SHAPE {x.shape} - contract broken"
-        np.savez_compressed(dest, x=x, y=y, adj=adj, tid=tid, fidx=fidx)
+        np.savez_compressed(dest, x=x, y=y, adj=adj, tid=tid, fidx=fidx,
+                            label_mode=np.array(args.label))
         total += len(y); pos += int(y.sum()); written += 1
         if i % 25 == 0 or i == len(zips):
             print(f"  [{i}/{len(zips)}] clips={written} samples={total:,} positives={pos:,}",
@@ -157,6 +163,7 @@ def main() -> int:
         print("  outside a real vehicle's means the gate has been removed or widened.")
 
     print(f"\nwritten={written} skipped={skipped}")
+    print(f"label mode        : {args.label}   ({' or '.join(LABEL_MODES[args.label])})")
     print(f"samples={total:,}  positives={pos:,}  "
           f"({100.0*pos/max(total,1):.3f}%)")
     print(f"shape check: [N, {SEQ_LEN}, {FEATURE_DIM}] - last dimension must be {FEATURE_DIM}")

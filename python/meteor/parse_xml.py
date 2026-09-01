@@ -38,9 +38,42 @@ class Frame:
     t: float                       # seconds from clip start
     boxes: list[Box]
     labels: dict[int, int]         # track_id -> 1 if Yield is True else 0
+    flags: dict[int, dict[str, bool]]   # track_id -> every behaviour attribute, parsed
     ego_ecef: tuple[float, float, float] | None
     width: int
     height: int
+
+
+# Every per-object behaviour attribute METEOR carries. Kept in one place so the label can be
+# redefined without touching the parser.
+BEHAVIOUR_KEYS = ("Yield", "Cutting", "OverTaking", "LaneChanging", "LaneChanging(m)",
+                  "ZigzagMovement", "OverSpeeding")
+
+# The two candidate targets. "yield" is the intended one; measured at 1 in 620 it may not be
+# learnable at all. "assert" is its mirror image and roughly 35x more common, and for a planner
+# "they will not assert" carries nearly the same meaning as "they will yield".
+LABEL_MODES = {
+    "yield":  ("Yield",),
+    "assert": ("OverTaking", "LaneChanging", "LaneChanging(m)", "Cutting"),
+}
+
+
+def _is_true(v: str) -> bool:
+    """METEOR's booleans are dirty: `false`, `False`, and the misspelt `fasle` all appear,
+    mixed with `Start` and `End` markers. Anything that is not recognisably true is false."""
+    return str(v).strip().lower() in ("true", "yes", "1")
+
+
+def label_value(flags: dict[str, bool], mode: str = "yield") -> int:
+    """The training label for one track under the chosen definition.
+
+    `assert` is an OR across several attributes, so a track counts as asserting if it did any
+    of them. Both modes are computed from the same parse - switching costs a rebuild of the
+    feature files, not a re-download.
+    """
+    if mode not in LABEL_MODES:
+        raise ValueError(f"unknown label mode {mode!r}; choose from {sorted(LABEL_MODES)}")
+    return 1 if any(flags.get(k, False) for k in LABEL_MODES[mode]) else 0
 
 
 def _attrs(obj: ET.Element) -> dict[str, str]:
@@ -72,6 +105,7 @@ def parse_frame(xml_text: str, index: int, fps: float = 30.0) -> Frame:
 
     boxes: list[Box] = []
     labels: dict[int, int] = {}
+    flags: dict[int, dict[str, bool]] = {}
     ego_ecef: tuple[float, float, float] | None = None
     t = index / fps
 
@@ -102,9 +136,10 @@ def parse_frame(xml_text: str, index: int, fps: float = 30.0) -> Frame:
             class_id=CLASS_MAP.get(name.lower().replace(" ", ""), 0),
             track_id=track_id, t=t,
         ))
-        labels[track_id] = 1 if a.get("Yield", "").strip().lower() == "true" else 0
+        flags[track_id] = {k: _is_true(a.get(k, "")) for k in BEHAVIOUR_KEYS}
+        labels[track_id] = 1 if flags[track_id]["Yield"] else 0
 
-    return Frame(index, t, boxes, labels, ego_ecef, width, height)
+    return Frame(index, t, boxes, labels, flags, ego_ecef, width, height)
 
 
 # Physical bounds. A feature outside these is not a measurement, it is an artefact, and

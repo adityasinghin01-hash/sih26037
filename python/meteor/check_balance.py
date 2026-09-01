@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from meteor.parse_xml import parse_frame, frame_index      # noqa: E402
+from meteor.parse_xml import LABEL_MODES, label_value, parse_frame, frame_index  # noqa: E402
 
 FRAME_DIR = "Frame XML Annotations"
 
@@ -38,9 +38,11 @@ def main() -> int:
         print(f"ERROR: no clip archives in {src}", file=sys.stderr)
         return 1
 
-    objects = yes = frames = clips = 0
+    modes = list(LABEL_MODES)
+    objects = frames = clips = 0
+    yes = {m: 0 for m in modes}
     by_class: collections.Counter[int] = collections.Counter()
-    yes_by_class: collections.Counter[int] = collections.Counter()
+    yes_by_class = {m: collections.Counter() for m in modes}
 
     for z in zips:
         try:
@@ -60,37 +62,54 @@ def main() -> int:
             for b in fr.boxes:
                 objects += 1
                 by_class[b.class_id] += 1
-                if fr.labels.get(b.track_id, 0) == 1:
-                    yes += 1
-                    yes_by_class[b.class_id] += 1
+                fl = fr.flags.get(b.track_id, {})
+                for m in modes:
+                    if label_value(fl, m):
+                        yes[m] += 1
+                        yes_by_class[m][b.class_id] += 1
 
     if objects == 0:
         print("ERROR: parsed 0 objects. Send this whole output.", file=sys.stderr)
         return 1
 
-    ratio = objects / yes if yes else float("inf")
-    pct = 100.0 * yes / objects
     print(f"clips read        : {clips}")
     print(f"frames sampled    : {frames:,}  (every {args.every}th)")
     print(f"vehicles seen     : {objects:,}")
-    print(f"of which yielded  : {yes:,}  ({pct:.3f}%)")
-    print(f"RATIO             : 1 yield per {ratio:,.0f} vehicles" if yes else
-          "RATIO             : NO POSITIVE EXAMPLES FOUND")
+    print()
+    print("BOTH candidate labels, measured on the same objects:")
+    print(f"  {'label':<10} {'positives':>10} {'rate':>10}   {'1 in N':>9}")
+    for m in modes:
+        n = yes[m]
+        rate = 100.0 * n / objects
+        inv = f"{objects / n:,.0f}" if n else "never"
+        print(f"  {m:<10} {n:>10,} {rate:>9.3f}%   {inv:>9}")
+    print()
+    print(f"  'yield'  = {' or '.join(LABEL_MODES['yield'])}")
+    print(f"  'assert' = {' or '.join(LABEL_MODES['assert'])}")
+    print("  For a planner, \"they will not assert\" carries nearly the same meaning as")
+    print("  \"they will yield\", so the second is a usable substitute if the first is too rare.")
 
-    print("\nper class (ClassID: seen / yielded):")
+    print("\nper class (ClassID: seen / yield / assert):")
     for cid, n in by_class.most_common():
-        print(f"  {cid:>3}: {n:>8,} / {yes_by_class[cid]:,}")
+        print(f"  {cid:>3}: {n:>8,} / {yes_by_class['yield'][cid]:>6,} / {yes_by_class['assert'][cid]:>6,}")
 
+    best = max(modes, key=lambda m: yes[m])
+    n_best = yes[best]
     print("\nVERDICT:")
-    if yes == 0:
-        print("  NO POSITIVES. Stop. Do not train. Report this to Aditya immediately.")
-    elif ratio <= 20:
-        print("  Healthy. Train normally.")
-    elif ratio <= 200:
-        print(f"  Imbalanced. Train with --pos-weight {ratio:.0f} and report recall, not accuracy.")
+    if n_best == 0:
+        print("  NOTHING IS LEARNABLE from this sample. Neither label has a single positive.")
+    elif objects / n_best > 500:
+        print(f"  SEVERE for both labels. Best is '{best}' at 1 in {objects/n_best:,.0f}.")
+        print("  Stop and report. The question itself may need to change.")
+    elif objects / n_best > 100:
+        print(f"  RARE. Best is '{best}' at 1 in {objects/n_best:,.0f}. Class weighting is")
+        print("  essential and every metric must be reported per class.")
     else:
-        print("  SEVERE. Stop and report. The question itself may need to change.")
-    print("\nDo not proceed to training. Report this output and wait.")
+        print(f"  WORKABLE. Best is '{best}' at 1 in {objects/n_best:,.0f}.")
+
+    print(f"\nSampled {clips} clips. METEOR has 2,502 - a verdict from a small sample is a")
+    print("hint, not an answer. Say how many clips this covered whenever you quote it.")
+    print("\nThis is ADITYA'S DECISION, not yours. Report and wait.")
     return 0
 
 
