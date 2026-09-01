@@ -3,7 +3,7 @@
 Why this exists: if yielding is rare, a model can answer "no" every time, score 99%, and be
 useless. That changes the whole approach, so it is measured first.
 
-    python3 python/meteor/check_balance.py --data ~/meteor-data [--clips 50] [--every 10]
+    python3 ml/python/meteor/check_balance.py --data ~/meteor-data [--clips 50] [--every 10]
 
 Reads the clip zips directly. Nothing needs unpacking.
 """
@@ -109,7 +109,13 @@ def main() -> int:
 
     print(f"\nSampled {clips} clips. METEOR has 1,251 - a verdict from a small sample is a")
     print("hint, not an answer. Say how many clips this covered whenever you quote it.")
-    print("\nThis is ADITYA'S DECISION, not yours. Report and wait.")
+    print("\nAPPLY THE RULE - see ml/ReadThis.md, Decision 2:")
+    print("  assert better than 1 in 50 and yield worse than 1 in 200")
+    print("      -> train on 'assert', and report 'yield' as a measured failure")
+    print("  both better than 1 in 50   -> train both, report side by side")
+    print("  assert also worse than 1 in 200")
+    print("      -> STOP and tell Aditya. Neither label works and the question changes.")
+    print("\nState which label you chose beside every number you report from now on.")
     return 0
 
 

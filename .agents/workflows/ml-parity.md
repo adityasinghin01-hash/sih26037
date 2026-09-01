@@ -2,11 +2,15 @@
 description: Prove the Python feature builder and its MATLAB twin still produce identical vectors. Run after any change to features.py.
 ---
 
+**The person you are helping has `ml/ReadThis.md`** — the plain-language roadmap for this
+stream. Point them at it rather than re-explaining. `ml/TROUBLESHOOTING.md` has every error we
+have already hit, with its real cause.
+
 # /ml-parity — keep the two feature builders identical
 
 ## Why this exists
 
-The yield model is **trained** by `python/meteor/features.py` and **run** by
+The yield model is **trained** by `ml/python/meteor/features.py` and **run** by
 `matlab/+sih/+prediction/buildFeatureFrame.m`.
 
 If those two ever disagree, the network is fed different numbers at inference than it saw in
@@ -21,12 +25,12 @@ MATLAB cannot be called from Python, so the check runs in two halves.
 ## Step 1 — regenerate the fixture (Python side)
 
 ```bash
-python3 python/tests/test_parity.py
+python3 ml/python/tests/test_parity.py
 ```
 
 This builds cases that exercise every branch — no history, zero `dt`, dead-centre boxes, a
 ClassID out of range, all 16 classes at once, an extreme aspect ratio, near and far adjacency
-pairs — records what Python produces, and writes `python/tests/parity_fixture.json`.
+pairs — records what Python produces, and writes `ml/python/tests/parity_fixture.json`.
 
 **Validation:** every case prints PASS and the script reports the fixture path.
 
@@ -63,7 +67,7 @@ why. The two most likely causes:
 
 ## When to run this
 
-- After **any** edit to `python/meteor/features.py` or `buildFeatureFrame.m`.
+- After **any** edit to `ml/python/meteor/features.py` or `buildFeatureFrame.m`.
 - Before exporting a model that will be handed to the planner stream.
 - After a merge that touched either file.
 

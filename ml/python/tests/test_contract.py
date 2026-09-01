@@ -1,6 +1,6 @@
 """Contract tests. These guard the shapes other people's code depends on.
 
-    python3 python/tests/test_contract.py
+    python3 ml/python/tests/test_contract.py
 
 No pytest needed. Exits non-zero on failure.
 """

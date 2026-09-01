@@ -1,7 +1,7 @@
 """Train and evaluate a yield predictor.
 
-    python3 python/model/train.py --features ~/meteor-data/features --model lstm  --epochs 20
-    python3 python/model/train.py --features ~/meteor-data/features --model attention --epochs 20
+    python3 ml/python/model/train.py --features ~/meteor-data/features --model lstm  --epochs 20
+    python3 ml/python/model/train.py --features ~/meteor-data/features --model attention --epochs 20
 
 Reads split.json, so it trains on whole clips and validates on clips it has never seen.
 Run split.py first.

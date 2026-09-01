@@ -54,7 +54,7 @@ Send back: `check03_output.txt` and `check03_osm_map.png`
 In a **terminal** (not MATLAB):
 ```
 pip install torch onnx onnxruntime onnxscript
-python3 python/export/to_onnx.py --model <checkpoint.pt>
+python3 ml/python/export/to_onnx.py --model <checkpoint.pt>
 ```
 `onnxscript` is not optional — without it the export dies with
 `ModuleNotFoundError: No module named 'onnxscript'`.

@@ -1,14 +1,14 @@
 function frame = buildFeatureFrame(boxes, prevBoxes, ego, imgW, imgH)
-%BUILDFEATUREFRAME  The MATLAB twin of python/meteor/features.py.
+%BUILDFEATUREFRAME  The MATLAB twin of ml/python/meteor/features.py.
 %
 %   Produces a FeatureFrame (AGENTS.md S2) from image-plane bounding boxes. Every quantity
 %   here is computable BOTH from a METEOR annotation and from a simulated lidar track
 %   projected down through a virtual camera. Nothing needs depth.
 %
-%   THIS FILE AND python/meteor/features.py MUST AGREE TO THE LAST BIT.
+%   THIS FILE AND ml/python/meteor/features.py MUST AGREE TO THE LAST BIT.
 %   The model is trained in Python and runs here. If the two builders disagree, the network
 %   is fed different numbers at inference than it saw in training, nothing errors, and the
-%   symptom looks like a planner fault. python/tests/test_parity.py writes a fixture and
+%   symptom looks like a planner fault. ml/python/tests/test_parity.py writes a fixture and
 %   matlab/tests/testFeatureParity.m checks this function against it. Keep it passing.
 %
 %   INPUTS
@@ -139,7 +139,7 @@ end
 
 function out = iSafeDiv(a, b, defaultVal)
 %ISAFEDIV  a/b, or defaultVal when b is too small to divide by.
-%   The 1e-9 threshold matches _safe_div in python/meteor/features.py exactly. Changing it
+%   The 1e-9 threshold matches _safe_div in ml/python/meteor/features.py exactly. Changing it
 %   here alone silently desynchronises the two builders.
 if abs(b) > 1e-9
     out = a / b;

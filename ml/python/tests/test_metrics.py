@@ -1,6 +1,6 @@
 """Known-answer tests for the evaluation metrics.
 
-    python3 python/tests/test_metrics.py
+    python3 ml/python/tests/test_metrics.py
 
 evaluate.py decides whether a model is allowed near MATLAB. If its metrics are wrong, every
 verdict it gives is wrong in a way nobody would notice - a broken average_precision does not

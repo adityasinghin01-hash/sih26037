@@ -11,7 +11,7 @@ now known to be wrong:
 
 Do this instead:
 
-    python3 python/export/to_onnx.py --model <checkpoint.pt>     # writes opsets 17, 18, 20
+    python3 ml/python/export/to_onnx.py --model <checkpoint.pt>     # writes opsets 17, 18, 20
     # then, in MATLAB:
     check04_onnx_lstm
 """

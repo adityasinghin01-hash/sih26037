@@ -4,7 +4,7 @@ Frames next to each other are near-duplicates. A frame-level split puts almost t
 in both training and test, so the model has effectively seen the answers. Scores look excellent
 and mean nothing. This is the single easiest way to ruin the result silently.
 
-    python3 python/meteor/split.py --features ~/meteor-data/features --by clip
+    python3 ml/python/meteor/split.py --features ~/meteor-data/features --by clip
 """
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ The dataset is one 93.38 GB zip split into five chunks on HuggingFace. Its entri
 are ordered by category, so the 2,502 annotation files are contiguous at the two
 ends of the archive and can be pulled without touching the 91.57 GB of video.
 
-    python python/meteor/fetch_annotations.py --out /Volumes/DRIVE/meteor
+    python ml/python/meteor/fetch_annotations.py --out /Volumes/DRIVE/meteor
 
 Downloads ~1.81 GB, writes ~10.28 GB. Resumable: rerun it and it skips whatever
 is already on disk with the right size. Every file is CRC-32 checked.

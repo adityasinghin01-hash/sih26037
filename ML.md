@@ -31,11 +31,16 @@ you can see belong to other people's work. Read `AGENTS.md` before this file.
 
 ---
 
+**The human you are helping has `ml/ReadThis.md`.** It is the plain-language roadmap for this
+stream — the decisions, the flow, the traps. When they ask what to do next, point them at the
+relevant section of it rather than improvising a different plan. `ml/TROUBLESHOOTING.md` carries
+every error we have already hit with its real cause; check it before diagnosing anything.
+
 ## 1 · Scope
 
 | In scope | Out of scope |
 |---|---|
-| `python/meteor/`, `python/model/`, `python/export/`, `python/tests/` | the planner, scenarios, sensors |
+| `ml/python/meteor/`, `ml/python/model/`, `ml/python/export/`, `ml/python/tests/` | the planner, scenarios, sensors |
 | `matlab/+sih/+prediction/`, `matlab/+sih/+models/` — the twin and the trainers | the planner, `matlab/+sih/+scenario/` |
 | The 31-feature vector (S2) and the prediction output (S3) | the Simulink model |
 

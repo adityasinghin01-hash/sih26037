@@ -9,7 +9,7 @@ depth, and 1 degree of camera pitch error is ~31% depth error at 30 m.
 See research section 11.
 
 The MATLAB twin of this file is matlab/+sih/+prediction/buildFeatureFrame.m.
-python/tests/test_parity.py proves they agree. Keep it passing.
+ml/python/tests/test_parity.py proves they agree. Keep it passing.
 """
 from __future__ import annotations
 

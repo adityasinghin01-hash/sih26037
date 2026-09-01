@@ -1,15 +1,15 @@
 """Parity fixture for the two feature builders.
 
-    python3 python/tests/test_parity.py
+    python3 ml/python/tests/test_parity.py
 
-python/meteor/features.py trains the model. matlab/+sih/+prediction/buildFeatureFrame.m feeds
+ml/python/meteor/features.py trains the model. matlab/+sih/+prediction/buildFeatureFrame.m feeds
 it at inference. If the two disagree the network sees different numbers than it was trained on,
 NOTHING ERRORS, and the symptom looks like a planner bug days later. AGENTS.md section 5 makes
 them agreeing a hard requirement; this is the file that enforces it.
 
 MATLAB cannot be called from here, so this works in two halves:
   1. This script builds cases that exercise every branch, records what Python produces, and
-     writes python/tests/parity_fixture.json.
+     writes ml/python/tests/parity_fixture.json.
   2. matlab/tests/testFeatureParity.m reads that file, runs the MATLAB twin on the same
      inputs, and asserts agreement to 1e-6.
 

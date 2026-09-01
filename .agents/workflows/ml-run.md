@@ -2,6 +2,10 @@
 description: Run the whole yield-predictor pipeline end to end - features, split, train, evaluate, export - stopping at every decision that belongs to a human.
 ---
 
+**The person you are helping has `ml/ReadThis.md`** — the plain-language roadmap for this
+stream. Point them at it rather than re-explaining. `ml/TROUBLESHOOTING.md` has every error we
+have already hit, with its real cause.
+
 # /ml-run — the machine-learning pipeline, start to finish
 
 **Read `ML.md` at the repository root before step 1.** It carries the measured facts about this
@@ -32,7 +36,7 @@ produces numbers that mean nothing: on 39 clips the whole dataset yielded **109 
 only 6 in validation**.
 
 ```bash
-python3 python/meteor/fetch_annotations.py --out "$DATA"
+python3 ml/python/meteor/fetch_annotations.py --out "$DATA"
 ```
 
 **1.81 GB to download, 10.28 GB on disk.** Check `df -h` first and say the numbers out loud
@@ -47,7 +51,7 @@ downloading the 91.6 GB of video, which we never use.
 ## Step 0b — measure both labels, then apply the rule below
 
 ```bash
-python3 python/meteor/check_balance.py --data "$DATA" --clips <all of them> --every 10
+python3 ml/python/meteor/check_balance.py --data "$DATA" --clips <all of them> --every 10
 ```
 
 It reports two candidate labels on the same objects.
@@ -102,7 +106,7 @@ different claim, and do not quietly upgrade it to "predicts yielding".
 ## Step 1 — build the feature vectors
 
 ```bash
-python3 python/meteor/build_dataset.py --data "$DATA" --out "$DATA"/features \
+python3 ml/python/meteor/build_dataset.py --data "$DATA" --out "$DATA"/features \
       --label <yield|assert> [--force]
 ```
 
@@ -128,7 +132,7 @@ measures stale vectors — a failure that looks like a training problem for days
 ## Step 2 — split by clip
 
 ```bash
-python3 python/meteor/split.py --features "$DATA"/features --val-frac 0.25
+python3 ml/python/meteor/split.py --features "$DATA"/features --val-frac 0.25
 ```
 
 Split **by clip, never by frame**. Adjacent frames are near-duplicates; a frame split leaks the
@@ -144,8 +148,8 @@ recall as though they mean something.
 ## Step 3 — train both models
 
 ```bash
-python3 python/model/train.py --features "$DATA"/features --model lstm      --epochs 20
-python3 python/model/train.py --features "$DATA"/features --model attention --epochs 20
+python3 ml/python/model/train.py --features "$DATA"/features --model lstm      --epochs 20
+python3 ml/python/model/train.py --features "$DATA"/features --model attention --epochs 20
 ```
 
 Do not change the architecture, the defaults or the hyperparameters unless told to.
@@ -160,7 +164,7 @@ alone** — when yielding is rare, answering "no" every time scores 99.9% and is
 ## Step 4 — decide whether it may cross into MATLAB
 
 ```bash
-python3 python/model/evaluate.py --features "$DATA"/features --model "$DATA"/features/yield_lstm.pt
+python3 ml/python/model/evaluate.py --features "$DATA"/features --model "$DATA"/features/yield_lstm.pt
 ```
 
 This does not ask whether the model is accurate. It asks **whether it fails in the safe
@@ -175,8 +179,8 @@ Report the threshold, the dangerous-error rate and the degradation table.
 ## Step 5 — export to ONNX
 
 ```bash
-python3 python/export/to_onnx.py --model "$DATA"/features/yield_lstm.pt
-python3 python/export/to_onnx.py --model "$DATA"/features/yield_attention.pt
+python3 ml/python/export/to_onnx.py --model "$DATA"/features/yield_lstm.pt
+python3 ml/python/export/to_onnx.py --model "$DATA"/features/yield_attention.pt
 ```
 
 **Run it once per checkpoint.** A checkpoint holds one model, so the script now exports only

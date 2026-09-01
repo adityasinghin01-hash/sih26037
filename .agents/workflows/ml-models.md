@@ -2,6 +2,10 @@
 description: Train the three MATLAB-native perception models - YOLOX spotter, DeepLab v3+ road segmenter, PointPillars lidar detector. Models 3, 4 and 5 of 5.
 ---
 
+**The person you are helping has `ml/ReadThis.md`** — the plain-language roadmap for this
+stream. Point them at it rather than re-explaining. `ml/TROUBLESHOOTING.md` has every error we
+have already hit, with its real cause.
+
 # /ml-models — the three models that live in MATLAB
 
 `/ml-run` covers models 1 and 2, the yield predictor, in Python. **These three are trained

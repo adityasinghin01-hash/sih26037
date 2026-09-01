@@ -4,8 +4,8 @@ Run this, then run derisk/check04_onnx_lstm.m in MATLAB. The opset that imports 
 one we train and ship, and that single number blocks the planner stream - send it immediately.
 R2024b supports opsets 6-18; R2025a+ supports 6-20.
 
-    python3 python/export/to_onnx.py                  # both models, untrained (shape check)
-    python3 python/export/to_onnx.py --model <file>   # a trained checkpoint
+    python3 ml/python/export/to_onnx.py                  # both models, untrained (shape check)
+    python3 ml/python/export/to_onnx.py --model <file>   # a trained checkpoint
 
 THREE THINGS THIS SCRIPT REFUSES TO GUESS ABOUT
 1. The opset actually written. torch >= 2.9 silently upconverts a requested opset below its

@@ -1,6 +1,6 @@
 """Test a trained predictor BEFORE it goes anywhere near MATLAB.
 
-    python3 python/model/evaluate.py --features ~/meteor-data/features --model <checkpoint.pt>
+    python3 ml/python/model/evaluate.py --features ~/meteor-data/features --model <checkpoint.pt>
 
 The point is not to prove the model is perfect - it cannot be, because it is predicting what a
 human will do next and humans are not consistent. The point is to know exactly how it fails, to

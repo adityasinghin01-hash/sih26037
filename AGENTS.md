@@ -179,8 +179,8 @@ Not a navigator. It supplies a goal and accepts failure feedback.
 `results/<run>/trajectories.csv` → `t,actor_id,class_id,x,y,z,yaw`, SI units, header row ·
 `results/<run>/metrics.json` → keys `M1`–`M10` · `results/<run>/config.json` → **a copy of the
 inputs; a number without its config is not a result** ·
-`python/export/yield_lstm_opset<N>.onnx` → in `sequence [1,20,31]`, out `yield_logits [1,2]` ·
-`python/export/yield_gnn_opset<N>.onnx` → in `sequence [1,A,20,31]` + `adjacency [1,A,A]`,
+`ml/python/export/yield_lstm_opset<N>.onnx` → in `sequence [1,20,31]`, out `yield_logits [1,2]` ·
+`ml/python/export/yield_gnn_opset<N>.onnx` → in `sequence [1,A,20,31]` + `adjacency [1,A,A]`,
 out `yield_logits [1,A,2]`. **`A` = max agents, fixed at export and recorded in `config.json`.**
 The two are interchangeable at the S3 boundary: both produce `PYield` per `TrackID`.
 
@@ -198,7 +198,7 @@ ONNX · Blender 4.x Cycles · ONNX → `importNetworkFromONNX` → Simulink **Pr
 - **SI units always.** Put the unit in the name where ambiguous: `dist_m`, `angle_rad`, `t_s`
 - Prefer `arguments` blocks over manual `nargin` checks
 - Python: type hints on public functions, `pathlib.Path` not strings
-- `python/meteor/features.py` and its MATLAB twin must produce identical vectors
+- `ml/python/meteor/features.py` and its MATLAB twin must produce identical vectors
 
 ## 6 · Never
 - Never commit datasets, `.onnx` weights, or `results/`

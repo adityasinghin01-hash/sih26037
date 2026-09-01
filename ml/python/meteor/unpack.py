@@ -4,7 +4,7 @@ Each clip arrives as one zip containing <clip>/Annotations/frame_NNNNNN.xml.
 Unpacking is optional - check_balance.py and build_dataset.py read the zips directly - but it
 is useful for looking at the data by hand.
 
-    python3 python/meteor/unpack.py --data ~/meteor-data [--limit 5]
+    python3 ml/python/meteor/unpack.py --data ~/meteor-data [--limit 5]
 """
 from __future__ import annotations
 

@@ -1,5 +1,17 @@
 # Stream C — Prediction
 
+> ## Read [`ml/ReadThis.md`](../ml/ReadThis.md) first.
+>
+> `ml/` is your folder. It holds the whole roadmap in plain language: what you are building,
+> which decisions are yours and how to make them, how the data works and what is wrong with it,
+> every step in order, and what "done" means.
+>
+> - **[`ml/ReadThis.md`](../ml/ReadThis.md)** — the roadmap. Read once, top to bottom
+> - **[`ml/CHEATSHEET.md`](../ml/CHEATSHEET.md)** — every command, keep it open
+> - **[`ml/TROUBLESHOOTING.md`](../ml/TROUBLESHOOTING.md)** — errors we already hit
+>
+> **This file is your task list and who is waiting on you.** The roadmap is how to do the work.
+
 **You build the model that answers one question: will that vehicle let us in?**
 
 This is the stream with the most computer time and the least MATLAB. If you like training models
@@ -59,7 +71,7 @@ pip install torch onnx numpy tqdm xmltodict onnxruntime onnxscript
 
 Prove it worked:
 ```bash
-python python/model/yield_lstm.py
+python ml/python/model/yield_lstm.py
 ```
 It should print the model size and some numbers. If it errors, send the whole error.
 
@@ -233,12 +245,12 @@ the loader**, because it changes what the labels mean.
 
 ### C3 — ~~Write the loader~~ ALREADY DONE  *(superseded 1 Sep)*
 
-`python/meteor/loader.py` was never written and is not needed. `python/meteor/build_dataset.py`
+`ml/python/meteor/loader.py` was never written and is not needed. `ml/python/meteor/build_dataset.py`
 does the whole job — reads the XML, groups boxes into per-vehicle tracks, runs `frame_features()`
 and writes sequences plus labels.
 
 ```bash
-python3 python/meteor/build_dataset.py --data <path> --out <path>/features --label <yield|assert>
+python3 ml/python/meteor/build_dataset.py --data <path> --out <path>/features --label <yield|assert>
 ```
 
 **`--force` is required after any change to `features.py`.** Without it the script skips clips
@@ -276,7 +288,7 @@ we actually do and it is more defensible.
 ### C5 — Export, and send Stream D one number
 
 ```bash
-python python/export/to_onnx.py
+python ml/python/export/to_onnx.py
 ```
 
 This writes the model in four different formats. MATLAB accepts some and rejects others.
@@ -337,7 +349,7 @@ The archive is ordered by category, so the annotations sit contiguously at both 
 look at.** So the training download is **1.81 GB**, expanding to 10.28 GB.
 
 ```bash
-python python/meteor/fetch_annotations.py --out <somewhere-not-in-the-repo>
+python ml/python/meteor/fetch_annotations.py --out <somewhere-not-in-the-repo>
 ```
 Resumable, CRC-checked, skips what is already there. Add `--videos 5` for sample clips.
 

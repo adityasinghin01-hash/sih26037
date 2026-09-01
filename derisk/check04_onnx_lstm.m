@@ -1,5 +1,5 @@
 %% CHECK 4 — import OUR ACTUAL exported model into MATLAB
-% Run this AFTER:   python3 python/export/to_onnx.py --model <checkpoint.pt>
+% Run this AFTER:   python3 ml/python/export/to_onnx.py --model <checkpoint.pt>
 %
 % WHAT CHANGED, 1 Sep 2026, and why it matters
 % This check used to build a TOY LSTM (nn.LSTM + nn.Linear only) and import that. A toy
@@ -35,7 +35,7 @@ if isempty(files)
     fprintf(['No yield_*_opset*.onnx found in:\n']);
     for r = 1:numel(roots); fprintf('  %s\n', roots{r}); end
     fprintf(['\nExport them first:\n' ...
-             '  python3 python/export/to_onnx.py --model <checkpoint.pt>\n' ...
+             '  python3 ml/python/export/to_onnx.py --model <checkpoint.pt>\n' ...
              'That writes opsets 17, 18 and 20 only. If you see opset 9, 11 or 13 files,\n' ...
              'they are from the old script and every one of them is really opset 18.\n']);
     diary off; return

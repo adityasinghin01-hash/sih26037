@@ -36,7 +36,7 @@ Type the slash command in Antigravity, or just open the file and tell your agent
 |---|---|---|
 | **A** | Scenarios, roads, junctions | [`teammates/A-world.md`](teammates/A-world.md) |
 | **B** | Lidar, radar, tracking | [`teammates/B-perception.md`](teammates/B-perception.md) |
-| **C** | Dataset, LSTM, training | [`teammates/C-prediction.md`](teammates/C-prediction.md) |
+| **C** | Dataset, LSTM, training | **[`ml/ReadThis.md`](ml/ReadThis.md)** — start here, then [`teammates/C-prediction.md`](teammates/C-prediction.md) |
 | **D** | The negotiating planner | [`teammates/D-planner.md`](teammates/D-planner.md) |
 | **E** | Baseline, metrics, results | [`teammates/E-evidence.md`](teammates/E-evidence.md) |
 
@@ -46,6 +46,11 @@ Type the slash command in Antigravity, or just open the file and tell your agent
 AGENTS.md           project rules + THE FROZEN CONTRACT (section 3)
 GEMINI.md           Antigravity-specific rules
 teammates/          five workstream files, one each
+ml/                 THE ML STREAM'S HOME
+ml/ReadThis.md      the roadmap - read this first if you are Stream C
+ml/CHEATSHEET.md    every command, in order
+ml/TROUBLESHOOTING.md  errors we already hit, and what they really mean
+ml/python/          dataset pipeline, both yield models, ONNX export
 matlab/+sih/        planner, prediction, models, util
 .agents/rules/      loaded automatically by your agent
 .agents/workflows/  slash commands - see the table above
@@ -53,8 +58,7 @@ matlab/baseline/    MathWorks' shipped planner - NEVER EDIT
                     EMPTY as of 1 Sep 2026, and git does not track empty folders, so a
                     fresh clone will not have it at all. Stream E adds the baseline.
 matlab/tests/       run these first
-python/             dataset pipeline, LSTM, ONNX export
-derisk/             the checks that gate the build
+ml/derisk/             the checks that gate the build
 blender/            rendering
 ```
 

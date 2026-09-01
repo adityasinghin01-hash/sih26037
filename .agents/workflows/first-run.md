@@ -39,13 +39,13 @@ The two free add-ons the product installer does NOT provide, both from
 
 ### 2 · Do the two feature builders agree — 2 minutes, no data needed
 ```bash
-python3 python/tests/test_parity.py
+python3 ml/python/tests/test_parity.py
 ```
 ```matlab
 runtests('matlab/tests/testFeatureParity')
 ```
 **This is the highest-value check here and the cheapest.** The model is trained by
-`python/meteor/features.py` and run by `matlab/+sih/+prediction/buildFeatureFrame.m`. If they
+`ml/python/meteor/features.py` and run by `matlab/+sih/+prediction/buildFeatureFrame.m`. If they
 disagree, the network is fed different numbers at inference than it saw in training — **nothing
 throws**, accuracy quietly collapses, and it surfaces as a planner bug days later in someone
 else's code.
@@ -56,7 +56,7 @@ positions: 10 is tau, 11 the lateral time-to-cross, 12-27 the class one-hot, 28-
 
 ### 3 · Can our real model get into MATLAB
 ```bash
-python3 python/export/to_onnx.py --model <checkpoint.pt>
+python3 ml/python/export/to_onnx.py --model <checkpoint.pt>
 ```
 ```matlab
 cd derisk

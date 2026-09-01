@@ -1,6 +1,6 @@
 """Turn METEOR clip archives into training sequences.
 
-    python3 python/meteor/build_dataset.py --data ~/meteor-data --out ~/meteor-data/features
+    python3 ml/python/meteor/build_dataset.py --data ~/meteor-data --out ~/meteor-data/features
 
 Per clip it writes ONE .npz holding:
     x    [N, 20, 31] float32   the S2 sequences, one per (agent, timestep) sample
