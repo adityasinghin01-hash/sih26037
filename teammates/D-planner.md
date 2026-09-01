@@ -186,6 +186,27 @@ or a document, ask yourself: did something actually compute that? If not, it sho
 
 # Part 3 — Your tasks
 
+## Which of you does which — read this before you pick one up
+
+| Task | Owner | Why |
+|---|---|---|
+| **D1** prove the maths works | **both**, five minutes | orientation |
+| **D2** role → command | **A** | a pure function, tests without Simulink |
+| **D3** Stateflow chart | **B** | it is the chart |
+| **D4** mode switching | **B** | lives in the chart |
+| **D5** log the safety number | **B** | the model writes the log |
+| **D6** contingency planner | **A** | the biggest job, and pure maths |
+| **D7** three rates | **A** designs, **B** wires | the speed limit is A's, the rates are B's |
+| **D8** the road barrier | **A** | pure maths |
+| **D9** reversibility | **A** designs, **B** holds `Committed` | the geometry is A's, the state is B's |
+| **D10** turning | **A** | derived from geometry |
+| **D11** handover | **B** | a signal the chart raises |
+
+**The test:** *does it need Simulink to test?* No → A. Yes → B.
+Full rules in [`plan/CONTRACT-AB.md`](../plan/CONTRACT-AB.md).
+
+
+
 ### D1 — Prove the maths works  *(five minutes, do it first)*
 
 Two files are already written: the collision geometry and the role assignment. Thirteen tests

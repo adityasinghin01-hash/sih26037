@@ -149,7 +149,8 @@ Type these. They live in `.claude/commands/`.
 |---|---|
 | `/state` | Where the project is right now, and what is blocked |
 | `/first-run` | Runs the MATLAB that has never been executed. **Do this first on a new machine** |
-| `/plan-work` | Stream D: what to build next and in what order |
+| `/plan-work` | Stream D **person A**: the planner functions, in build order |
+| `/plan-harness` | Stream D **person B**: the Simulink loop and Stateflow chart |
 | `/plan-test` | Runs the planner tests and explains what a failure means |
 | `/ml-run` | Stream C: the whole yield-predictor pipeline |
 | `/ml-parity` | Checks the Python and MATLAB feature builders still agree |
