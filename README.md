@@ -31,13 +31,20 @@ Type the slash command in Antigravity, or just open the file and tell your agent
 | **`/ml-run`** | The whole yield-predictor pipeline: features → train → evaluate → export |
 | **`/ml-parity`** | Proves the Python and MATLAB feature builders still agree |
 | **`/ml-models`** | The three MATLAB-native models: YOLOX, DeepLab v3+, PointPillars |
+| **`/plan-work`** | Stream D person A: the planner functions, in build order |
+| **`/plan-harness`** | Stream D person B: the Simulink loop and Stateflow chart |
+| **`/plan-test`** | The 12 planner geometry tests, and what a failure means |
+| **`/state`** | Where the project is right now, and what is blocked |
+
+Antigravity reads `.agents/workflows/`; Claude Code reads `.claude/commands/`. **Both are kept
+in sync**, so either tool gets the same commands.
 
 | Stream | Owns | File |
 |---|---|---|
 | **A** | Scenarios, roads, junctions | [`teammates/A-world.md`](teammates/A-world.md) |
 | **B** | Lidar, radar, tracking | [`teammates/B-perception.md`](teammates/B-perception.md) |
 | **C** | Dataset, LSTM, training | **[`ml/ReadThis.md`](ml/ReadThis.md)** — start here, then [`teammates/C-prediction.md`](teammates/C-prediction.md) |
-| **D** | The negotiating planner | [`teammates/D-planner.md`](teammates/D-planner.md) |
+| **D** | The negotiating planner | **[`plan/ReadThis.md`](plan/ReadThis.md)** — start here, then [`teammates/D-planner.md`](teammates/D-planner.md) |
 | **E** | Baseline, metrics, results | [`teammates/E-evidence.md`](teammates/E-evidence.md) |
 
 ## Layout
@@ -46,6 +53,11 @@ Type the slash command in Antigravity, or just open the file and tell your agent
 AGENTS.md           project rules + THE FROZEN CONTRACT (section 3)
 GEMINI.md           Antigravity-specific rules
 teammates/          five workstream files, one each
+CLAUDE.md           what Claude Code loads - who owns what, and the build state
+.claude/commands/   slash commands for Claude Code
+plan/               THE PLANNER STREAM'S HOME
+plan/ReadThis.md    the roadmap for Stream D
+plan/CONTRACT-AB.md the boundary between its two people
 ml/                 THE ML STREAM'S HOME
 ml/ReadThis.md      the roadmap - read this first if you are Stream C
 ml/CHEATSHEET.md    every command, in order

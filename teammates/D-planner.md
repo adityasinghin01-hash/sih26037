@@ -1,5 +1,26 @@
 # Stream D — The Planner
 
+> ## Read [`plan/ReadThis.md`](../plan/ReadThis.md) first.
+>
+> `plan/` is your folder. It explains what you are building in plain language, the mechanism,
+> and why each piece exists.
+>
+> - **[`plan/ReadThis.md`](../plan/ReadThis.md)** — the roadmap. Read once, top to bottom
+> - **[`plan/CONTRACT-AB.md`](../plan/CONTRACT-AB.md)** — **the boundary between the two of you.
+>   Read this before writing anything**
+>
+> **You are two people and you must not share files.** A Simulink `.slx` is binary — git cannot
+> merge two people's edits, so one of you silently loses a day's work.
+>
+> | | Person A | Person B |
+> |---|---|---|
+> | Writes | `matlab/+sih/+planner/*.m` | the Simulink model and Stateflow chart |
+> | Command | **`/plan-work`** | **`/plan-harness`** |
+> | Branch | `stream-d-a` | `stream-d-b` |
+>
+> **This file is your task list. The roadmap is how to do the work.**
+
+
 **You own the thing that makes this project novel.** Everything else is plumbing around it.
 
 Good news: the hardest maths is already written and tested for you.
