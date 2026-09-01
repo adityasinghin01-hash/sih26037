@@ -49,7 +49,9 @@ teammates/          five workstream files, one each
 matlab/+sih/        planner, prediction, models, util
 .agents/rules/      loaded automatically by your agent
 .agents/workflows/  slash commands - see the table above
-matlab/baseline/    MathWorks' shipped planner - NEVER EDIT (created when the baseline lands)
+matlab/baseline/    MathWorks' shipped planner - NEVER EDIT
+                    EMPTY as of 1 Sep 2026, and git does not track empty folders, so a
+                    fresh clone will not have it at all. Stream E adds the baseline.
 matlab/tests/       run these first
 python/             dataset pipeline, LSTM, ONNX export
 derisk/             the checks that gate the build
