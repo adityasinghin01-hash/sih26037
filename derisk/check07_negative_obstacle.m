@@ -41,7 +41,7 @@ try
     fprintf('       and the drop-off must be modelled another way (see NEXT below).\n');
 
     advance(s);
-    [tgts, ~] = targetPoses(ego);
+    tgts = targetPoses(ego);   % returns ONE output, not two
     rdmesh = roadMesh(ego);
     ptCloud = lidar(tgts, rdmesh, s.SimulationTime);
     n = size(ptCloud.Location, 1) * size(ptCloud.Location, 2);
