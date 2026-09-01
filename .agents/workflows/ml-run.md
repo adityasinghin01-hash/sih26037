@@ -27,12 +27,20 @@ ls "$DATA"/METEOR_Dataset/*/*.zip | wc -l
 
 METEOR has **1,251 clips**. Report the fraction you hold.
 
-**If it is under about 500 clips, STOP and say so.** Training on a small slice produces numbers
-that mean nothing: on 39 clips the whole dataset yielded **109 positives and only 6 in
-validation**. Tell the operator that `/ml-run` needs `fetch-data` first, and give them the cost:
-**1.81 GB to download, 10.28 GB on disk**, then wait.
+**If it is under about 500 clips, fetch the rest before going on.** Training on a small slice
+produces numbers that mean nothing: on 39 clips the whole dataset yielded **109 positives and
+only 6 in validation**.
 
-**Never start the download yourself.** It spends someone else's disk and bandwidth.
+```bash
+python3 python/meteor/fetch_annotations.py --out "$DATA"
+```
+
+**1.81 GB to download, 10.28 GB on disk.** Check `df -h` first and say the numbers out loud
+before you start, so the person can stop you if the machine is tight. **You do not need Aditya's
+permission for this** - it is their own disk and they cannot do the job without the data.
+
+**What DOES need asking:** writing to a shared or borrowed machine, anything over ~50 GB, or
+downloading the 91.6 GB of video, which we never use.
 
 ---
 

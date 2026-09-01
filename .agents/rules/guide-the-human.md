@@ -64,7 +64,15 @@ and do not quietly do something different.
 changes `AGENTS.md` section 3, and anything that touches another stream's files.
 **Do not stop** to ask permission for the task you were already given.
 
-**Never start a download because a later step needs the data.** State the size, wait for a yes.
+**Judge the size, do not escalate everything.** State what a download costs, then get on with
+it if it is ordinary - a couple of gigabytes onto the machine you are already working on is a
+normal part of the task, not a decision. **Ask first** for a shared or borrowed machine, tens of
+gigabytes, or anything the person did not ask you to fetch at all.
+
+**And know which decisions are genuinely not yours.** They are the ones that change what the
+project CLAIMS, not the ones that spend a little disk: which behaviour the model predicts,
+anything touching `AGENTS.md` section 3, anything another stream builds against. Escalating an
+ordinary work decision wastes the one person whose time is the bottleneck.
 
 ## Answer in their shape
 
