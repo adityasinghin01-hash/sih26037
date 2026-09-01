@@ -10,13 +10,10 @@ unstructured Indian roads.
 > An Indian junction has no controller. We built the planner that negotiates instead of waiting -
 > in MATLAB, against a cow that behaves like a cow.
 
-The full PRD is distributed as a PDF, not kept in this repo. Your own tasks are in
-`teammates/<stream>.md`.
-**`TEAM.md`: who does what, what is blocked.**
+PRD: a PDF, ask Aditya. Your tasks: `teammates/<stream>.md`. Who does what: `TEAM.md`.
 
-**If the task is machine learning - data, features, training, or ONNX export - read `ML.md`
-at the repo root before doing anything.** It carries the verified facts about the dataset and
-the per-task rules, and it is not loaded automatically.
+**Machine-learning task? Read `ML.md` first.** Planner task? Read `plan/ReadThis.md` first.
+Neither loads automatically, and both carry facts you must not re-derive.
 
 ## 1 - Hard rules
 
@@ -29,9 +26,7 @@ control arm. A tuned baseline is a strawman and kills the result.
 **Verify, do not assume.** Never write a number you did not produce by running something.
 `TODO(unverified)` is acceptable; a plausible number is not.
 
-**Errors are reported in full.** Never summarise a stack trace. A trimmed error costs a day.
-
-**Nothing ships with a bug already reproduced in the demo flow.**
+**Report errors in full.** A trimmed stack trace costs a day.
 
 ## 2 - Settled - do not reopen
 - **No RoadRunner.** `drivingScenario` + `roadNetwork(...,'OpenStreetMap',f)` + OpenDRIVE export
