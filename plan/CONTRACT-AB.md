@@ -1,0 +1,67 @@
+# The boundary between the two planner people
+
+Stream D is two people. `AGENTS.md` section 3 stops the six *streams* colliding. This stops the
+two of *you* colliding, which is a different problem and just as expensive.
+
+## Who owns what
+
+| | **Person A** — Claude Code | **Person B** — Antigravity |
+|---|---|---|
+| Writes | `matlab/+sih/+planner/*.m` | the Simulink model and Stateflow chart |
+| Tests with | `runtests('matlab/tests')`, seconds | the model running, minutes |
+| Branch | `stream-d-a` | `stream-d-b` |
+| **Never touches** | **the `.slx` file** | **`+planner/*.m`** |
+
+## Why this line and not another
+
+**A Simulink `.slx` is a binary file.** Git cannot merge two people's edits to it — one version
+simply overwrites the other and that person's day is gone. There is no warning and no conflict
+marker. **So exactly one person opens it, and that is B.**
+
+The reverse matters too: A's functions are plain MATLAB, so they can be unit-tested in seconds
+without launching Simulink. If A had to test inside the model, iteration would drop from seconds
+to minutes and the biggest job on the project would slow to a crawl.
+
+## The interface between you is a function signature
+
+B's chart calls A's functions. Nothing else crosses.
+
+```matlab
+cmd = sih.planner.chooseVelocity(role, vo, egoState, opts)
+% in : role (S7), velocityObstacle output, ego state
+% out: EgoCommand (S4)
+```
+
+**A publishes the signature before writing the body.** B builds the chart against a stub that
+returns a fixed command, and the real function drops into a slot that already works.
+
+**That is the whole trick: B is never blocked waiting for A.**
+
+## Rules for both of you
+
+1. **Agree the signature first, in writing, in this file.** Add a row when you add a function.
+2. **A changes a signature only by telling B first.** Adding an output is safe; changing the
+   order or meaning of an input is not.
+3. **Both run `runtests('matlab/tests')` before every push.** A's tests are B's early warning.
+4. **Neither of you edits `AGENTS.md` section 3.** Four other people build against it.
+5. **Neither of you edits `matlab/baseline/`.** It is the competitor. Editing it makes every
+   number this project produces worthless.
+
+## The functions, as they are agreed
+
+| Function | In | Out | Status |
+|---|---|---|---|
+| `velocityObstacle` | ego pos/vel, agent pos/vel, dMin | `.beta .lambda .tcpa .d` | **done, tested** |
+| `assignRoles` | ego state, TrackList (S1) | Role array (S4) | **done, tested** |
+| `chooseVelocity` | role, vo output, ego state | EgoCommand (S4) | D2 — not started |
+| *(add a row before you write the function, not after)* | | | |
+
+## When you disagree about where something belongs
+
+Ask: **does it need Simulink to test?**
+
+- No → it is A's
+- Yes → it is B's
+
+That question settles almost every case. If it genuinely does not, ask Aditya rather than both
+writing it.
