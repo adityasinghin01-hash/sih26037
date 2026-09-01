@@ -36,7 +36,7 @@ you can see belong to other people's work. Read `AGENTS.md` before this file.
 | In scope | Out of scope |
 |---|---|
 | `python/meteor/`, `python/model/`, `python/export/`, `python/tests/` | the planner, scenarios, sensors |
-| `matlab/+sih/+prediction/` — the feature builder's MATLAB twin only | everything else under `matlab/` |
+| `matlab/+sih/+prediction/`, `matlab/+sih/+models/` — the twin and the trainers | the planner, `matlab/+sih/+scenario/` |
 | The 31-feature vector (S2) and the prediction output (S3) | the Simulink model |
 
 **Never write to `matlab/baseline/`.** That is a third-party planner used as a control. Editing it
@@ -115,6 +115,7 @@ runs those from a slash command. The ML procedures are:
 |---|---|
 | **`/ml-run`** | The whole pipeline: build features -> split -> train -> evaluate -> export. Stops at every decision that belongs to a human |
 | **`/ml-parity`** | Proves `features.py` and its MATLAB twin still produce identical vectors |
+| **`/ml-models`** | Models 3-5 - spotter, road segmenter, lidar detector. All MATLAB-native, no ONNX |
 
 They live in `.agents/workflows/`. If the slash command does not resolve, open the file and follow
 it — the steps are plain markdown.

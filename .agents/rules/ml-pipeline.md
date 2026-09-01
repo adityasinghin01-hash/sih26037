@@ -15,6 +15,7 @@ re-deriving them wastes a day each.
 |---|---|
 | **`/ml-run`** | The whole pipeline: features -> split -> train -> evaluate -> export |
 | **`/ml-parity`** | Proves the Python and MATLAB feature builders still agree |
+| **`/ml-models`** | Models 3-5: YOLOX spotter, DeepLab v3+ road, PointPillars lidar - all MATLAB-native |
 
 They live in `.agents/workflows/`. Open the file and follow it if a slash command does not resolve.
 

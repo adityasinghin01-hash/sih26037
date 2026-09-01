@@ -366,6 +366,51 @@ export script now reads the number back out of the file. This matters because th
 one thing Stream D is waiting on from you — sending the wrong one costs them a day.
 
 
+### C11 — Your MATLAB install is SMALLER than the simulation people's  *(NEW 1 Sep)*
+
+You are not using the simulation machine. You need MATLAB only for four things, and they need
+far less than Stream A and D do.
+
+| What you install | Why |
+|---|---|
+| MATLAB | everything |
+| **Deep Learning Toolbox** | `check04`, and all three MATLAB models |
+| **Computer Vision Toolbox** | the spotter and the road segmenter |
+| **Lidar Toolbox** | PointPillars |
+| **Add-On: "Deep Learning Toolbox Converter for ONNX Model Format"** | **`check04` fails without it** |
+| **Add-On: "Automated Visual Inspection Library for Computer Vision Toolbox"** | **YOLOX training fails without it** |
+
+**You do NOT need** Simulink, Stateflow, Automated Driving Toolbox, Sensor Fusion and Tracking,
+or Navigation Toolbox. Those are the simulation side.
+
+**Both add-ons come from `Home -> Add-Ons -> Get Add-Ons`, not the product installer.** Both are
+free. They are the two things people miss, and both fail late with an error that reads like a
+typo rather than a missing install.
+
+**Do not tick every product on the licence.** There are 110+ on it; that is where the 30-40 GB
+figure comes from. MATLAB itself is about 4-6 GB for a typical install.
+
+### C12 — You can now train all five models  *(NEW 1 Sep)*
+
+| Model | Where | Command |
+|---|---|---|
+| 1 · yield LSTM | Python | `/ml-run` |
+| 2 · yield attention | Python | `/ml-run` |
+| 3 · spotter, YOLOX | **MATLAB** | `/ml-models` |
+| 4 · road, DeepLab v3+ | **MATLAB** | `/ml-models` |
+| 5 · lidar, PointPillars | **MATLAB** | `/ml-models` |
+
+Models 3-5 are trained natively in MATLAB and **never touch ONNX** - that is why they were
+chosen. An imported YOLO fails on NMS and dynamic shapes.
+
+**Their data cannot be downloaded by a script.** IDD needs a signup at
+idd.insaan.iiit.ac.in/accounts/signup/ and a human accepting the terms. Do that before you
+start model 3 or 4.
+
+**Order matters. Model 1 is the only one the headline claim needs.** If you are short of time,
+do `check04` first (Stream D is blocked on it), then `/ml-run`, and leave 3-5 until last.
+
+
 # Part 4 — The contract
 
 You produce **S2 (FeatureFrame)** and **S3 (YieldPrediction)** — section 3 of `AGENTS.md`.
