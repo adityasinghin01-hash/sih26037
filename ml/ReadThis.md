@@ -30,6 +30,22 @@ auto-rickshaw and pushcart, which no Western dataset contains.
 
 **Model 1 is the one that matters.** If you only finish one thing, finish that.
 
+## What is yours, and what is not
+
+| Yours | Not yours |
+|---|---|
+| `ml/` — this whole folder | **`plan/`** — Stream D's folder |
+| `matlab/+sih/+prediction/` — the feature twin | `matlab/+sih/+planner/` and the Simulink model |
+| `matlab/+sih/+models/` — the three MATLAB models | `matlab/+sih/+scenario/`, `+perception/` |
+| | **`matlab/baseline/`** — the competitor. Never |
+
+**You produce `S3 PYield`. You do not consume it.** The planner reads it through the contract and
+never opens your model; you never open theirs. If the planner looks like it is misusing your
+prediction, tell Aditya — do not go and read `plan/` or edit anything there.
+
+That line exists because crossing it is how two people end up with two versions of the same
+thing and nobody knows which one the demo used.
+
 ---
 
 # 1 · How to work with your AI assistant

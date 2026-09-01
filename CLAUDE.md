@@ -23,6 +23,9 @@ behaves like a real cow. Smart India Hackathon 2026, problem statement **SIH2603
 
 ## 2 · Who is doing what — check this before editing any file
 
+**`TEAM.md` is the one-page version of this section** — point the person there when they ask
+who does what, rather than re-explaining.
+
 **The five streams are grouped into two roles.** Role 1 (A + B) builds everything the car drives
 in and everything it sees. Role 2 (D + E) builds everything the car decides and the proof it
 works. **The only interface between the two roles is `S1 TrackList`**, frozen in `AGENTS.md`

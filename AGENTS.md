@@ -12,6 +12,7 @@ unstructured Indian roads.
 
 The full PRD is distributed as a PDF, not kept in this repo. Your own tasks are in
 `teammates/<stream>.md`.
+**`TEAM.md` says who is doing what and what is blocked.**
 
 **If the task is machine learning — data, features, training, or ONNX export — read `ML.md`
 at the repo root before doing anything.** It carries the verified facts about the dataset and

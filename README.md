@@ -9,6 +9,10 @@
 
 ## Start here
 
+**0. Read [`TEAM.md`](TEAM.md).** One page: who is doing what, what nobody may touch, which
+single file you open, and what is blocked on a human right now.
+
+
 1. **Read the PRD.** It is distributed as a PDF — ask Aditya. Problem, solution, what the judge
    sees, the metrics, and what we are allowed to claim.
 2. **Open your own file in [`teammates/`](teammates/)** and follow it from the top. Each is
@@ -40,6 +44,9 @@ Antigravity reads `.agents/workflows/`; Claude Code reads `.claude/commands/`. *
 in sync**, so either tool gets the same commands.
 
 ## How the team is organised
+
+**Full detail in [`TEAM.md`](TEAM.md).** The short version:
+
 
 The five streams are grouped into **two roles**. This is the split that matters day to day —
 the streams still describe *what* is owned, but the roles describe *who works together*.
