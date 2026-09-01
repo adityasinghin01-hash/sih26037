@@ -44,14 +44,35 @@ The full rules are in **`plan/CONTRACT-AB.md`**. Read it before you write anythi
 
 ---
 
-# 2 · What already works — build on it, do not rewrite it
+# 2 · Before anything: clone OpenTrafficLab
+
+**It is not in this repository and nothing in `+planner` loads without it.**
+`NegotiatingStrategy.m` extends `DrivingStrategy`, which is OpenTrafficLab's class. It is
+third-party code so it is gitignored on purpose — but that means a fresh clone of our repo does
+not have it, and MATLAB will say `Undefined base class 'DrivingStrategy'`, which reads like our
+code is broken when it is not.
+
+```bash
+git clone https://github.com/mathworks/OpenTrafficLab.git
+```
+```matlab
+addpath(genpath('OpenTrafficLab'))
+addpath('matlab')
+runtests('matlab/tests')
+```
+
+**Both of you need this. Do it first.**
+
+---
+
+# 3 · What already works — build on it, do not rewrite it
 
 | File | What it gives you |
 |---|---|
 | `velocityObstacle.m` | `beta`, `lambda`, `tcpa`, `d` for one agent |
 | `assignRoles.m` | which role each agent has (S7) |
 | `NegotiatingStrategy.m` | the OpenTrafficLab subclass your work plugs into |
-| `testPlannerGeometry.m` | **12 passing tests.** Run them before and after every change |
+| `testPlannerGeometry.m` | 12 geometry tests, all passing. Run them before and after every change |
 
 **These are the most trusted code in the repository.** If they break after you change something,
 you changed something you did not mean to.
@@ -70,7 +91,7 @@ you build exists to keep it above zero.
 
 ---
 
-# 3 · The mechanism, in the order it happens
+# 4 · The mechanism, in the order it happens
 
 Every cycle, roughly ten times a second:
 
@@ -116,7 +137,7 @@ So `dMin` is larger on the drop side — **weighted by consequence, not by proba
 
 ---
 
-# 4 · Speed is one number for three reasons
+# 5 · Speed is one number for three reasons
 
 ```
 v_max = min( sqrt(aLat * R),                             hold the road
@@ -131,7 +152,7 @@ that already falls out of the first.
 
 ---
 
-# 5 · The question nobody usually asks
+# 6 · The question nobody usually asks
 
 Everything above asks *is this safe*. Almost nothing in the literature asks:
 
@@ -153,7 +174,7 @@ an exit. Most planners model only the entry.
 
 ---
 
-# 6 · What you consume and what you produce
+# 7 · What you consume and what you produce
 
 `AGENTS.md` section 3 is the contract. **Read it, and name in every function header which struct
 you consume or produce.**
@@ -178,7 +199,7 @@ you consume or produce.**
 
 ---
 
-# 7 · Where to start
+# 8 · Where to start
 
 **Person A:** type `/plan-work`. It has the build order and the maths already specified.
 Start with D2 — turning a role into a command. Small, and it gets you oriented.
@@ -191,7 +212,7 @@ pieces drop into slots that already work.
 
 ---
 
-# 8 · Never do these
+# 9 · Never do these
 
 1. **Never open a file the other person owns.** A does not open the `.slx`; B does not edit
    `+planner/*.m`
@@ -206,7 +227,7 @@ pieces drop into slots that already work.
 
 ---
 
-# 9 · If you remember five things
+# 10 · If you remember five things
 
 1. **The trunk is the probe.** The car's movement is the question, not a signal beside it.
 2. **`h = lambda - beta`, and it never goes below zero.** Log it every step.

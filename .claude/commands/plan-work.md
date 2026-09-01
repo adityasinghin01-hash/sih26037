@@ -11,6 +11,27 @@ Then check `plan/CONTRACT-AB.md` — Stream D is two people and they do not shar
 a state and return a command. **You never open the Simulink model** — that is Person B's, it is
 a binary file, and two people editing it cannot merge. One of you simply loses their work.
 
+## Step 0 — setup, and the one dependency that is not in the repo
+
+**`NegotiatingStrategy.m` is `classdef NegotiatingStrategy < DrivingStrategy`, and
+`DrivingStrategy` lives in OpenTrafficLab, which is NOT in this repository.** It is third-party
+code, so it is gitignored deliberately. Clone it or nothing in `+planner` will even load - you
+get `Undefined base class 'DrivingStrategy'` and it looks like our code is broken when it is not.
+
+```bash
+cd <repo root>
+git clone https://github.com/mathworks/OpenTrafficLab.git
+```
+```matlab
+addpath(genpath('OpenTrafficLab'))
+addpath('matlab')
+runtests('matlab/tests')
+```
+
+**Do this before anything else.** It needs only MATLAB and Automated Driving Toolbox.
+
+---
+
 ## What already works — build on it, do not rewrite it
 
 | File | What it gives you |
@@ -18,7 +39,7 @@ a binary file, and two people editing it cannot merge. One of you simply loses t
 | `velocityObstacle.m` | `beta`, `lambda`, `tcpa`, `d`. **Collision iff `lambda < beta`** |
 | `assignRoles.m` | the COLREGs role per track (S7) |
 | `NegotiatingStrategy.m` | the OpenTrafficLab subclass that will call your work |
-| `testPlannerGeometry.m` | **12 passing tests.** Run them before and after every change |
+| `testPlannerGeometry.m` | 12 geometry tests, all passing. Run them before and after every change |
 
 **`h = lambda - beta` is the safety number.** It must never go below zero, and it is logged every
 step as our evidence. Everything below protects it.
@@ -118,7 +139,7 @@ already crossed — while you wait there, you are an obstacle.
 
 ## How to work
 
-**Write the function, then write its test, then run all 12 existing tests.** Your work must be
+**Write the function, then write its test, then run the whole suite** with `runtests('matlab/tests')`. Your work must be
 testable **without Simulink** — that is the whole reason the A/B split exists. Simulink iteration
 is minutes; a MATLAB function is seconds.
 

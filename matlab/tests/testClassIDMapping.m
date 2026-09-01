@@ -11,9 +11,10 @@ tests = functiontests(localfunctions);
 end
 
 function setupOnce(tc)
+% <repo>/matlab/tests -> <repo>, then add <repo>/matlab so the +sih package resolves.
 here = fileparts(mfilename('fullpath'));
-addpath(fullfile(fileparts(here), 'matlab'));
-addpath(fullfile(fileparts(fileparts(here)), 'matlab'));
+root = fileparts(fileparts(here));
+addpath(fullfile(root, 'matlab'));
 tc.TestData = struct();
 end
 

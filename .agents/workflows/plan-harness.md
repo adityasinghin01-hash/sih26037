@@ -15,6 +15,27 @@ conflict marker. That is why the split exists.
 
 ---
 
+## Step 0 — setup, and the one dependency that is not in the repo
+
+**`NegotiatingStrategy.m` is `classdef NegotiatingStrategy < DrivingStrategy`, and
+`DrivingStrategy` lives in OpenTrafficLab, which is NOT in this repository.** It is third-party
+code, so it is gitignored deliberately. Clone it or nothing in `+planner` will even load - you
+get `Undefined base class 'DrivingStrategy'` and it looks like our code is broken when it is not.
+
+```bash
+cd <repo root>
+git clone https://github.com/mathworks/OpenTrafficLab.git
+```
+```matlab
+addpath(genpath('OpenTrafficLab'))
+addpath('matlab')
+runtests('matlab/tests')
+```
+
+**Do this before anything else.** It needs only MATLAB and Automated Driving Toolbox.
+
+---
+
 ## The thing that decides whether this works: build the loop with stubs, now
 
 **Do not wait for Person A.** Every struct is already defined in `AGENTS.md` section 3, so you

@@ -184,6 +184,25 @@ or a document, ask yourself: did something actually compute that? If not, it sho
 
 ---
 
+### D0 — Clone OpenTrafficLab first, or nothing loads
+
+**It is not in this repository.** `NegotiatingStrategy.m` extends `DrivingStrategy`, which is
+OpenTrafficLab's class. It is third-party code so it is gitignored on purpose — which means a
+fresh clone of our repo does not have it, and MATLAB says `Undefined base class
+'DrivingStrategy'`. That reads like our code is broken. It is not.
+
+```bash
+git clone https://github.com/mathworks/OpenTrafficLab.git
+```
+```matlab
+addpath(genpath('OpenTrafficLab'))
+addpath('matlab')
+runtests('matlab/tests')
+```
+
+**Both of you. Before anything else.**
+
+
 # Part 3 — Your tasks
 
 ## Which of you does which — read this before you pick one up
