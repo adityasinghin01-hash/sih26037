@@ -25,6 +25,11 @@ function net = trainRoadSegmenter(dataRoot, outFile, opts)
 %     opts.ImageSize     (1,2) double = [512 512]
 %     opts.ValFraction   (1,1) double = 0.2
 %     opts.Execution     string = "auto"
+%     opts.ClassWeighting (1,1) logical = true
+%           true  - weight the loss by inverse pixel frequency, so the network cannot win by
+%                   calling everything background. Uses an explicit weighted cross-entropy.
+%           false - the built-in "crossentropy" loss, unweighted. Set this if the weighted
+%                   path errors; it is the documented path and cannot be wrong.
 %
 %   OUTPUT
 %     net  dlnetwork
@@ -37,6 +42,7 @@ arguments
     opts.ImageSize     (1,2) double = [512 512]
     opts.ValFraction   (1,1) double {mustBeInRange(opts.ValFraction, 0, 0.9)} = 0.2
     opts.Execution     (1,1) string {mustBeMember(opts.Execution, ["auto","gpu","cpu"])} = "auto"
+    opts.ClassWeighting (1,1) logical = true
 end
 
 if exist('deeplabv3plus', 'file') ~= 2
@@ -99,10 +105,20 @@ net = deeplabv3plus([opts.ImageSize 3], numel(classes), "resnet50");
 % always answers no.
 tbl = countEachLabel(pxds);
 w = median(tbl.PixelCount) ./ tbl.PixelCount;
+fprintf('Pixel counts per class:\n'); disp(tbl);
 fprintf('Class weights (rarer class gets more): %s\n', mat2str(round(w', 3)));
 
-lossFcn = @(Y, T) crossentropy(Y, T, reshape(w, 1, 1, []), ...
-                               NormalizationFactor="all-elements");
+if opts.ClassWeighting
+    % Written out rather than passed to crossentropy's `weights` argument. That argument is
+    % positional, but a weight vector that is not the same size as Y also needs a
+    % WeightsFormat string to say how its dimensions map onto SSCB - and getting that wrong
+    % fails at the first iteration with an unhelpful message. This form has no ambiguity.
+    % Y is post-softmax probabilities in [H W C B]; class weights apply along dimension 3.
+    wc = reshape(single(w), 1, 1, []);
+    lossFcn = @(Y, T) mean(-sum(wc .* T .* log(Y + single(1e-8)), 3), 'all');
+else
+    lossFcn = "crossentropy";      % the documented built-in. Always correct, never weighted.
+end
 
 options = trainingOptions("adam", ...
     MaxEpochs            = opts.MaxEpochs, ...

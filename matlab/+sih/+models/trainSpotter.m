@@ -41,8 +41,17 @@ arguments
 end
 
 %% Preflight - fail with an instruction, never with a missing-function error
-iRequireToolbox('Computer Vision Toolbox', 'Computer Vision Toolbox');
-iRequireToolbox('Deep Learning Toolbox', 'Deep Learning Toolbox');
+% Check for the FUNCTIONS we call, not for toolbox names. `ver` takes a directory name
+% ('vision'), not a product name, so a name-based check warns on a correct install and stays
+% quiet on a broken one - worse than no check.
+if exist('yoloxObjectDetector', 'file') ~= 2
+    error('sih:models:noCVT', ...
+        'yoloxObjectDetector not found. Computer Vision Toolbox is not installed.');
+end
+if exist('trainingOptions', 'file') ~= 2
+    error('sih:models:noDLT', ...
+        'trainingOptions not found. Deep Learning Toolbox is not installed.');
+end
 if exist('trainYOLOXObjectDetector', 'file') ~= 2
     error('sih:models:missingAddOn', ...
         ['trainYOLOXObjectDetector is not available.\n' ...
@@ -121,14 +130,6 @@ save(outFile, 'detector', 'names', 'metrics', '-v7.3');
 fprintf('\nSaved %s\n', outFile);
 fprintf('Report the three named classes, not the mAP alone. A high mAP driven by cars while\n');
 fprintf('the cow class is empty is exactly the result this model exists to rule out.\n');
-end
-
-
-function iRequireToolbox(licName, human)
-if isempty(ver(matlab.lang.makeValidName(erase(licName, " ")))) && ~license('test', erase(licName, " "))
-    % ver() naming is inconsistent across releases, so this is advisory rather than fatal.
-    warning('sih:models:toolbox', '%s may not be installed. If training fails, install it.', human);
-end
 end
 
 
