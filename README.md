@@ -15,8 +15,10 @@ single file you open, and what is blocked on a human right now.
 
 1. **Read the PRD.** It is distributed as a PDF — ask Aditya. Problem, solution, what the judge
    sees, the metrics, and what we are allowed to claim.
-2. **Open your own file in [`teammates/`](teammates/)** and follow it from the top. Each is
-   self-contained: installing everything, how to work, what to build, who is waiting on you.
+2. **Open your own folder and read the `ReadThis.md` at the top of it.** There are three:
+   [`world/`](world/) for streams A and B, [`ml/`](ml/) for stream C,
+   [`plan/`](plan/) for streams D and E. Everything your stream needs is inside one of them —
+   installing, how to work, what to build, who is waiting on you. You do not need the others.
 3. **Read section 3 of [`AGENTS.md`](AGENTS.md)** before writing code — the frozen contract.
 4. **The first time you have MATLAB on a machine, run [`/first-run`](.agents/workflows/first-run.md).**
    Most of the MATLAB here has been checked against the MathWorks documentation but **never
@@ -82,37 +84,53 @@ the streams still describe *what* is owned, but the roles describe *who works to
 
 | Stream | Owns | File |
 |---|---|---|
-| **A** | Scenarios, roads, junctions · **Role 1, with B** | [`teammates/A-world.md`](teammates/A-world.md) |
-| **B** | Lidar, radar, tracking · **Role 1, with A** | [`teammates/B-perception.md`](teammates/B-perception.md) |
-| **C** | Dataset, LSTM, training | **[`ml/ReadThis.md`](ml/ReadThis.md)** — start here, then [`teammates/C-prediction.md`](teammates/C-prediction.md) |
-| **D** | The negotiating planner · **Role 2, with E** | **[`plan/ReadThis.md`](plan/ReadThis.md)** — start here, then [`teammates/D-planner.md`](teammates/D-planner.md) |
-| **E** | Baseline, metrics, results · **Role 2, with D** | [`teammates/E-evidence.md`](teammates/E-evidence.md) |
+| **A** | Scenarios, roads, junctions · **Role 1, with B** | [`world/A-world.md`](world/A-world.md) |
+| **B** | Lidar, radar, tracking · **Role 1, with A** | [`world/B-perception.md`](world/B-perception.md) |
+| **C** | Dataset, LSTM, training | **[`ml/ReadThis.md`](ml/ReadThis.md)** — start here, then [`ml/C-prediction.md`](ml/C-prediction.md) |
+| **D** | The negotiating planner · **Role 2, with E** | **[`plan/ReadThis.md`](plan/ReadThis.md)** — start here, then [`plan/D-planner.md`](plan/D-planner.md) |
+| **E** | Baseline, metrics, results · **Role 2, with D** | [`plan/E-evidence.md`](plan/E-evidence.md) |
 
 ## Layout
 
 ```
-AGENTS.md           project rules + THE FROZEN CONTRACT (section 3)
-GEMINI.md           Antigravity-specific rules
-teammates/          five workstream files, one each
-CLAUDE.md           what Claude Code loads - who owns what, and the build state
-.claude/commands/   slash commands for Claude Code
-plan/               THE PLANNER STREAM'S HOME
-plan/ReadThis.md    the roadmap for Stream D
-plan/CONTRACT-AB.md the boundary between its two people
-ml/                 THE ML STREAM'S HOME
-ml/ReadThis.md      the roadmap - read this first if you are Stream C
-ml/CHEATSHEET.md    every command, in order
-ml/TROUBLESHOOTING.md  errors we already hit, and what they really mean
-ml/python/          dataset pipeline, both yield models, ONNX export
-matlab/+sih/        planner, prediction, models, util
-.agents/rules/      loaded automatically by your agent
-.agents/workflows/  slash commands - see the table above
-matlab/baseline/    MathWorks' shipped planner - NEVER EDIT
+THE ROOT - rules that apply to everyone, and nothing else
+  README.md         this file
+  TEAM.md           one page: who does what, and what is blocked on a human
+  AGENTS.md         project rules + THE FROZEN CONTRACT (section 3)
+  CLAUDE.md         what Claude Code loads - who owns what, and the build state
+  GEMINI.md         Antigravity-specific rules
+
+THE THREE STREAM FOLDERS - open ONE, the one that is yours
+  world/            STREAMS A + B - scenarios, roads, the cow, lidar and radar
+    ReadThis.md       start here
+    A-world.md        Stream A's task list
+    B-perception.md   Stream B's task list
+  ml/               STREAM C - the dataset and the prediction models
+    ReadThis.md       start here
+    C-prediction.md   Stream C's task list
+    ML.md             facts about the data, for your AI
+    DGX.md            the supercomputer - read before running anything on it
+    CHEATSHEET.md     every command, in order
+    TROUBLESHOOTING.md  errors we already hit, and what they really mean
+    python/           dataset pipeline, both yield models, ONNX export
+  plan/             STREAMS D + E - the planner, the baseline, the evidence
+    ReadThis.md       start here
+    D-planner.md      Stream D's task list
+    E-evidence.md     Stream E's task list
+    CONTRACT-AB.md    the boundary between Stream D's two people
+
+SHARED - code and tooling, not owned by one stream
+  matlab/+sih/      planner, prediction, models, util
+  matlab/tests/     run these first
+  matlab/baseline/  MathWorks' shipped planner - NEVER EDIT
                     EMPTY as of 1 Sep 2026, and git does not track empty folders, so a
                     fresh clone will not have it at all. Stream E adds the baseline.
-matlab/tests/       run these first
-ml/derisk/             the checks that gate the build
-blender/            rendering
+  derisk/           the checks that gate the build
+  blender/          rendering
+  .agents/rules/    loaded automatically by your agent
+  .agents/workflows/  slash commands - see the table above
+  .claude/commands/ the same slash commands, for Claude Code
+  .claude/fences/   one permission file per stream - install yours
 ```
 
 ## Five rules

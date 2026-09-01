@@ -8,6 +8,31 @@ else exists to serve: **the thing that decides what the car does.**
 
 It is the biggest job here and it is two people. Read this once before you start.
 
+## What is in this folder
+
+Streams **D** (the planner) and **E** (the baseline, the metrics, the report) are both **Role 2**,
+so they share one folder.
+
+| File | What it is | When you open it |
+|---|---|---|
+| **`ReadThis.md`** | this file — the whole stream, start to finish | first, once |
+| **`D-planner.md`** | Stream D's task list, D1 through D11 | you are Stream D |
+| **`CONTRACT-AB.md`** | the boundary between Stream D's **two** people — who writes what, and which file neither may touch | **before either of you writes anything** |
+| **`E-evidence.md`** | Stream E's task list: the three baselines, the metrics, the report | you are Stream E |
+
+**Stream D is two people and they do NOT share files.** Person A writes `matlab/+sih/+planner/*.m`
+— pure functions, testable without Simulink. Person B owns the Simulink model and the Stateflow
+chart. **A `.slx` is a binary file: two people editing it cannot merge, and one person's work is
+simply lost.** That is why only Person B opens it. `CONTRACT-AB.md` is the whole rule.
+
+**Your commands:** `/plan-work` Person A's build order · `/plan-harness` Person B's Simulink loop
+and Stateflow chart · `/plan-test` run the planner tests and read a failure · `/state` where the
+project is · `/first-run` the MATLAB that has never been executed.
+
+Nothing in `ml/`, `matlab/+sih/+prediction/` or `matlab/+sih/+models/` is yours. You consume
+`S3 PYield` and never open the model that produced it. **Install your fence** (top of this file)
+and it stops depending on you remembering.
+
 ---
 
 # 0 · What you are building, in plain words

@@ -115,7 +115,7 @@ pip3 install torch numpy onnx onnxruntime onnxscript
 dies with `ModuleNotFoundError: onnxscript` without it.
 
 Data lives **outside the repo**. Default `~/meteor-data`. On the DGX use `/raid/<user>/` and
-**read `DGX.md` first**. **Never write data, `.onnx`, `.pt` or `.mat` inside the repo.**
+**read `ml/DGX.md` first**. **Never write data, `.onnx`, `.pt` or `.mat` inside the repo.**
 
 ---
 

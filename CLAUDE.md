@@ -55,7 +55,7 @@ simply lost. That is why B is the only one who opens it.
 
 | If you are doing | Read | **Do not open** |
 |---|---|---|
-| machine learning | `ml/ReadThis.md`, `ML.md` | `plan/`, `matlab/+sih/+planner/`, the Simulink model |
+| machine learning | `ml/ReadThis.md`, `ml/ML.md` | `plan/`, `matlab/+sih/+planner/`, the Simulink model |
 | the planner | `plan/ReadThis.md`, `plan/CONTRACT-AB.md` | **`ml/`**, `matlab/+sih/+prediction/`, `+models/` |
 
 **They meet at the contract and nowhere else.** The planner consumes `S3 PYield`; it never opens
@@ -201,5 +201,5 @@ Type these. They live in `.claude/commands/`.
 | The planner's roadmap | `plan/ReadThis.md` |
 | The ML stream's roadmap | `ml/ReadThis.md` |
 | Errors we already hit, with real causes | `ml/TROUBLESHOOTING.md` |
-| A stream's task list | `teammates/<letter>-<name>.md` |
+| A stream's task list | inside its own folder: `world/`, `ml/` or `plan/` |
 | The de-risk checks | `derisk/HOW-TO-RUN.md` |

@@ -1,12 +1,12 @@
 # Stream D — The Planner
 
-> ## Read [`plan/ReadThis.md`](../plan/ReadThis.md) first.
+> ## Read [`plan/ReadThis.md`](ReadThis.md) first.
 >
 > `plan/` is your folder. It explains what you are building in plain language, the mechanism,
 > and why each piece exists.
 >
-> - **[`plan/ReadThis.md`](../plan/ReadThis.md)** — the roadmap. Read once, top to bottom
-> - **[`plan/CONTRACT-AB.md`](../plan/CONTRACT-AB.md)** — **the boundary between the two of you.
+> - **[`plan/ReadThis.md`](ReadThis.md)** — the roadmap. Read once, top to bottom
+> - **[`plan/CONTRACT-AB.md`](CONTRACT-AB.md)** — **the boundary between the two of you.
 >   Read this before writing anything**
 >
 > **You are two people and you must not share files.** A Simulink `.slx` is binary — git cannot
@@ -235,7 +235,7 @@ runtests('matlab/tests')
 | **D11** handover | **B** | a signal the chart raises |
 
 **The test:** *does it need Simulink to test?* No → A. Yes → B.
-Full rules in [`plan/CONTRACT-AB.md`](../plan/CONTRACT-AB.md).
+Full rules in [`plan/CONTRACT-AB.md`](CONTRACT-AB.md).
 
 
 

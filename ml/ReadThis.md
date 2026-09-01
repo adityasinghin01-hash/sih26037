@@ -9,6 +9,25 @@ needs is here or linked from here.
 Read this once, top to bottom, before you run anything. It is long because it tries to leave
 nothing out — but you only have to read it once, and after that you work from the checklists.
 
+## What is in this folder
+
+| File | What it is | When you open it |
+|---|---|---|
+| **`ReadThis.md`** | this file — the whole stream, start to finish | first, once |
+| **`C-prediction.md`** | your task list, and who is waiting on you | after this file |
+| **`ML.md`** | the measured facts about the data, written for your AI assistant | tell your agent to read it before it writes ML code |
+| **`DGX.md`** | the college supercomputer — what it is, and the rules for using it | **before you run anything on the DGX** |
+| **`CHEATSHEET.md`** | every command, in order, nothing explained | once you know what you are doing |
+| **`TROUBLESHOOTING.md`** | errors we already hit, and what they really mean | when something breaks |
+| **`python/`** | the actual code: dataset pipeline, both yield models, ONNX export | as the checklists tell you |
+
+**Your commands:** `/ml-run` the whole pipeline · `/ml-parity` check Python and MATLAB still agree
+· `/ml-models` the three MATLAB-native models · `/state` where the project is · `/first-run` the
+MATLAB that has never been executed.
+
+Nothing outside this folder and `matlab/+sih/+prediction/` and `matlab/+sih/+models/` is yours.
+**Install your fence** (top of this file) and it stops depending on you remembering.
+
 ---
 
 # 0 · What you are actually building, in plain words
@@ -470,9 +489,9 @@ Send the whole error.
 | The MATLAB feature twin | `matlab/+sih/+prediction/buildFeatureFrame.m` |
 | The three MATLAB models | `matlab/+sih/+models/` |
 | **The frozen contract** | **`AGENTS.md` section 3** |
-| Facts about the data, for your AI | `ML.md` |
+| Facts about the data, for your AI | `ml/ML.md` |
 | The step-by-step workflows | `.agents/workflows/` |
-| Your task list and who waits on you | `teammates/C-prediction.md` |
+| Your task list and who waits on you | `ml/C-prediction.md` |
 | The de-risk checks | `derisk/HOW-TO-RUN.md` |
 
 ---

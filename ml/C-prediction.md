@@ -1,14 +1,14 @@
 # Stream C — Prediction
 
-> ## Read [`ml/ReadThis.md`](../ml/ReadThis.md) first.
+> ## Read [`ml/ReadThis.md`](ReadThis.md) first.
 >
 > `ml/` is your folder. It holds the whole roadmap in plain language: what you are building,
 > which decisions are yours and how to make them, how the data works and what is wrong with it,
 > every step in order, and what "done" means.
 >
-> - **[`ml/ReadThis.md`](../ml/ReadThis.md)** — the roadmap. Read once, top to bottom
-> - **[`ml/CHEATSHEET.md`](../ml/CHEATSHEET.md)** — every command, keep it open
-> - **[`ml/TROUBLESHOOTING.md`](../ml/TROUBLESHOOTING.md)** — errors we already hit
+> - **[`ml/ReadThis.md`](ReadThis.md)** — the roadmap. Read once, top to bottom
+> - **[`ml/CHEATSHEET.md`](CHEATSHEET.md)** — every command, keep it open
+> - **[`ml/TROUBLESHOOTING.md`](TROUBLESHOOTING.md)** — errors we already hit
 >
 > **This file is your task list and who is waiting on you.** The roadmap is how to do the work.
 

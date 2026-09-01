@@ -5,7 +5,7 @@ description: Load when the task involves the machine-learning pipeline - METEOR 
 
 # ML work: read ML.md first
 
-**Read `ML.md` at the repository root before writing any code for this task.** It is not loaded
+**Read `ml/ML.md` before writing any code for this task.** It is not loaded
 automatically. It carries facts about this dataset that were measured by running code, and
 re-deriving them wastes a day each.
 

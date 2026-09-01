@@ -28,7 +28,7 @@ knows which one the demo used.
 natively in MATLAB and never touch ONNX**, which is the whole reason they were chosen: an
 imported YOLO fails on NMS and dynamic shapes, and RTMDet is inference-only here.
 
-**Read `ML.md` first.** Section 0 applies: do the step you were asked for, and stop at anything
+**Read `ml/ML.md` first.** Section 0 applies: do the step you were asked for, and stop at anything
 a human must decide.
 
 ---
@@ -120,4 +120,4 @@ own score. Report it either way.
 - **These are not on the critical path.** Model 1, the yield predictor, is what the headline
   claim needs. If time is short, say so rather than finishing these first.
 
-Finish with the section 7 report from `ML.md`.
+Finish with the section 7 report from `ml/ML.md`.

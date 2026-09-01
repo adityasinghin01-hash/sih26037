@@ -3,7 +3,7 @@
 > ## You are **Role 2 · The Driver**, working with Stream D.
 >
 > You cannot measure a planner you do not understand, so you sit with the planner pair rather
-> than alone. Read [`plan/ReadThis.md`](../plan/ReadThis.md) — the mechanism you are measuring is
+> than alone. Read [`plan/ReadThis.md`](ReadThis.md) — the mechanism you are measuring is
 > explained there.
 >
 > ### Your first task needs nobody, and it is blocking everyone

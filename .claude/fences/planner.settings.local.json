@@ -4,8 +4,6 @@
     "deny": [
       "Read(/ml/**)",
       "Edit(/ml/**)",
-      "Read(/ML.md)",
-      "Edit(/ML.md)",
       "Read(/matlab/+sih/+prediction/**)",
       "Edit(/matlab/+sih/+prediction/**)",
       "Read(/matlab/+sih/+models/**)",

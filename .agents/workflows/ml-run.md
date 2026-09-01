@@ -24,7 +24,7 @@ knows which one the demo used.
 
 # /ml-run — the machine-learning pipeline, start to finish
 
-**Read `ML.md` at the repository root before step 1.** It carries the measured facts about this
+**Read `ml/ML.md` before step 1.** It carries the measured facts about this
 dataset, and every one of them was expensive to learn. Section 0 of that file applies to every
 step here: **you do the step you were asked for and stop at the first thing a human must decide.**
 
@@ -35,7 +35,7 @@ pip3 install torch numpy onnx onnxruntime onnxscript
 `onnxscript` is not optional — torch >= 2.9 uses the dynamo ONNX exporter and dies without it.
 
 Data lives **outside the repo**. Below, `DATA` means that path (default `~/meteor-data`).
-On the DGX use `/raid/<user>/` and read `DGX.md` first.
+On the DGX use `/raid/<user>/` and read `ml/DGX.md` first.
 
 ---
 
@@ -231,7 +231,7 @@ Run `/ml-parity` if `features.py` changed during this run.
 
 **Send the working opset number to the planner stream immediately. It blocks them.**
 
-Finish with the section 7 report from `ML.md`:
+Finish with the section 7 report from `ml/ML.md`:
 
 ```
 COMMAND:   <the exact commands you ran>

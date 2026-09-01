@@ -25,7 +25,7 @@ That is why the two halves cannot break each other.
 | Who | Role | Owns | Machine | Reads first |
 |---|---|---|---|---|
 | **Aditya** | 1 + F | **WORLD and Perception in MATLAB.** Plus integration, the demo and the pitch | Mac for WORLD, Windows main for integration | — |
-| **World teammate** | 1 | Meerut footage, OSM exports, PPT, docs, the claim ledger, judging whether a scene looks Indian | any | `teammates/A-world.md` |
+| **World teammate** | 1 | Meerut footage, OSM exports, PPT, docs, the claim ledger, judging whether a scene looks Indian | any | `world/A-world.md` |
 | **ML person** | C | METEOR, both yield models, ONNX export, the three MATLAB models | roomiest machine — datasets are tens of GB | **`ml/ReadThis.md`** |
 | **Planner A** | 2 | `matlab/+sih/+planner/*.m` — pure functions | Windows | **`plan/ReadThis.md`** then `/plan-work` |
 | **Planner B** | 2 | The Simulink model and Stateflow chart, **and the baseline** | **Windows — the MAIN machine** | **`plan/ReadThis.md`** then `/plan-harness` |
@@ -49,7 +49,7 @@ so it does not matter which one you are holding.
 
 ```
 Aditya         -> nothing, we work session by session
-World teammate -> teammates/A-world.md
+World teammate -> world/A-world.md
 ML person      -> ml/ReadThis.md
 Planner A      -> plan/ReadThis.md, then plan/CONTRACT-AB.md
 Planner B      -> plan/ReadThis.md, then plan/CONTRACT-AB.md
