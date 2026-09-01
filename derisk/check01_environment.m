@@ -4,7 +4,7 @@
 
 diary('check01_output.txt'); diary on;
 fprintf('\n===== CHECK 0+1 : ENVIRONMENT =====\n');
-fprintf('Date run : %s\n', datestr(now));
+fprintf('Date run : %s\n', string(datetime("now")));   % datestr is deprecated
 fprintf('Computer : %s\n', computer);
 
 %% --- CHECK 1 : exact release ---------------------------------------
@@ -12,15 +12,21 @@ fprintf('\n--- MATLAB VERSION ---\n');
 disp(version)
 fprintf('Release  : %s\n', version('-release'));
 
-%% --- CHECK 0 : the seven products we must have ---------------------
+%% --- CHECK 0 : the products, and WHAT EACH ONE UNLOCKS --------------
+% Third column says what stops working without it, so a MISSING line is
+% actionable rather than just alarming. Sensor Fusion and Navigation were
+% absent from this list until 1 Sep 2026 even though the BASELINE needs both -
+% which would have surfaced as a mystery failure weeks into Stream E.
 needed = { ...
-    'MATLAB',                      'MATLAB'; ...
-    'Simulink',                    'Simulink'; ...
-    'Automated Driving Toolbox',   'driving'; ...
-    'Computer Vision Toolbox',     'vision'; ...
-    'Image Processing Toolbox',    'images'; ...
-    'Deep Learning Toolbox',       'nnet'; ...
-    'Stateflow',                   'stateflow'};
+    'MATLAB',                            'MATLAB',    'everything'; ...
+    'Simulink',                          'Simulink',  'the closed loop, Stateflow charts'; ...
+    'Automated Driving Toolbox',         'driving',   'drivingScenario, roads, lidar generator'; ...
+    'Computer Vision Toolbox',           'vision',    'YOLOX, DeepLab, the spotter'; ...
+    'Image Processing Toolbox',          'images',    'image handling under the above'; ...
+    'Deep Learning Toolbox',             'nnet',      'ONNX import, every learned model'; ...
+    'Stateflow',                         'stateflow', 'the planner state machine'; ...
+    'Sensor Fusion and Tracking Toolbox','fusion',    'S1 TrackList, AND THE BASELINE'; ...
+    'Navigation Toolbox',                'nav',       'Frenet planner, AND THE BASELINE'};
 
 fprintf('\n--- REQUIRED PRODUCTS ---\n');
 allOK = true;
@@ -29,23 +35,40 @@ for k = 1:size(needed,1)
     hasIt = ~isempty(ver(needed{k,2}));
     if hasIt
         v = ver(needed{k,2});
-        fprintf('  [ OK ]   %-28s  v%s\n', name, v(1).Version);
+        fprintf('  [ OK ]      %-34s v%s\n', name, v(1).Version);
     else
-        fprintf('  [ MISSING ] %-28s  <-- BLOCKER\n', name);
+        fprintf('  [ MISSING ] %-34s <-- BLOCKS: %s\n', name, needed{k,3});
         allOK = false;
     end
 end
 
-%% --- Nice to have, not blockers ------------------------------------
-fprintf('\n--- OPTIONAL ---\n');
-optional = {'Navigation Toolbox','nav'; 'Lidar Toolbox','lidar'; ...
-            'Parallel Computing Toolbox','parallel'; 'Simulink 3D Animation','sl3d'};
+%% --- Needed only for specific jobs ---------------------------------
+fprintf('\n--- NEEDED FOR SPECIFIC JOBS ---\n');
+optional = {'Lidar Toolbox','lidar','PointPillars (model 5). Not needed otherwise'; ...
+            'Mapping Toolbox','map','real terrain elevation for the ghat road'; ...
+            'Parallel Computing Toolbox','parallel','GPU training. Slower without it, not blocked'; ...
+            'Simulink 3D Animation','sl3d','the Unreal scenes. Stretch goal only'};
 for k = 1:size(optional,1)
     if ~isempty(ver(optional{k,2}))
-        fprintf('  [ OK ]      %s\n', optional{k,1});
+        fprintf('  [ OK ]      %-30s\n', optional{k,1});
     else
-        fprintf('  [ absent ]  %s\n', optional{k,1});
+        fprintf('  [ absent ]  %-30s %s\n', optional{k,1}, optional{k,3});
     end
+end
+
+%% --- YOLOX training add-on -----------------------------------------
+% This one is nasty: yoloxObjectDetector exists WITHOUT the add-on and only
+% TRAINING is missing, so the failure arrives late and reads like a typo.
+fprintf('\n--- YOLOX TRAINING (model 3) ---\n');
+if exist('trainYOLOXObjectDetector','file') == 2
+    fprintf('  [ OK ]      trainYOLOXObjectDetector is available\n');
+elseif exist('yoloxObjectDetector','file') == 2
+    fprintf('  [ MISSING ] the detector exists but TRAINING does not.\n');
+    fprintf('              Home -> Add-Ons -> Get Add-Ons -> "Automated Visual Inspection\n');
+    fprintf('              Library for Computer Vision Toolbox". Free.\n');
+    fprintf('              Only blocks model 3. Everything else runs without it.\n');
+else
+    fprintf('  [ absent ]  no YOLOX at all - Computer Vision Toolbox is missing\n');
 end
 
 %% --- ONNX support package ------------------------------------------
@@ -55,7 +78,10 @@ if exist('importNetworkFromONNX','file')
 elseif exist('importONNXNetwork','file')
     fprintf('  [ OLD ]     only importONNXNetwork found (pre-R2023b style)\n');
 else
-    fprintf('  [ MISSING ] no ONNX import. Install "Deep Learning Toolbox Converter for ONNX Model Format"\n');
+    fprintf('  [ MISSING ] no ONNX import.\n');
+    fprintf('              Home -> Add-Ons -> Get Add-Ons -> "Deep Learning Toolbox Converter\n');
+    fprintf('              for ONNX Model Format". Free, and the product installer does NOT\n');
+    fprintf('              include it. check04 cannot run without it.\n');
 end
 
 %% --- Full product list, for the record ------------------------------

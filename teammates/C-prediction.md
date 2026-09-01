@@ -450,15 +450,25 @@ way — the simulation is flattened into the camera's view instead. The maths is
 
 # Part 5 — Done, and who is waiting
 
+## Before any of this — run `/first-run`
+
+Most of the MATLAB in this repo has **never been executed**. Checked against the MathWorks
+documentation, yes; run, no. Four defects were already found that way. `/first-run` executes it
+in the right order and says what to look for. **A task is not done if `/first-run` has not passed
+on your machine.**
+
 ## A task is done when
 
 | Task | Done means |
 |---|---|
 | C1 | Dataset extracted; `df -h` output sent before and after |
 | C2 | **The ego-vs-agent question answered from a real file**, with the actual text pasted |
-| C3 | Loader produces `[20, 31]` sequences **and** the adjacency matrix, shapes verified |
+| C3 | *(superseded — `build_dataset.py` does this)* |
 | C4 | Precision and recall reported **separately** for yield and no-yield, on unseen clips |
-| C5 | At least one exported file that MATLAB imports without error |
+| C5 | `check04` imports a **real** exported file with **no placeholder layers**, and Stream D has the opset number |
+| C9 | `/ml-run` completed end to end, or stopped at a decision and you reported it |
+| C11 | `check01_environment` shows OK for Deep Learning, Computer Vision, Lidar, **and both add-ons** |
+| C12 | All five models trained, each reported **per class** — cow, auto-rickshaw and pushcart by name |
 
 **And four things are true of every task:**
 1. It runs from a fresh copy of the repo, following only what is written down
