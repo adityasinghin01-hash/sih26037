@@ -16,17 +16,16 @@ you can see belong to other people's work. Read `AGENTS.md` before this file.
 
 **Do exactly the task the operator names. Nothing else.**
 
-- **One task per instruction.** Complete it, report, stop. Do not continue to the next task
-  because it "seems next".
+- **One task per instruction.** Complete it, report, stop. Never continue because a task "seems next".
 - **Do not create, rename, delete or refactor files** the operator did not name.
 - **Do not "improve" working code.** If you see a problem, say so in one sentence and wait.
-- **Do not install packages, download data, or start training** unless that is the named task.
+- **Never download data, install packages, or start training unless that IS the named task.**
+  A download spends someone else's disk and bandwidth. Ask, state the cost, wait for a yes.
 - **Do not change `AGENTS.md` section 3.** Five people build against it. If your task appears to
   require a change, stop and say which field and why. Wait.
-- **Do not invent numbers.** Never write an accuracy, latency, dataset size or ratio you did not
-  produce by running something. Write `TODO(unverified)` instead.
-- **Do not guess a function or flag exists.** Verify against the installed package or the docs
-  before using it. If you cannot verify, say so.
+- **Do not invent numbers.** Never write an accuracy, latency, size or ratio you did not produce by
+  running something. Write `TODO(unverified)` instead.
+- **Do not guess a function or flag exists.** Verify against the installed package or the docs.
 
 **When in doubt, stop and ask. A blocked task is cheap. A silent wrong assumption costs days.**
 
@@ -36,156 +35,113 @@ you can see belong to other people's work. Read `AGENTS.md` before this file.
 
 | In scope | Out of scope |
 |---|---|
-| `python/meteor/`, `python/model/`, `python/export/`, `python/tests/` | anything under `matlab/` |
-| The 31-feature vector (S2) and the prediction output (S3) | the planner, the scenarios, the sensors |
-| Training, evaluation, ONNX export | the Simulink model |
+| `python/meteor/`, `python/model/`, `python/export/`, `python/tests/` | the planner, scenarios, sensors |
+| `matlab/+sih/+prediction/` — the feature builder's MATLAB twin only | everything else under `matlab/` |
+| The 31-feature vector (S2) and the prediction output (S3) | the Simulink model |
 
 **Never write to `matlab/baseline/`.** That is a third-party planner used as a control. Editing it
 invalidates the entire result.
 
 ---
 
-## 2 · Ground truth about the data — verified, do not re-derive
+## 2 · Ground truth — verified by running code. Do not re-derive.
 
-These were confirmed by reading the actual archive. Treat as fact; do not re-check unless the
-operator asks.
+**Dataset.** `huggingface.co/datasets/XijunWang/METEOR`, public, ungated. One zip in 5 chunks,
+93.4 GB. **We take annotations only: 2,502 clips, 1.81 GB down, 10.28 GB on disk.** The 91.6 GB of
+video is not used. Annotations sit contiguously at both ends of the archive and
+`fetch_annotations.py` pulls them with HTTP range requests — **do not modify or rewrite it**; a
+replacement will not match the byte layout. Sizes must come from the central directory because
+local headers use data descriptors. The CLI is `hf`, not `huggingface-cli`.
 
-- Source: `huggingface.co/datasets/XijunWang/METEOR`, public, ungated, no login.
-- Archive is one zip split into 5 chunks, **93,382,246,900 bytes** total.
-- **We download annotations only: 1.81 GB, expanding to 10.28 GB.** The 91.57 GB of video is not
-  used. Do not download it.
-- Annotations are **contiguous at both ends** of the archive: Frame XML at the start, Video XML at
-  the end. `python/meteor/fetch_annotations.py` exploits this with HTTP range requests.
-- Local file headers use **data descriptors**, so their size fields are `0`. Sizes must come from
-  the central directory. The fetcher already handles this.
-- Structure: `METEOR_Dataset/Frame XML Annotations/*.zip` — one zip per clip, each containing
-  `<clip>/Annotations/frame_NNNNNN.xml`.
-- **1,800 frames per clip = 30 Hz.** Contract needs 10 Hz → take every 3rd frame.
-- **Every non-ego object carries `<attributes>`** with: `Yield`, `Cutting`, `OverTaking`,
-  `LaneChanging`, `LaneChanging(m)`, `ZigzagMovement`, `OverSpeeding`, `RuleBreak`, `Behaviour`,
-  `track_id`, `keyframe`.
-- **`track_id` is stable across frames.** Do not implement tracking or data association.
-- `<bndbox>` contains `x-axis`, `y-axis`, `z-axis`. **These are the EGO's ECEF position repeated on
-  every object**, not per-object positions. |r| ≈ 6380.7 km. **There is no per-agent 3-D.
-  Never attempt to build 3-D positions or use monocular depth.**
-- Class names seen in data: `Car`, `MotorBike`, `Bus`, `MotorizedTricycle` (= auto-rickshaw,
-  ClassID 4), `EgoVehicle`. `Pedestrain` is misspelt in the source data — match both spellings.
-- The CLI is `hf`, not `huggingface-cli`. The latter was removed in huggingface_hub v1.0.
+**Structure.** `METEOR_Dataset/Frame XML Annotations/*.zip`, one zip per clip, holding
+`<clip>/Annotations/frame_NNNNNN.xml`. 30 Hz; the contract needs 10 Hz, so take every 3rd frame.
+`track_id` is stable across frames — **do not implement tracking**. Every non-ego object carries
+`Yield`, `Cutting`, `OverTaking`, `LaneChanging`, `ZigzagMovement`, `OverSpeeding`, `RuleBreak`,
+`Behaviour`, `keyframe`. `Behaviour` is dirty: `false`, `False`, `fasle` — compare
+case-insensitively. `RuleBreak` holds `false` or a reason string, not a boolean.
+`Pedestrain` is misspelt in the source — match both spellings.
+
+**`<bndbox>` `x-axis/y-axis/z-axis` is the EGO's ECEF position repeated on every object**, not a
+per-object position. |r| ≈ 6380.7 km. **There is no per-agent 3-D. Never build 3-D positions and
+never use monocular depth.**
+
+### Measured 1 Sep 2026 — the numbers that decide what to do next
+
+**The label is too rare to train on as it stands.** Over 39 clips: **109 positives in 68,011
+samples (0.160%)**, and the by-clip split leaves **6 positives in validation**. Every figure
+`evaluate.py` prints on a set that small is noise. `check_balance.py` verdict: **SEVERE**.
+**We hold only ~79 of 2,502 clips — about 3% of the dataset.** Do not conclude anything about the
+label from that sample, and do not re-tune the model against it.
+
+**27 of 31 features are alive.** Dead across all clips: **23, 24, 25, 27** — one-hot slots for S5
+ClassID 11 dog, 12 pushcart, 13 animal-drawn cart, 15 static obstacle. METEOR contains none of
+them. Nothing to fix. **The cow stays simulated.**
+
+**Features 28-31 were poisoned, not empty.** The GPS-jump guard tested distance, not speed, and
+admitted 3,000 m/s: measured ego speed reached **557.7 m/s** and acceleration **±5,576 m/s²**,
+four orders of magnitude above the box-geometry features sharing their input layer. Now gated by
+`MAX_SPEED_MPS`/`MAX_ACCEL_MPS2` in `parse_xml.py`. **If you ever see an ego range far outside a
+real vehicle's, the gate has been removed — stop and report it.**
+
+**Input scaling is baked into the model as buffers**, fitted on training clips only, so the
+exported ONNX takes **raw contract-S2 features** and MATLAB needs no matching preprocessing.
+Do not add normalisation to `features.py` — that would desynchronise it from the MATLAB twin.
+
+**Model sizes: `yield_lstm` 25,090 parameters, `yield_attention` 58,434.** Small on purpose.
+**The bottleneck is labels, not capacity. Never answer a data problem with a bigger model.**
 
 ---
 
 ## 3 · Environment
 
 ```bash
-python3 --version          # must be >= 3.11
-pip3 install --user torch numpy onnx
+python3 --version          # >= 3.11
+pip3 install torch numpy onnx onnxruntime onnxscript
 ```
+**`onnxscript` is required**, not optional: torch ≥ 2.9 defaults to the dynamo ONNX exporter and
+dies with `ModuleNotFoundError: onnxscript` without it.
 
-Paths: data lives **outside the repo**. Default `~/meteor-data`. On the DGX use `/raid/<user>/`.
-
-**If the task runs on the supercomputer, read `DGX.md` first.** It has the machine's real
-specification, the rules for `/raid` (RAID 0, not backed up), and the list of things that must
-be measured rather than assumed.
-**Never write data, `.onnx`, `.pt` or `.mat` files inside the repo** — `.gitignore` blocks them and
-committing them is forbidden.
+Data lives **outside the repo**. Default `~/meteor-data`. On the DGX use `/raid/<user>/` and
+**read `DGX.md` first**. **Never write data, `.onnx`, `.pt` or `.mat` inside the repo.**
 
 ---
 
-## 4 · Tasks
+## 4 · The procedures live in workflows, not here
 
-Each task below is a unit of work. Execute only the one named.
+A rule file holds **facts**. A repeatable procedure with steps is a **workflow**, and Antigravity
+runs those from a slash command. The ML procedures are:
 
-### task: fetch-data
-**Trigger:** "download the data" / "fetch METEOR"
-**Steps:**
-1. Confirm the target path has ≥ 15 GB free (`df -h`). If not, stop and report.
-2. `python3 python/meteor/fetch_annotations.py --out <path>`
-3. Do not modify the script.
-**Validation:** prints `fetched=2502 failed=0`; `du -sh <path>` ≈ 10 GB.
-**On failure:** report the full stderr. Do not retry more than once.
+| Command | What it does |
+|---|---|
+| **`/ml-run`** | The whole pipeline: build features -> split -> train -> evaluate -> export. Stops at every decision that belongs to a human |
+| **`/ml-parity`** | Proves `features.py` and its MATLAB twin still produce identical vectors |
 
-### task: check-balance
-**Trigger:** "check the balance" / "how rare is yield"
-**Why it exists:** if the positive class is very rare, accuracy is meaningless and the whole
-approach may change. **This runs before any model is trained.**
-**Steps:** count non-ego objects and how many have `Yield == True`, over ≥ 50 clips, sampling every
-10th frame.
-**Outputs:** total objects, positive count, ratio as `1 in N`.
-**Validation:** report the ratio. **Do not proceed to training. Stop and wait for the operator.**
+They live in `.agents/workflows/`. If the slash command does not resolve, open the file and follow
+it — the steps are plain markdown.
 
-### task: build-features
-**Trigger:** "build the features"
-**Steps:**
-1. Parse XML → per-object records keyed by `track_id`.
-2. Subsample 30 Hz → 10 Hz (every 3rd frame).
-3. Emit the **31 features in the exact order defined in `AGENTS.md` S2**. Never reorder. Never
-   append below position 32.
-4. Emit `Adjacency [N x N]` for every frame **even though model 1 ignores it**. It is required by
-   the contract and by model 2.
-5. Front-pad sequences shorter than T=20 with the earliest frame.
-**Constraints:** no feature may be a distance. Feature 10 is `tau = h / (dh/dt)`, clamped to ±100.
-**Validation:** loaded array's last dimension is exactly **31**. If not, stop — the contract is
-broken.
-
-### task: split-data
-**Trigger:** "split the data"
-**Steps:** split **by clip, never by frame**.
-**Why:** adjacent frames are near-duplicates. A frame-level split leaks test answers into training
-and inflates every score.
-**Validation:** report the number of **clips** in train and test, not frames.
-
-### task: train-model-1
-**Trigger:** "train the LSTM" / "train model 1"
-**What it is:** sequence model over `[T=20, 31]`, binary output.
-**Steps:** run `python/model/train.py --model lstm` with the operator's arguments. Do not change
-architecture, defaults or hyperparameters unless told.
-**Validation:** loss decreases; report **precision and recall separately for each class**. Never
-report accuracy alone.
-
-### task: train-model-2
-**Trigger:** "train the graph model" / "train model 2"
-**What it is:** the same task, over all agents jointly, consuming `Adjacency`.
-**HARD CONSTRAINT:** implement with **attention (matmul + softmax)**. **Never use `Gather` or
-`Scatter` or sparse message passing** — MATLAB's ONNX importer does not support them and the export
-will fail at the final step.
-**Validation:** same metrics as model 1, on the identical split. Report both models side by side.
-
-### task: export-onnx
-**Trigger:** "export the model"
-**PRECONDITION:** `derisk/check04_onnx_lstm.m` must have been run in MATLAB and the working opset
-number known. **If the operator has not supplied that number, stop and ask for it.**
-**Steps:** `python3 python/export/to_onnx.py --model <file> --opset <N>`
-**Validation:** output path and tensor shapes match `AGENTS.md` → File formats exactly:
-`sequence [1,20,31]` → `yield_logits [1,2]` for model 1;
-`sequence [1,A,20,31]` + `adjacency [1,A,A]` → `yield_logits [1,A,2]` for model 2.
-**Then:** remind the operator to send the opset number to the planner stream. It blocks them.
-
-### task: train-spotter
-**Trigger:** "train the detector" / "train the spotter"
-**What it is:** an image object detector for Indian road users. **Runs offline. Never imported into
-MATLAB. Never part of the driving loop.**
-**Model:** YOLOX. **Not RTMDet** — RTMDet in MATLAB is inference-only and cannot be trained on new
-classes.
-**Data:** IDD Detection + FGVD + DATS_2022.
-**Validation:** report **per-class** accuracy, specifically cow, auto-rickshaw and pushcart.
+**Every workflow inherits section 0.** A workflow tells you what to do; it never overrides the rule
+that you do only the step you were asked for and stop at the first thing a human must decide.
 
 ---
 
 ## 5 · Never
 
-- Never commit datasets, `.onnx`, `.pt`, `.pth`, `.mat`, or anything under `results/`.
-- Never hardcode a path under `/Users/` or `C:\`.
-- Never work on `main`. Branch first.
-- Never change the order or meaning of features 1–31.
-- Never remove `Adjacency` because the current model ignores it.
+- Never commit datasets, `.onnx`, `.onnx.data`, `.pt`, `.pth`, `.mat`, or anything under `results/`.
+- Never hardcode a path under `/Users/` or `C:\`. Never work on `main` — branch first.
+- Never change the order or meaning of features 1-31. Never remove `Adjacency`.
+- Never rebuild features after editing `features.py` without `--force`.
+- Never add a feature the simulator cannot reproduce — brake lights, indicators, hand signals. The
+  model would learn it, then meet a simulation where that input is permanently blank, with no error
+  and no crash. Object *orientation* is fine; simulated actors have a yaw angle.
+- Never train a model that reads pixels. The cuboid simulator emits an object list, not an image.
 - Never lift METEOR into 3-D or use monocular depth.
 - Never import a YOLO model into MATLAB — NMS and dynamic shapes are unsupported.
-- Never summarise an error. Report it in full, from first line to last.
+- Never summarise an error. Report it in full, first line to last.
 - Never report a number produced by anything other than running the code.
 
 ---
 
-## 6 · Worked examples — these are the situations where agents go wrong
+## 6 · Worked examples — where agents actually go wrong
 
 <example id="1" name="you notice a second problem">
 <operator>Build the features.</operator>
@@ -195,7 +151,7 @@ Noticed but did not change: `split.py` splits by frame, not by clip. That leaks 
 training. Want me to fix it?
 </correct>
 <incorrect>Features built. I also fixed split.py while I was there.</incorrect>
-<why>Fixing an unnamed file is the failure this whole file exists to prevent. Report and wait.</why>
+<why>Fixing an unnamed file is the failure this file exists to prevent. Report and wait.</why>
 </example>
 
 <example id="2" name="a number you cannot produce">
@@ -203,7 +159,7 @@ training. Want me to fix it?
 <correct>TODO(unverified) — I have not run training on that machine. To measure it: run task
 train-model-1 there and report wall-clock time.</correct>
 <incorrect>Roughly 2-3 hours on 8 A100s.</incorrect>
-<why>That figure would be plausible, unverifiable, and could end up on a slide.</why>
+<why>Plausible, unverifiable, and it could end up on a slide.</why>
 </example>
 
 <example id="3" name="the contract appears to be wrong">
@@ -213,16 +169,18 @@ Stopped. This changes S2 in `AGENTS.md` section 3, which four other people build
 Positions 1-31 are frozen; this would have to be position 32. Confirm and I will append it.
 </correct>
 <incorrect>Added brightness as feature 12 and shifted the class one-hot to 13-28.</incorrect>
-<why>Reordering features silently breaks the planner, which reads them by position.</why>
+<why>Reordering silently breaks the planner, which reads features by position.</why>
 </example>
 
-<example id="4" name="a file the instructions name does not exist">
-<operator>Run task fetch-data.</operator>
-<correct>Cannot run: `python/meteor/fetch_annotations.py` is not present in this checkout. It may
-not be pushed yet. Confirm the path or supply the file.</correct>
-<incorrect>The script was missing so I wrote a replacement downloader.</incorrect>
-<why>A rewritten downloader will not match the archive's byte layout and will fetch the wrong
-bytes or the whole 93 GB.</why>
+<example id="4" name="a task needs data you do not have">
+<operator>Train the LSTM.</operator>
+<correct>
+Blocked. `~/meteor-data/features` holds 39 clips of 2,502. Training on 3% of the data will produce
+a number that means nothing. Task fetch-data would take 1.81 GB down and 10.28 GB on disk — say
+the word and I will run it.
+</correct>
+<incorrect>Data looked thin so I downloaded the rest, then trained.</incorrect>
+<why>A download spends someone else's disk and bandwidth. Name the cost and wait.</why>
 </example>
 
 ---
@@ -240,14 +198,11 @@ Then stop. Do not begin the next task.
 
 ---
 
-## 8 · FINAL REMINDER — the rule that matters most
+## 8 · FINAL REMINDER
 
 **Do exactly the task the operator named. Nothing else.**
-
-- Change only files that were named in the request.
-- When you notice a second problem, describe it in one sentence and wait.
-- When a fact is not verifiable, write `TODO(unverified)`.
-- Never reorder features 1-31. Never edit `matlab/baseline/`. Never commit data or model files.
-- Never use `Gather` or `Scatter` — they do not import into MATLAB.
+Change only files that were named. Describe a second problem in one sentence and wait. Write
+`TODO(unverified)` when you cannot verify. Never reorder features 1-31, never edit
+`matlab/baseline/`, never commit data or model files, never download without being asked.
 
 **A blocked task is cheap. A silent wrong assumption costs days.**
