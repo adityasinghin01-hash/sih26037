@@ -10,6 +10,8 @@ data/
 # results and models
 results/
 *.onnx
+# torch's dynamo exporter writes the weights to a sidecar file next to the .onnx
+*.onnx.data
 *.pt
 *.pth
 *.mat

@@ -41,24 +41,40 @@ class YieldAttentionNet(nn.Module):
                                 nn.Linear(hidden * 2, hidden))
         self.drop = nn.Dropout(dropout)
         self.head = nn.Linear(hidden, N_CLASSES)
+        # constants baked into the graph - see the note in forward()
+        self.register_buffer("eye", torch.eye(MAX_AGENTS).unsqueeze(0))
+        self.register_buffer("feat_mean", torch.zeros(FEATURE_DIM))
+        self.register_buffer("feat_std", torch.ones(FEATURE_DIM))
+
+    def set_normaliser(self, mean, std) -> None:
+        """Install per-feature scaling measured on the TRAINING clips only. Same contract as
+        YieldNet.set_normaliser, so the two models stay interchangeable at the S3 boundary."""
+        self.feat_mean.copy_(torch.as_tensor(mean, dtype=torch.float32))
+        self.feat_std.copy_(torch.as_tensor(std, dtype=torch.float32).clamp_min(1e-6))
 
     def forward(self, sequence: torch.Tensor, adjacency: torch.Tensor) -> torch.Tensor:
-        b, a, t, f = sequence.shape
-        h, _ = self.encoder(sequence.reshape(b * a, t, f))
-        h = h[:, -1, :].reshape(b, a, self.hidden)            # [B, A, H]
+        # NOTE: every reshape below uses -1 and compile-time constants, never `sequence.shape`.
+        # Reading a shape at runtime exports as ONNX Shape + Gather, and importNetworkFromONNX
+        # has no built-in layer for Gather. A is fixed at export time anyway (AGENTS.md S2
+        # file-formats note), so there is nothing to read.
+        sequence = (sequence - self.feat_mean) / self.feat_std
+        h, _ = self.encoder(sequence.reshape(-1, SEQ_LEN, FEATURE_DIM))
+        # last timestep by slice + flatten, not integer index - same reason as model 1
+        h = torch.flatten(h[:, -1:, :], 1).reshape(-1, MAX_AGENTS, self.hidden)   # [B, A, H]
 
-        q = self.q(h).reshape(b, a, self.heads, self.dh).transpose(1, 2)   # [B, heads, A, dh]
-        k = self.k(h).reshape(b, a, self.heads, self.dh).transpose(1, 2)
-        v = self.v(h).reshape(b, a, self.heads, self.dh).transpose(1, 2)
+        q = self.q(h).reshape(-1, MAX_AGENTS, self.heads, self.dh).transpose(1, 2)
+        k = self.k(h).reshape(-1, MAX_AGENTS, self.heads, self.dh).transpose(1, 2)
+        v = self.v(h).reshape(-1, MAX_AGENTS, self.heads, self.dh).transpose(1, 2)
 
         scores = torch.matmul(q, k.transpose(-2, -1)) / (self.dh ** 0.5)   # [B, heads, A, A]
-        # adjacency as an additive mask. An agent always attends to itself.
-        eye = torch.eye(a, device=sequence.device).unsqueeze(0)
-        mask = ((adjacency + eye) > 0).unsqueeze(1)                        # [B, 1, A, A]
-        scores = scores.masked_fill(~mask, -1e4)
+        # Adjacency as an ARITHMETIC additive mask. An agent always attends to itself.
+        # masked_fill exports as Not + Where; multiply-and-add exports as Mul + Add, both of
+        # which MATLAB converts to built-in layers.
+        keep = torch.clamp(adjacency + self.eye, 0.0, 1.0).unsqueeze(1)     # [B, 1, A, A]
+        scores = scores * keep + (keep - 1.0) * 1e4
         attn = torch.softmax(scores, dim=-1)
 
-        ctx = torch.matmul(attn, v).transpose(1, 2).reshape(b, a, self.hidden)
+        ctx = torch.matmul(attn, v).transpose(1, 2).reshape(-1, MAX_AGENTS, self.hidden)
         h = self.norm1(h + self.drop(self.proj(ctx)))
         h = self.norm2(h + self.drop(self.ff(h)))
         return self.head(h)                                                # [B, A, 2]

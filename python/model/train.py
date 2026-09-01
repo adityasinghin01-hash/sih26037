@@ -101,7 +101,21 @@ def main() -> int:
     valid = ytr[ytr >= 0]
     npos = int((valid == 1).sum()); nneg = int((valid == 0).sum())
     pw = args.pos_weight or (nneg / max(npos, 1))
-    print(f"train samples={len(ytr):,}  positives={npos:,}  negatives={nneg:,}")
+    # The two models count differently and printing one number for both is how the
+    # "14,216 samples, 50,527 labels" confusion happened. Say which unit each figure is in.
+    unit = "frames (each holding up to MAX_AGENTS agents)" if grouped else "agent-sequences"
+    print(f"train batches over {len(ytr):,} {unit}")
+    print(f"labelled agent-sequences={npos + nneg:,}  positives={npos:,}  negatives={nneg:,}")
+
+    # 3. per-feature normalisation, measured on the TRAINING clips only and baked into the
+    # model as buffers so the exported ONNX takes raw contract-S2 features. Without it the
+    # two looming features (10, 11, clamped at +/-100 s) carry ~400x the numeric range of the
+    # box geometry features and the LSTM sees little else.
+    flat = xtr.reshape(-1, xtr.shape[-1]).numpy()
+    fmean = flat.mean(0)
+    fstd = flat.std(0)
+    nconst = int((fstd < 1e-6).sum())
+    print(f"normaliser fitted on train clips only; {nconst} constant feature(s) left at scale 1")
     print(f"pos_weight={pw:,.1f}  (rare-class weighting; without it the model answers 'no' always)")
     if npos == 0:
         print("\nERROR: no positive examples in training. Stop and report.", file=sys.stderr)
@@ -110,7 +124,9 @@ def main() -> int:
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device={dev}  gpus={torch.cuda.device_count()}")
     net = (YieldAttentionNet(hidden=args.hidden) if grouped
-           else YieldNet(hidden=args.hidden)).to(dev)
+           else YieldNet(hidden=args.hidden))
+    net.set_normaliser(fmean, fstd)
+    net = net.to(dev)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr)
     lossf = nn.CrossEntropyLoss(weight=torch.tensor([1.0, pw], device=dev), ignore_index=-100)
 
@@ -125,7 +141,7 @@ def main() -> int:
             logits = net(xb, atr[j].to(dev)) if grouped else net(xb)
             loss = lossf(logits.reshape(-1, 2), yb.reshape(-1))
             opt.zero_grad(); loss.backward(); opt.step()
-            tot += float(loss) * len(j)
+            tot += float(loss.detach()) * len(j)
 
         net.eval()
         with torch.no_grad():
@@ -142,7 +158,9 @@ def main() -> int:
 
     out = args.out or (args.features / f"yield_{args.model}.pt")
     torch.save({"state_dict": net.state_dict(), "model": args.model,
-                "hidden": args.hidden, "pos_weight": pw}, out)
+                "hidden": args.hidden, "pos_weight": pw,
+                "feat_mean": fmean.tolist(), "feat_std": fstd.tolist(),
+                "train_clips": split["train"], "val_clips": split["val"]}, out)
     print(f"\nsaved {out}")
     print("Report precision and recall for BOTH classes. Never report accuracy alone.")
     return 0

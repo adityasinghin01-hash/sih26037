@@ -24,7 +24,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from meteor.features import FEATURE_DIM, SEQ_LEN, EgoState, frame_features, to_sequence  # noqa: E402
-from meteor.parse_xml import (action_from_accel, ecef_to_speed, ecef_to_yaw_rate,        # noqa: E402
+from meteor.parse_xml import (action_from_accel, clamp_accel, ecef_to_speed, ecef_to_yaw_rate,        # noqa: E402
                               frame_index, parse_frame)
 
 FRAME_DIR = "Frame XML Annotations"
@@ -54,7 +54,7 @@ def build_clip(zf: zipfile.ZipFile, cand_action: float = 0.0):
         dt = STRIDE / 30.0
         speed = ecef_to_speed(prev_ecef, fr.ego_ecef, dt)
         yaw_rate = ecef_to_yaw_rate(prev_prev_ecef, prev_ecef, fr.ego_ecef, dt)
-        accel = (speed - prev_speed) / dt
+        accel = clamp_accel((speed - prev_speed) / dt)
         # feature 31 carries the action the ego ACTUALLY took, since METEOR never shows the
         # counterfactual. Overridden by the caller when a hypothetical action is being scored.
         action = cand_action if cand_action else action_from_accel(accel)
@@ -90,6 +90,10 @@ def main() -> int:
     ap.add_argument("--data", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--limit", type=int, default=0, help="only the first N clips")
+    ap.add_argument("--force", action="store_true",
+                    help="rebuild clips that already have an .npz. REQUIRED after any "
+                         "change to features.py or the ego helpers - otherwise the old "
+                         "vectors survive silently and the run measures stale code.")
     args = ap.parse_args()
 
     src = args.data / "METEOR_Dataset" / FRAME_DIR
@@ -106,7 +110,7 @@ def main() -> int:
 
     for i, z in enumerate(zips, 1):
         dest = args.out / f"{z.stem}.npz"
-        if dest.exists():
+        if dest.exists() and not args.force:
             skipped += 1
             continue
         try:
@@ -130,14 +134,27 @@ def main() -> int:
     # Say so loudly rather than let someone train on dead columns without knowing.
     if written:
         import glob as _g
-        sample = np.load(sorted(_g.glob(str(args.out / "*.npz")))[0])["x"].reshape(-1, FEATURE_DIM)
-        dead = [i + 1 for i in range(FEATURE_DIM) if sample[:, i].min() == sample[:, i].max()]
+        # Scan EVERY clip. Scanning only the first reports class one-hots as dead merely
+        # because that clip contained no bus, which is not the same thing at all.
+        lo = np.full(FEATURE_DIM, np.inf)
+        hi = np.full(FEATURE_DIM, -np.inf)
+        for f in sorted(_g.glob(str(args.out / "*.npz"))):
+            v = np.load(f)["x"].reshape(-1, FEATURE_DIM)
+            lo = np.minimum(lo, v.min(0)); hi = np.maximum(hi, v.max(0))
+        dead = [i + 1 for i in range(FEATURE_DIM) if hi[i] - lo[i] < 1e-12]
         if dead:
-            print(f"\nWARNING: features {dead} are CONSTANT and carry no information.")
-            print("  28-31 (ego speed, yaw rate, acceleration, candidate action) are expected to")
-            print("  be dead: METEOR's ECEF field is one clip-level location tag, not a per-frame")
-            print("  trajectory, and the annotations contain no ego motion at all. The model is")
-            print("  effectively training on 27 features. Report this; do not silently ignore it.")
+            print(f"\nWARNING: features {dead} are CONSTANT across all {written} clips.")
+            print(f"  The model is effectively training on {FEATURE_DIM - len(dead)} features.")
+            print("  Class one-hots 12-27 map to AGENTS.md S5 ClassIDs 0-15, so a dead one means")
+            print("  that class never appears in METEOR - dog, pushcart, animal-drawn cart and")
+            print("  static obstacle are the expected ones. Report the list; do not ignore it.")
+        # Ego features are the ones that go wrong quietly, so print their range either way.
+        print("\nego feature ranges (28 speed m/s, 29 yaw rate rad/s, 30 accel m/s^2, 31 action):")
+        for i in (27, 28, 29, 30):
+            print(f"  feature {i+1:>2}: {lo[i]:>10.4f} .. {hi[i]:>10.4f}")
+        print("  METEOR stores ego position once per clip, not per frame, so these are near-empty")
+        print("  by construction. They are gated to physical bounds in parse_xml.py; a range far")
+        print("  outside a real vehicle's means the gate has been removed or widened.")
 
     print(f"\nwritten={written} skipped={skipped}")
     print(f"samples={total:,}  positives={pos:,}  "

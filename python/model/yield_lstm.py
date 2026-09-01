@@ -32,11 +32,32 @@ class YieldNet(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(hidden, N_CLASSES),
         )
+        # Input scaling lives INSIDE the model, so the ONNX file MATLAB imports takes raw
+        # contract-S2 features and needs no MATLAB-side preprocessing to match. Buffers, not
+        # parameters: they are saved in the checkpoint and exported as graph constants.
+        self.register_buffer("feat_mean", torch.zeros(FEATURE_DIM))
+        self.register_buffer("feat_std", torch.ones(FEATURE_DIM))
+
+    def set_normaliser(self, mean, std) -> None:
+        """Install per-feature scaling measured on the TRAINING clips only.
+
+        Feature 10 (tau) and 11 (lateral time-to-cross) are clamped at +/-100 s while the box
+        geometry features live in [0,1]. Unscaled, the two looming features carry ~400x the
+        numeric range of everything else and the LSTM sees little but them.
+        """
+        self.feat_mean.copy_(torch.as_tensor(mean, dtype=torch.float32))
+        self.feat_std.copy_(torch.as_tensor(std, dtype=torch.float32).clamp_min(1e-6))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: [B, T, 31]
+        # x: [B, T, 31] - raw contract features; normalisation happens inside the graph
+        x = (x - self.feat_mean) / self.feat_std
         out, _ = self.lstm(x)
-        return self.head(out[:, -1, :])       # last timestep only
+        # Take the last timestep WITHOUT integer indexing. `out[:, -1, :]` exports as ONNX
+        # `Gather`, which importNetworkFromONNX has no built-in layer for; a slice followed by
+        # `flatten` exports as Slice + Flatten instead. Measured, not assumed - see
+        # to_onnx.py, which reports the operator list of every file it writes.
+        last = torch.flatten(out[:, -1:, :], 1)
+        return self.head(last)
 
     @torch.no_grad()
     def p_yield(self, x: torch.Tensor) -> torch.Tensor:

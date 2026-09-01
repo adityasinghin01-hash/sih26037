@@ -107,15 +107,34 @@ def parse_frame(xml_text: str, index: int, fps: float = 30.0) -> Frame:
     return Frame(index, t, boxes, labels, ego_ecef, width, height)
 
 
+# Physical bounds. A feature outside these is not a measurement, it is an artefact, and
+# feeding it to the network is worse than feeding a zero: an input of 5,576 m/s^2 sits four
+# orders of magnitude above the box-geometry features and drowns them.
+MAX_SPEED_MPS = 40.0        # 144 km/h. Nothing in METEOR's Hyderabad traffic goes faster.
+MAX_ACCEL_MPS2 = 10.0       # ~1 g. Harder than any road vehicle brakes.
+
+
 def ecef_to_speed(prev: tuple[float, float, float] | None,
                   cur: tuple[float, float, float] | None,
                   dt: float) -> float:
     """Ego speed in m/s from two ECEF positions. ECEF is metres, so this is a straight
-    Euclidean distance over time. Returns 0.0 when either position is missing."""
+    Euclidean distance over time. Returns 0.0 when either position is missing.
+
+    The gate is on SPEED, not on distance. Gating `d < 100 m` at dt = 1/30 s admits
+    3,000 m/s, and that is exactly what leaked through: measured max 557.7 m/s
+    (2,008 km/h) across 39 clips on 1 Sep 2026. METEOR records ego position once per clip,
+    so the rare frame where it changes produces an enormous spurious velocity.
+    """
     if prev is None or cur is None or dt <= 1e-9:
         return 0.0
-    d = math.dist(prev, cur)
-    return float(d / dt) if d < 100.0 else 0.0     # >100 m in one frame is a GPS jump
+    v = math.dist(prev, cur) / dt
+    return float(v) if v <= MAX_SPEED_MPS else 0.0     # a GPS jump, not motion
+
+
+def clamp_accel(accel: float) -> float:
+    """Reject a physically impossible acceleration. Same reasoning as ecef_to_speed: the
+    measured range before this gate was +/-5,576 m/s^2, or +/-568 g."""
+    return float(accel) if abs(accel) <= MAX_ACCEL_MPS2 else 0.0
 
 
 def ecef_to_yaw_rate(p0: tuple[float, float, float] | None,
