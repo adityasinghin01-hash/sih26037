@@ -117,11 +117,22 @@ def main() -> int:
 
     lstm = YieldNet().eval()
     attn = YieldAttentionNet().eval()
+
+    # A checkpoint holds ONE model. Exporting both from it means the other carries random
+    # weights - and the old version did exactly that while printing [OK] beside it, so a
+    # randomly-initialised network could have been handed to the planner stream as finished
+    # work. Nothing would have errored; it would simply have predicted noise.
+    trained: set[str] = set()
     if args_cli.model:
         ck = torch.load(args_cli.model, map_location="cpu", weights_only=False)
-        target = attn if ck.get("model") == "attention" else lstm
+        kind = ck.get("model", "lstm")
+        target = attn if kind == "attention" else lstm
         target.load_state_dict(ck["state_dict"])
-        print(f"loaded {args_cli.model}  (model={ck.get('model')})")
+        trained.add("yield_gnn" if kind == "attention" else "yield_lstm")
+        print(f"loaded {args_cli.model}  (model={kind})")
+        print(f"Exporting {sorted(trained)[0]} only. The other model has no weights in this "
+              f"checkpoint, so exporting it would write random numbers.")
+        print("To export both, train both and run this once per checkpoint.")
     else:
         print("NOTE: exporting UNTRAINED weights. Shapes and operators are real; numbers are not.")
 
@@ -139,6 +150,9 @@ def main() -> int:
     ok: dict[str, list[int]] = {}
     notes: list[str] = []
     for name, model, margs, inputs, axes in jobs:
+        if trained and name not in trained:
+            print(f"\n--- {name} --- SKIPPED: no weights for it in this checkpoint")
+            continue
         ok[name] = []
         print(f"\n--- {name} ---")
         for opset in OPSETS:
@@ -176,7 +190,8 @@ def main() -> int:
 
     print("\n" + "=" * 70)
     for name, opsets in ok.items():
-        print(f"{name}: exported opsets {opsets or 'NONE'}")
+        tag = "" if not trained else "  (trained weights)"
+        print(f"{name}: exported opsets {opsets or 'NONE'}{tag}")
     if not any(ok.values()):
         print("\nNothing exported. Report the full errors above.")
         return 1

@@ -111,9 +111,21 @@ def main() -> int:
     # model as buffers so the exported ONNX takes raw contract-S2 features. Without it the
     # two looming features (10, 11, clamped at +/-100 s) carry ~400x the numeric range of the
     # box geometry features and the LSTM sees little else.
-    flat = xtr.reshape(-1, xtr.shape[-1]).numpy()
+    # Fit on REAL agent rows only. The attention model pads every frame out to MAX_AGENTS
+    # with zeros, and those padded slots are 77.8% of the tensor - measured on this data.
+    # Including them drags every mean toward zero and distorts every scale, so model 2 would
+    # train on badly scaled inputs while model 1 trained on correct ones, and the ablation
+    # between them would be measuring the bug rather than the architecture.
+    n_feat = xtr.shape[-1]
+    if grouped:
+        real = (ytr.reshape(-1) >= 0)                       # [B*A] - padded slots are -100
+        flat = xtr.reshape(-1, xtr.shape[-2], n_feat)[real].reshape(-1, n_feat).numpy()
+    else:
+        flat = xtr.reshape(-1, n_feat).numpy()
     fmean = flat.mean(0)
     fstd = flat.std(0)
+    print(f"normaliser rows: {len(flat):,} "
+          f"({'real agents only, padding excluded' if grouped else 'all sequences'})")
     nconst = int((fstd < 1e-6).sum())
     print(f"normaliser fitted on train clips only; {nconst} constant feature(s) left at scale 1")
     print(f"pos_weight={pw:,.1f}  (rare-class weighting; without it the model answers 'no' always)")

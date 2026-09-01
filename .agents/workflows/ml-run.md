@@ -137,7 +137,14 @@ Report the threshold, the dangerous-error rate and the degradation table.
 
 ```bash
 python3 python/export/to_onnx.py --model "$DATA"/features/yield_lstm.pt
+python3 python/export/to_onnx.py --model "$DATA"/features/yield_attention.pt
 ```
+
+**Run it once per checkpoint.** A checkpoint holds one model, so the script now exports only
+that one and prints `SKIPPED` for the other. It used to export both, which meant the untrained
+one was written with random weights under an `[OK]` line - a randomly-initialised network could
+have reached the planner stream looking finished. Nothing would have errored; it would simply
+have predicted noise.
 
 **There is no `--opset` flag.** The script writes opsets 17, 18 and 20, then reads the opset back
 out of each file, because **torch silently upconverts anything below its implementation floor** —
