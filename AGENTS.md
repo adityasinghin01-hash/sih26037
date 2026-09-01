@@ -1,6 +1,6 @@
 # SIH26037 — agent rules
 
-Read by Antigravity, Cursor and Claude Code. Always applies.
+Read by Antigravity, Cursor and Claude Code.
 **Section 3 below is the frozen contract. It is the reason five people can work at once.**
 
 ## The project
@@ -12,7 +12,7 @@ unstructured Indian roads.
 
 The full PRD is distributed as a PDF, not kept in this repo. Your own tasks are in
 `teammates/<stream>.md`.
-**`TEAM.md` says who is doing what and what is blocked.**
+**`TEAM.md`: who does what, what is blocked.**
 
 **If the task is machine learning — data, features, training, or ONNX export — read `ML.md`
 at the repo root before doing anything.** It carries the verified facts about the dataset and
@@ -20,14 +20,14 @@ the per-task rules, and it is not loaded automatically.
 
 ## 1 · Hard rules
 
-**Never change section 3.** Five people build against it. A silent change breaks four of them.
-If you think it needs changing, stop and ask a human.
+**Never change section 3.** Six people build against it; a silent change breaks five.
+If it needs changing, stop and ask a human.
 
 **Never edit `matlab/baseline/`.** That is MathWorks' shipped planner, unmodified, and it is our
 control arm. A tuned baseline is a strawman and kills the result.
 
-**Verify, do not assume.** Never write a number you have not produced by running something.
-`TODO(unverified)` is acceptable; a plausible-sounding number is not.
+**Verify, do not assume.** Never write a number you did not produce by running something.
+`TODO(unverified)` is acceptable; a plausible number is not.
 
 **Errors are reported in full.** Never summarise a stack trace. A trimmed error costs a day.
 
