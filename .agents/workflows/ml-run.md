@@ -44,27 +44,58 @@ downloading the 91.6 GB of video, which we never use.
 
 ---
 
-## Step 0b — measure BOTH candidate labels, then stop
+## Step 0b — measure both labels, then apply the rule below
 
 ```bash
 python3 python/meteor/check_balance.py --data "$DATA" --clips <all of them> --every 10
 ```
 
-It reports `yield` and `assert` side by side on the same objects. Measured on 79 clips,
-1 Sep 2026:
+It reports two candidate labels on the same objects.
 
-| label | rate | 1 in N |
+| label | what it means | measured on 79 of 1,251 clips |
 |---|---|---|
-| `yield` | 0.172% | **1 in 581** |
-| `assert` = OverTaking OR LaneChanging OR Cutting | 7.166% | **1 in 14** |
+| `yield` | someone let the ego through | 1 in 581 |
+| `assert` = OverTaking OR LaneChanging OR Cutting | someone took the gap | 1 in 14 |
 
-`assert` has roughly **42x more signal**, and for a planner "they will not assert" carries
-nearly the same meaning as "they will yield".
+**Those numbers came from 6% of the dataset. Re-measure on everything you have before deciding
+anything - that is what this step is for.**
 
-**This is Aditya's decision, not yours and not the agent's.** Report both numbers on the full
-dataset and STOP. When he answers, pass it through as `--label yield` or `--label assert` in
-step 1. **Changing the label requires `--force`** - otherwise the old `.npz` files survive and
-you train on the previous label without any warning.
+### The decision rule — apply it yourself, do not wait
+
+Aditya set this rule; you apply it to whatever numbers you get.
+
+| What the full measurement shows | What to do |
+|---|---|
+| `assert` better than **1 in 50**, `yield` worse than **1 in 200** | **Train on `assert`.** Also run `yield` and report it as a measured failure |
+| both better than 1 in 50 | Train **both**, report side by side as an ablation |
+| `assert` also worse than 1 in 200 | **STOP and tell Aditya.** Neither label works and the question itself changes |
+
+**Report which label produced every number you quote, every time.** A precision figure with no
+label attached is unreadable by anyone else.
+
+### Why `assert` is the expected answer, so you can explain it
+
+- **METEOR's own paper groups these behaviours** and predicts them together — its benchmark task
+  is *action-behavior prediction*, not single-label yielding. Using `Yield` alone was never how
+  this dataset was meant to be used.
+- **The rarity is a published problem on this exact dataset** — Transfer-LMR (arXiv 2405.05354,
+  2024) exists to handle heavy-tailed behaviour classes in METEOR. It is a known hard problem,
+  not a mistake on our side. **Cite it.**
+- Imbalance literature calls 50:1 to 100:1 *severe*. `yield` at **581:1** is past where the
+  field characterises it at all. `assert` at 14:1 is ordinary.
+- **It is the more useful question.** The planner never needs "will they let me through". It
+  needs "is it safe to go", and "will they take the gap" answers that directly.
+
+### The one thing that must be said honestly
+
+**Not asserting is NOT the same as yielding.** A driver who simply carries on doing nothing is in
+the negative class for both. So never write *"our model predicts yielding"*. Write:
+
+> We predict whether the other road user will take the gap. Not taking it is what our safety
+> check actually needs to know.
+
+That sentence is Aditya's wording. **Use it as-is on any slide or report** - do not invent a
+different claim, and do not quietly upgrade it to "predicts yielding".
 
 ---
 

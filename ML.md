@@ -71,7 +71,9 @@ never use monocular depth.**
 same objects. Measured over 79 clips: `yield` is **1 in 581**, `assert`
 (`OverTaking OR LaneChanging OR Cutting`) is **1 in 14** - about 42x more signal, and to a
 planner "they will not assert" means nearly the same thing. `build_dataset.py --label` switches
-between them. **Report both and wait. Never choose it yourself.**
+between them. **Aditya has set a decision rule - see `/ml-run` step 0b - so apply it to your own
+full-dataset numbers rather than waiting. Escalate only if BOTH labels come out worse than
+1 in 200**, which means the question itself has to change.
 
 **The label is too rare to train on as it stands.** Over 39 clips: **109 positives in 68,011
 samples (0.160%)**, and the by-clip split leaves **6 positives in validation**. Every figure
