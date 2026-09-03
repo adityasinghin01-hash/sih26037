@@ -15,10 +15,33 @@ function cmd = chooseVelocity(role, vo, egoState, opts)
 %   to write because it feels like a missing branch. It is the safety argument.
 %
 %   WHY THERE IS NO LATERAL AVOIDANCE HERE
-%   Only HEAD_ON steers, because picking a side is intrinsic to Rule 14. Every
-%   other kind of going-around is a lateral CANDIDATE PATH and belongs to D6,
+%   Only HEAD_ON steers, because picking a side is intrinsic to the head-on rule.
+%   Every other kind of going-around is a lateral CANDIDATE PATH and belongs to D6,
 %   which can check it against both futures. Steering per-agent per-step here
 %   would dither, and dithering mid-junction is what causes the accident.
+%
+%   WHICH SIDE, AND WHY IT IS NOT THE MARITIME SIDE  (settled 4 September 2026)
+%   COLREGs buys us LEGIBILITY, and legibility means matching what the other driver
+%   already expects. On two of our roles the maritime rule and the Indian rule agree,
+%   and on one they are opposites:
+%
+%     CROSSING - they AGREE, which is why assignRoles can use the maritime sectors.
+%       COLREGs Rule 15 gives way to the vessel on your starboard. Rules of the Road
+%       Regulations, 1989, reg. 9: on entering an unregulated intersection a driver
+%       shall "give way to all traffic approaching the intersection on his right hand."
+%       Starboard is the right hand. Same answer.
+%
+%     HEAD-ON - they are OPPOSITE, and India wins.
+%       COLREGs Rule 14 alters to STARBOARD so vessels pass port to port. That is a
+%       keep-right convention. India keeps left: reg. 2 says a driver shall drive
+%       "as close to the left side of the road as may be expedient and shall allow all
+%       traffic which is proceeding in the opposite direction to pass on his right hand
+%       side." Oncoming traffic passes on our RIGHT, so we move LEFT.
+%
+%   Importing the maritime direction literally here would steer into oncoming traffic.
+%   opts.headOnSteer_rad is therefore POSITIVE (left) by default, and it is derived from
+%   a citable regulation rather than chosen. Flip the sign only for a right-hand-traffic
+%   country, and say so in the run config if you ever do.
 %
 %   INPUTS
 %     role      (1,1) uint8   role code (S7): 0 SAFE, 1 GIVE_WAY, 2 STAND_ON,
@@ -28,7 +51,7 @@ function cmd = chooseVelocity(role, vo, egoState, opts)
 %     egoState  (1,1) struct  .Position (m), .Velocity (m/s), .Yaw (rad)
 %     opts.giveWayAccel_mps2    one substantial deceleration,    default -2.5
 %     opts.headOnAccel_mps2     ease off while altering course,  default -1.5
-%     opts.headOnSteer_rad      POSITIVE IS LEFT,                default  0.15
+%     opts.headOnSteer_rad      POSITIVE IS LEFT (India),        default  0.15
 %     opts.overtakeAccel_mps2   keep clear until past and clear, default -1.0
 %     opts.emergencyAccel_mps2  when h < 0,                      default -6.0
 %     opts.gradient_rad         road gradient, + is uphill,      default  0.0
@@ -47,9 +70,13 @@ function cmd = chooseVelocity(role, vo, egoState, opts)
 %
 %   FRAME: x forward, y left, z up. Positive SteerAngle is LEFT.
 %
-%   TODO(unverified): .Reason is a string scalar. AGENTS.md section 3 defines S4
-%   and has not been read here. If S4 fixes Reason as a char array or a numeric
-%   code, this is a one-line change in iPack. Check with Aditya.
+%   .Reason IS A STRING, AND THAT MATCHES THE CONTRACT  (checked 4 September 2026)
+%   AGENTS.md section 3, S4 declares `.Reason string`, so a MATLAB string scalar is
+%   correct and no change is needed here.
+%   ONE CONSEQUENCE FOR PERSON B: Simulink and Stateflow handle the string type poorly
+%   inside buses, and Embedded Coder restricts it further - which E9 needs for the PIL
+%   latency numbers. If the chart cannot carry .Reason as a string, that is a CONTRACT
+%   question for Aditya, not a silent change here. Section 3 is frozen.
 %
 %   See also SIH.PLANNER.VELOCITYOBSTACLE, SIH.PLANNER.ASSIGNROLES
 
@@ -100,13 +127,17 @@ switch role
                     "STAND_ON: hold course and speed (Rule 17)");
 
     case GIVE_WAY
+        % Maritime Rule 15 and RRR 1989 reg. 9 agree here: give way to the right.
         cmd = iPack(iZeroIfStopped(opts.giveWayAccel_mps2, stopped), 0, UNSTRUCTURED, ...
-                    "GIVE_WAY: one early substantial deceleration (Rule 15/16)");
+                    "GIVE_WAY: one early substantial deceleration (Rule 15/16; RRR reg. 9)");
 
     case HEAD_ON
-        % Both vehicles alter to the SAME side, so the choice is predictable.
+        % Both vehicles alter to their own LEFT, so the choice is predictable and it is
+        % what the other driver already expects. Rules of the Road Regulations, 1989,
+        % reg. 2 - oncoming traffic passes on our right. NOT COLREGs Rule 14, which
+        % alters to starboard and would steer us into the oncoming stream. See header.
         cmd = iPack(iZeroIfStopped(opts.headOnAccel_mps2, stopped), opts.headOnSteer_rad, ...
-                    UNSTRUCTURED, "HEAD_ON: both alter to the same side (Rule 14)");
+                    UNSTRUCTURED, "HEAD_ON: both alter left, oncoming passes right (RRR 1989 reg. 2)");
 
     case OVERTAKING
         cmd = iPack(iZeroIfStopped(opts.overtakeAccel_mps2, stopped), 0, UNSTRUCTURED, ...

@@ -2,6 +2,7 @@
 description: Stream D Person B - build the Simulink model and Stateflow chart that close the loop and call Person A's planner functions.
 ---
 
+
 # /plan-harness — the closed loop, and the chart that drives it
 
 **You are Person B.** You own **the Simulink model and the Stateflow chart**. Person A owns
@@ -107,12 +108,28 @@ geometry inside the chart, it belongs in `+planner/` and it is A's.
 
 ## Step 3 — call A's functions
 
+**`chooseVelocity` exists now** — D2 was merged on 3 September (PR #3). Its full signature is:
+
 ```matlab
-cmd = sih.planner.chooseVelocity(role, vo, egoState);
+function cmd = sih.planner.chooseVelocity(role, vo, egoState, opts)
 ```
 
-Until that exists, call a stub with the same signature. **The signature is agreed in
-`plan/CONTRACT-AB.md` before A writes the body** — check there, do not guess.
+`opts` is a set of **optional name-value** tuning arguments, so you call it with three:
+
+```matlab
+cmd = sih.planner.chooseVelocity(role, vo, egoState);                       % all defaults
+cmd = sih.planner.chooseVelocity(role, vo, egoState, 'gradient_rad', 0.1);  % tuned
+```
+
+Both are valid. A three-argument call is not a bug — it takes every default.
+
+**What comes back** is an S4 `EgoCommand` with `.Accel`, `.SteerAngle`, `.Mode` and `.Reason`
+only. **`Signal`, `Gear`, `Committed` and `MirrorsFolded` are yours** — they are state-machine
+decisions and belong in the chart.
+
+**One thing to check early:** `.Reason` is a MATLAB `string`, which is what S4 specifies. Simulink and Stateflow handle strings poorly inside buses, and Embedded Coder restricts them further — which E9 needs for the PIL latency numbers. **If the chart cannot carry it, that is a contract question for Aditya, not a change you make.** Section 3 is frozen.
+
+**The signature is agreed in `plan/CONTRACT-AB.md`** — check there, do not guess.
 
 ## Step 4 — log the safety number, every step
 
@@ -145,8 +162,13 @@ into a comment.
 runtests('matlab/tests')
 ```
 
-All of them, not just yours. **A's 12 geometry tests are your early warning** — if they break
+All of them, not just yours. **A's 14 geometry tests are your early warning** — if they break
 after you change something, you changed something you do not own.
+
+**Before you build anything, read [`plan/OPENTRAFFICLAB-R2026a.md`](../../plan/OPENTRAFFICLAB-R2026a.md).**
+Stock OpenTrafficLab does **not** run on R2026a — it dies on the first `advance()`. Two fixes,
+both outside their folder, both already applied for the planner; **one of them you have to
+repeat in whatever builds your scenario** (`c.IsVisible = true` before the first `advance`).
 
 ## Never
 

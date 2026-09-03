@@ -1,0 +1,116 @@
+
+===== CHECK 2 : LIDAR RETURNS OFF A CUSTOM COW MESH =====
+Date run : 02-Sep-2026 01:38:10
+Release  : 2026a
+
+[1] Building an UNMARKED road...
+    OK. One 12 m lane, marking = Unmarked (no painted lines).
+[2] Building a custom cow mesh from explicit vertices/faces...
+    Mesh built: 48 vertices, 72 triangular faces.
+    Bounds  X[-0.95 1.42]  Y[-0.33 0.33]  Z[0.01 1.38] metres
+    extendedObjectMesh created OK.
+[3] Adding the cow to the scenario as a custom-mesh actor...
+    OK. Cow ActorID = 1, standing at [38.0 1.5 0.0].
+[4] Adding the ego vehicle...
+    OK. Ego ActorID = 2, driving 2 m -> 30 m at 8 m/s.
+[5] Configuring lidarPointCloudGenerator...
+    OK. MaxRange 80 m, mounted 1.6 m high.
+[6] Running the simulation and counting points...
+
+    time     total pts    pts ON COW     ego x       
+    --------------------------------------------------
+
+***** ERROR *****
+Identifier : MATLAB:UndefinedFunction
+Message    : Undefined function 'actorPoses' for input arguments of type 'driving.scenario.Vehicle'.
+  at check02_lidar_cow (line 79)
+***** SEND THIS ENTIRE BLOCK BACK, UNSUMMARISED *****
+
+===== CHECK 2 : LIDAR RETURNS OFF A CUSTOM COW MESH =====
+Date run : 02-Sep-2026 01:39:33
+Release  : 2026a
+
+[1] Building an UNMARKED road...
+    OK. One 12 m lane, marking = Unmarked (no painted lines).
+[2] Building a custom cow mesh from explicit vertices/faces...
+    Mesh built: 48 vertices, 72 triangular faces.
+    Bounds  X[-0.95 1.42]  Y[-0.33 0.33]  Z[0.01 1.38] metres
+    extendedObjectMesh created OK.
+[3] Adding the cow to the scenario as a custom-mesh actor...
+    OK. Cow ActorID = 1, standing at [38.0 1.5 0.0].
+[4] Adding the ego vehicle...
+    OK. Ego ActorID = 2, driving 2 m -> 30 m at 8 m/s.
+[5] Configuring lidarPointCloudGenerator...
+    OK. MaxRange 80 m, mounted 1.6 m high.
+[6] Running the simulation and counting points...
+
+    time     total pts    pts ON COW     ego x       
+    --------------------------------------------------
+    0.1      90000        11             2.8         
+    0.2      90000        14             3.6         
+    0.3      90000        14             4.4         
+    0.4      90000        14             5.2         
+    0.5      90000        19             6.0         
+    0.6      90000        20             6.8         
+    0.7      90000        16             7.6         
+    0.8      90000        19             8.4         
+    0.9      90000        24             9.2         
+    1.0      90000        23             10.0        
+    1.1      90000        28             10.8        
+    1.2      90000        25             11.6        
+    1.3      90000        30             12.4        
+    1.4      90000        30             13.2        
+    1.5      90000        37             14.0        
+    1.6      90000        37             14.8        
+    1.7      90000        41             15.6        
+    1.8      90000        38             16.4        
+    1.9      90000        52             17.2        
+    2.0      90000        50             18.0        
+    2.1      90000        61             18.8        
+    2.2      90000        63             19.6        
+    2.3      90000        75             20.4        
+    2.4      90000        77             21.2        
+    2.5      90000        95             22.0        
+    2.6      90000        102            22.8        
+    2.7      90000        114            23.6        
+    2.8      90000        140            24.4        
+    2.9      90000        160            25.2        
+    3.0      90000        191            26.0        
+    3.1      90000        221            26.8        
+    3.2      90000        273            27.6        
+    3.3      90000        318            28.4        
+    3.4      90000        429            29.2        
+    3.5      90000        429            29.2        
+    3.6      90000        429            29.2        
+    3.7      90000        429            29.2        
+    3.8      90000        429            29.2        
+    3.9      90000        429            29.2        
+    4.0      90000        429            29.2        
+    4.1      90000        429            29.2        
+    4.2      90000        429            29.2        
+    4.3      90000        429            29.2        
+    4.4      90000        429            29.2        
+    4.5      90000        429            29.2        
+    4.6      90000        429            29.2        
+    4.7      90000        429            29.2        
+    4.8      90000        429            29.2        
+    4.9      90000        429            29.2        
+    5.0      90000        429            29.2        
+    5.1      90000        429            29.2        
+    5.2      90000        429            29.2        
+    5.3      90000        429            29.2        
+    5.4      90000        429            29.2        
+    5.5      90000        429            29.2        
+    5.6      90000        429            29.2        
+    5.7      90000        429            29.2        
+    5.8      90000        429            29.2        
+    5.9      90000        429            29.2        
+
+===== VERDICT =====
+Any lidar points at all      : YES
+Max points landing ON THE COW: 429   (at t = 3.4 s)
+
+  PASS. Lidar returns come off the custom cow mesh.
+  The in-loop perception design HOLDS. Proceed to check 3.
+
+Figure saved: check02_pointcloud.png  <-- send this image too

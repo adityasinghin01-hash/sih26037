@@ -96,22 +96,28 @@ the same thing.
 ### Built and RUN — trust it
 - The whole ML pipeline: fetch, features, split, train, evaluate, ONNX export. Both yield models
 - Three Python test suites: contract, parity fixture, evaluation metrics
-- `matlab/+sih/+planner/`: `assignRoles`, `velocityObstacle`, `NegotiatingStrategy`, and
-  **12 passing geometry tests** in `matlab/tests/testPlannerGeometry.m`
+- `matlab/+sih/+planner/`: `assignRoles`, `velocityObstacle`, `chooseVelocity` (D2, merged
+  3 Sep) and `NegotiatingStrategy`
+- **42 passing MATLAB tests on R2026a, verified by running on 4 September 2026:** 14 geometry
+  + 19 D2 + 9 subclass. The `.m` extension is required — `runtests('.../testX')` without it
+  errors with `MATLAB:unittest:TestSuite:UnrecognizedSuite`
+- **OpenTrafficLab runs, but NOT unmodified** on R2026a. Two fixes, both outside their folder.
+  See `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure
 
 ### Written and CHECKED AGAINST DOCS, never executed — treat as unverified
 - `matlab/+sih/+prediction/buildFeatureFrame.m` and `matlab/tests/testFeatureParity.m`
 - `matlab/+sih/+models/` — the three MATLAB trainers
 - `derisk/check04_onnx_lstm.m`
 
-**Four real defects have already been found in this category, plus two broken paths.** Function
-names and signatures were verified against the MathWorks documentation, but **verified by reading
-is not verified.** `/first-run` exists to close this. Expect it to find something.
+**Defects keep being found in this category — seven on 4 September 2026 alone**, two of which
+stopped the simulation running at all. Function names and signatures were verified against the
+MathWorks documentation, but **verified by reading is not verified.** `/first-run` exists to
+close this. Expect it to find something.
 
 ### Not built at all
 - Everything in `matlab/+sih/+scenario/`, `+perception/`, `+metrics/`
-- `matlab/+sih/+planner/` D2 through D11 — the command, the contingency planner, the barriers,
-  reversibility, turns, handover
+- `matlab/+sih/+planner/` **D6 through D11** — the contingency planner, the barriers,
+  reversibility, turns, handover. (**D2 is done**, merged 3 Sep.)
 - The Simulink model and the Stateflow chart
 - **`matlab/baseline/` is EMPTY.** That is the competitor we compare against. Until MathWorks'
   shipped planner is in there, unmodified, **no number this project produces is comparable to
