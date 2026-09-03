@@ -56,6 +56,7 @@ returns a fixed command, and the real function drops into a slot that already wo
 | `chooseVelocity` | role (S7), vo output, `egoState` struct, `opts` | EgoCommand (S4) | **done, tested** — 19 tests |
 | `predictAgentFutures` | one track (S1), PYield and Valid (S3), `opts` | 1x2 futures, YIELD and ASSERT, each with `.States` `.Speeds` `.Probability` | **done, tested** — 17 tests |
 | `generateCandidates` | `egoState` struct, `referencePathFrenet`, `opts` | candidate array, each with `.States` `.Global` `.LateralOffset_m` | **done, tested** — 13 tests |
+| `checkTrajectorySafety` | one candidate, one future, `opts` | `.Safe` per timestep, `.SafePrefixSteps`, `.AllSafe`, `.FirstUnsafeTime` | **done, tested** — 14 tests |
 | *(add a row before you write the function, not after)* | | | |
 
 **`egoState` is a struct** with `.Position`, `.Velocity` and `.Yaw`, packed by `NegotiatingStrategy`.
