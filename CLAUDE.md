@@ -1,6 +1,9 @@
 # CLAUDE.md — read this before you touch anything
 
-**Read `AGENTS.md` next. Its section 3 is the frozen contract** and it is the reason six people
+**Read [`HANDOFF.md`](HANDOFF.md) first** — it is dated, it says what changed and what each person
+does next, and it is short. Tell your human what is in their section before doing anything else.
+
+**Then read `AGENTS.md`. Its section 3 is the frozen contract** and it is the reason six people
 can work at once. Everything below is what `AGENTS.md` does not carry: who is doing what right
 now, what actually exists, and what has never been run.
 
@@ -119,9 +122,9 @@ close this. Expect it to find something.
 - `matlab/+sih/+planner/` **D6 through D11** — the contingency planner, the barriers,
   reversibility, turns, handover. (**D2 is done**, merged 3 Sep.)
 - The Simulink model and the Stateflow chart
-- **`matlab/baseline/` is EMPTY.** That is the competitor we compare against. Until MathWorks'
-  shipped planner is in there, unmodified, **no number this project produces is comparable to
-  anything.**
+- **`matlab/baseline/` has never been RUN.** MathWorks' shipped planner is now in there,
+  unmodified and checksummed (4 Sep) and it parses cleanly — but `checkcode` is not a run, so
+  **no number this project produces is comparable to anything yet.** See `matlab/baseline/BASELINE.md`.
 
 ---
 

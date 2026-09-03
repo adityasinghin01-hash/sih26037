@@ -10,6 +10,7 @@ unstructured Indian roads.
 > An Indian junction has no controller. We built the planner that negotiates instead of waiting -
 > in MATLAB, against a cow that behaves like a cow.
 
+**Latest state and per-person next steps: `HANDOFF.md`.**
 PRD: a PDF, ask Aditya. Your tasks: your stream folder, `ml/` or `plan/`.
 Who does what: `TEAM.md`. **The World is Aditya's, not a folder here** - `S1` and `S9` come
 from him.

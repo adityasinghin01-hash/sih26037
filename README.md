@@ -9,7 +9,10 @@
 
 ## Start here
 
-**0. Read [`TEAM.md`](TEAM.md).** One page: who is doing what, what nobody may touch, which
+**0a. Read [`HANDOFF.md`](HANDOFF.md) — what changed most recently, and what YOU do next.**
+One section per person, and the fastest way back into the project.
+
+**0b. Read [`TEAM.md`](TEAM.md).** One page: who is doing what, what nobody may touch, which
 single file you open, and what is blocked on a human right now.
 
 
@@ -77,7 +80,8 @@ the streams still describe *what* is owned, but the roles describe *who works to
 
 ### Two jobs that need nobody and are blocking everyone
 
-1. **Fill `matlab/baseline/`** *(Role 2)* — clone MathWorks' shipped planner, **change nothing**.
+1. **RUN `matlab/baseline/`** *(Stream E)* — it is filled and checksummed as of 4 Sep but has
+   **never been executed**, so nothing is comparable yet. **Change nothing inside it.**
    It is currently EMPTY. Until it is there, no number this project produces is comparable to
    anything and the "we beat the baseline" claim has nothing behind it. This is a
    clone-and-don't-touch job, not a build.

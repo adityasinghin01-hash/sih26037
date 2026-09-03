@@ -8,8 +8,11 @@
 >
 > ### Your first task needs nobody, and it is blocking everyone
 >
-> **`matlab/baseline/` is EMPTY.** It is supposed to hold MathWorks' shipped planner,
-> completely unmodified — the thing we compare ourselves against.
+> **E1 IS DONE — `matlab/baseline/` is filled** (4 Sep 2026), unmodified and checksummed.
+> **Your task is now to RUN it once, unmodified, and record exactly what happens.**
+> `checkcode` passes on all 7 files, but that is not a run — so there is still no comparison.
+> Read `matlab/baseline/BASELINE.md` first. If it errors on R2026a the way OpenTrafficLab did,
+> **that is a finding: write it down, do not fix it.**
 >
 > ```bash
 > # from the repo root, and then CHANGE NOTHING inside it
