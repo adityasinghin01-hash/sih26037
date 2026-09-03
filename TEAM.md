@@ -79,7 +79,7 @@ and your AI assistant works blind — it invents function names and breaks other
 | # | What | Who | Notes |
 |---|---|---|---|
 | 1 | **MATLAB installed on three machines** | Aditya, Planner B, ML person | **The single biggest blocker.** Aditya's Mac now has R2026a with 9/9 required products (`derisk/check01_output.txt`); the free ONNX converter add-on is still missing there. The other two machines are unconfirmed |
-| 2 | **Fill `matlab/baseline/`** | Planner B | Empty today. Until it exists, **no number this project produces is comparable to anything** |
+| 2 | **RUN `matlab/baseline/`** | Stream E | **FILLED 4 Sep 2026**, unmodified and checksummed (`matlab/baseline/BASELINE.md`). **But it has never been RUN**, so there is still no comparison. Running it once is now the blocker |
 | 3 | **RoadRunner licence 41087767** | Aditya | The one problem-statement requirement we cannot currently meet |
 | 4 | Which label to train on | ML person applies the rule in `ml/ReadThis.md` | Only escalates if BOTH labels come out worse than 1 in 200 |
 

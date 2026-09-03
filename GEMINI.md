@@ -1,6 +1,9 @@
 # Antigravity-specific rules
 
-Read `AGENTS.md` first — it carries the project rules and the frozen contract, and applies to
+**Read [`HANDOFF.md`](HANDOFF.md) first** — dated, one section per person, says what changed and
+what to do next. Tell your human what is in their section before doing anything else.
+
+Then read `AGENTS.md` — it carries the project rules and the frozen contract, and applies to
 every tool. This file adds only what is specific to Antigravity, and overrides `AGENTS.md` on
 conflict.
 

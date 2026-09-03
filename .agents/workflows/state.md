@@ -22,7 +22,8 @@ starting point that may be out of date; the repository is the truth.
    for d in matlab/+sih/*/ ; do echo "$d $(ls -1 $d 2>/dev/null | wc -l) files"; done
    ls matlab/baseline/ 2>/dev/null | wc -l
    ```
-   **`matlab/baseline/` being empty is the finding that matters most** — it is the competitor we
+   **whether `matlab/baseline/` has been RUN is the finding that matters most** (it is filled as of
+   4 Sep but never executed) — it is the competitor we
    compare against, and until MathWorks' shipped planner is in there unmodified, no number this
    project produces is comparable to anything. Say so every time it is still empty.
 
@@ -51,7 +52,8 @@ NEXT MOST USEFUL  : one thing
 ## The blockers as of 1 Sep 2026 — verify each, do not just repeat them
 
 - **RoadRunner licence 41087767** — the only problem-statement requirement we cannot meet
-- **`matlab/baseline/` is empty** — no result is comparable until it is filled
+- **`matlab/baseline/` has never been RUN** — filled and checksummed 4 Sep, but `checkcode`
+  is not a run, so no result is comparable yet
 - **The opset number** — Stream D cannot wire the predictor until Stream C runs `check04`
 - **MATLAB is not installed everywhere** — Aditya's Mac has R2026a (9/9 required products,
   see `derisk/check01_output.txt`); the ONNX converter add-on is still MISSING there
