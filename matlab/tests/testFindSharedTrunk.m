@@ -24,6 +24,20 @@ c = struct('LateralOffset_m', offset_m, ...
            'States',[speed_mps*t, repmat(offset_m,n,1), zeros(n,1)]);
 end
 
+function c = iCurvedCand(offset_m, speed_mps, n, dt)
+% Same speed and duration as iCand, but it actually curves out to its offset the
+% way generateCandidates does. Its path is therefore LONGER than the straight
+% one covering the same ground. That extra length is not progress.
+t   = (0:n-1)' * dt;
+u   = t / t(end);
+lat = offset_m * (u.^2) .* (3 - 2*u);              % smooth 0 -> offset
+c = struct('LateralOffset_m', offset_m, ...
+           'TerminalSpeed_mps', speed_mps, ...
+           'Horizon_s', (n-1)*dt, ...
+           'Times', t, ...
+           'States',[speed_mps*t, lat, zeros(n,1)]);
+end
+
 % ---------------------------------------------------------------- the ranking
 
 function testLongestSafeStretchWins(tc)
@@ -54,6 +68,38 @@ c = [iCand(3, 5, 41, 0.1); iCand(0, 5, 41, 0.1); iCand(-1.5, 5, 41, 0.1)];
 trunk = sih.planner.findSharedTrunk(c, [30; 30; 30]);
 verifyEqual(tc, trunk.CandidateIndex, 2);
 verifyEqual(tc, trunk.LateralOffset_m, 0);
+end
+
+function testASwervingPathDoesNotWinOnLengthAlone(tc)
+% A path that curves out to one side is LONGER than a straight one that gets
+% just as far forward. If length is mistaken for progress the car swerves for
+% nothing, which is exactly what COLREGs Rule 8 forbids. Found by drawing the
+% output on 4 Sep 2026: the planner chose -3 m sideways when straight ahead was
+% equally safe and equally fast.
+c = [iCand(0, 5, 41, 0.1); iCurvedCand(-3, 5, 41, 0.1)];
+verifyGreaterThan(tc, iArcLength(c(2)), iArcLength(c(1)), ...
+    'the fixture is wrong: the curved path should be the longer one');
+trunk = sih.planner.findSharedTrunk(c, [41; 41]);
+verifyEqual(tc, trunk.CandidateIndex, 1);
+verifyEqual(tc, trunk.LateralOffset_m, 0);
+end
+
+function testStraightnessOnlyBreaksTiesItDoesNotOverrideSafety(tc)
+% Going straight must never be preferred over a genuinely safer path.
+c = [iCand(0, 5, 41, 0.1); iCurvedCand(-3, 5, 41, 0.1)];
+trunk = sih.planner.findSharedTrunk(c, [10; 41]);
+verifyEqual(tc, trunk.CandidateIndex, 2);
+end
+
+function testAmongEquallyStraightPathsTheOneThatMovesWins(tc)
+% Same offset, so straightness cannot separate them: now progress must.
+c = [iCand(0, 2, 41, 0.1); iCand(0, 9, 41, 0.1)];
+trunk = sih.planner.findSharedTrunk(c, [41; 41]);
+verifyEqual(tc, trunk.CandidateIndex, 2);
+end
+
+function d = iArcLength(c)
+d = sum(vecnorm(diff(c.States(:,1:2)), 2, 2));
 end
 
 function testAnExactTieIsResolvedDeterministically(tc)

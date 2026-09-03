@@ -26,12 +26,21 @@ function trunk = findSharedTrunk(candidates, prefixSteps, opts)
 %   Ties are the normal case, not the exception - every candidate that is safe
 %   for the whole horizon ties at the top. Broken in this order:
 %     1. longest safe stretch          - safety first, always
-%     2. most ground covered on it     - the trunk is the probe, so a trunk that
-%                                        does not move asks no question
-%     3. smallest sideways offset      - do not swerve unless swerving bought
+%     2. smallest sideways offset      - do not swerve unless swerving bought
 %                                        something, per COLREGs Rule 8
+%     3. most ground covered on it     - the trunk is the probe, so a trunk that
+%                                        does not move asks no question
 %     4. lowest index                  - deterministic, so two runs of the same
 %                                        input give the same answer
+%
+%   STRAIGHTNESS IS CHECKED BEFORE PROGRESS, AND THAT ORDER MATTERS.
+%   A path that curves out to one side is LONGER than a straight path reaching
+%   the same distance forward, so ranking by path length rewards swerving for
+%   nothing. Found on 4 Sep 2026 by drawing the output: with an identical safe
+%   length and terminal speed available straight ahead, the planner picked -3 m
+%   sideways purely because that arc was 0.1 m longer. Straightness only ever
+%   breaks a tie - it can never beat a genuinely safer path, because safety is
+%   compared first.
 %
 %   INPUTS
 %     candidates  Nx1 struct array from sih.planner.generateCandidates
@@ -102,8 +111,9 @@ for k = 1:n
     end
 end
 
-% Safety, then progress, then straightness, then index. See the header.
-order = sortrows([-steps, -progress, abs(offset), (1:n)'], [1 2 3 4]);
+% Safety, then straightness, then progress, then index. See the header - the
+% order of the middle two is deliberate and a swap re-introduces a real bug.
+order = sortrows([-steps, abs(offset), -progress, (1:n)'], [1 2 3 4]);
 best  = order(1,4);
 
 if timeOf(best) < opts.minTrunkTime_s
