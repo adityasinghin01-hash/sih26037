@@ -1,0 +1,54 @@
+
+===== CHECK 0+1 : ENVIRONMENT =====
+Date run : 03-Sep-2026 00:48:49
+Computer : PCWIN64
+
+--- MATLAB VERSION ---
+26.1.0.3346908 (R2026a) Update 5
+Release  : 2026a
+
+--- REQUIRED PRODUCTS ---
+  [ OK ]      MATLAB                             v26.1
+  [ OK ]      Simulink                           v26.1
+  [ OK ]      Automated Driving Toolbox          v26.1
+  [ OK ]      Computer Vision Toolbox            v26.1
+  [ OK ]      Image Processing Toolbox           v26.1
+  [ OK ]      Deep Learning Toolbox              v26.1
+  [ OK ]      Stateflow                          v26.1
+  [ OK ]      Sensor Fusion and Tracking Toolbox v26.1
+  [ OK ]      Navigation Toolbox                 v26.1
+
+--- NEEDED FOR SPECIFIC JOBS ---
+  [ absent ]  Lidar Toolbox                  PointPillars (model 5). Not needed otherwise
+  [ absent ]  Mapping Toolbox                real terrain elevation for the ghat road
+  [ absent ]  Parallel Computing Toolbox     GPU training. Slower without it, not blocked
+  [ absent ]  Simulink 3D Animation          the Unreal scenes. Stretch goal only
+
+--- YOLOX TRAINING (model 3) ---
+  [ absent ]  no YOLOX at all - Computer Vision Toolbox is missing
+
+--- ONNX IMPORT ---
+  [ MISSING ] no ONNX import.
+              Home -> Add-Ons -> Get Add-Ons -> "Deep Learning Toolbox Converter
+              for ONNX Model Format". Free, and the product installer does NOT
+              include it. check04 cannot run without it.
+
+--- FULL INSTALLED PRODUCT LIST ---
+---------------------------------------------------------------------
+MATLAB Version: 26.1.0.3346908 (R2026a) Update 5
+MATLAB License Number: 41087767
+Operating System: Microsoft Windows 11 Pro Version 10.0 (Build 26200)
+Java Version: Java is not loaded
+---------------------------------------------------------------------
+MATLAB                                                Version 26.1        (R2026a)
+Simulink                                              Version 26.1        (R2026a)
+Automated Driving Toolbox                             Version 26.1        (R2026a)
+Computer Vision Toolbox                               Version 26.1        (R2026a)
+Deep Learning Toolbox                                 Version 26.1        (R2026a)
+Image Processing Toolbox                              Version 26.1        (R2026a)
+Navigation Toolbox                                    Version 26.1        (R2026a)
+Sensor Fusion and Tracking Toolbox                    Version 26.1        (R2026a)
+Stateflow                                             Version 26.1        (R2026a)
+
+===== VERDICT =====
+All seven required products present. Proceed to check02_lidar_cow.m
