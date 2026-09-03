@@ -53,7 +53,7 @@ returns a fixed command, and the real function drops into a slot that already wo
 |---|---|---|---|
 | `velocityObstacle` | ego pos/vel, agent pos/vel, dMin | `.beta .lambda .tcpa .d` | **done, tested** |
 | `assignRoles` | ego state, TrackList (S1) | Role array (S4) | **done, tested** |
-| `chooseVelocity` | role (S7), vo output, `egoState` struct, `opts` | EgoCommand (S4) | D2 — not started |
+| `chooseVelocity` | role (S7), vo output, `egoState` struct, `opts` | EgoCommand (S4) | **done, tested** — 19 tests |
 | *(add a row before you write the function, not after)* | | | |
 
 **`egoState` is a struct** with `.Position`, `.Velocity` and `.Yaw`, packed by `NegotiatingStrategy`.
