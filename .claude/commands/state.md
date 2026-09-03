@@ -53,7 +53,14 @@ NEXT MOST USEFUL  : one thing
 - **RoadRunner licence 41087767** — the only problem-statement requirement we cannot meet
 - **`matlab/baseline/` is empty** — no result is comparable until it is filled
 - **The opset number** — Stream D cannot wire the predictor until Stream C runs `check04`
-- **MATLAB is not installed everywhere** — most of the remaining work needs it
+- **MATLAB is not installed everywhere** — Aditya's Mac has R2026a (9/9 required products,
+  see `derisk/check01_output.txt`); the ONNX converter add-on is still MISSING there
+
+**Closed since then — do not report these as open:**
+- **Does OpenTrafficLab run on our release?** Answered 4 Sep: **not unmodified.** Two fixes,
+  both applied, both outside their folder — `plan/OPENTRAFFICLAB-R2026a.md`
+- **D2 `chooseVelocity`** — merged 3 Sep (PR #3), 19 tests
+- **The planner suites** — 14 + 19 + 9 = 42 tests passing on R2026a, 4 Sep
 
 ## Deadline
 **Idea submission 20 September 2026.** Say how many days are left.

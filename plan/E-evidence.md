@@ -14,8 +14,10 @@
 > ```bash
 > # from the repo root, and then CHANGE NOTHING inside it
 > ```
-> Find the shipped example named in [`AGENTS.md`](../AGENTS.md) section 2, copy it in unmodified,
-> and record the exact example name and MATLAB version alongside it.
+> The example is named in **task E1 below** — *Motion Planning in Urban Environments Using
+> Dynamic Occupancy Grid Map*. **`AGENTS.md` section 2 does NOT name it** — it names the three
+> baseline *types*. Do not go looking there and copy in the Frenet highway example by mistake.
+> Copy it in unmodified and record the exact example name and MATLAB version alongside it.
 >
 > **Until that exists, no number this project produces is comparable to anything**, and the
 > claim the whole project rests on has nothing behind it. It is a clone-and-don't-touch job,
@@ -75,10 +77,11 @@ to open the right folder.
 
 Go to **mathworks.com**, sign in with your **college email**, and associate licence **41087767**.
 
-When the installer asks which products to install, tick **all seven**:
+When the installer asks which products to install, tick **all nine**:
 
 > MATLAB · Simulink · Automated Driving Toolbox · Computer Vision Toolbox ·
-> Image Processing Toolbox · Deep Learning Toolbox · Stateflow
+> Image Processing Toolbox · Deep Learning Toolbox · Stateflow ·
+> **Sensor Fusion and Tracking Toolbox · Navigation Toolbox**
 
 Then, inside MATLAB: **Home → Add-Ons → Get Add-Ons**, search for
 **"Deep Learning Toolbox Converter for ONNX Model Format"** and install it. It is free.
@@ -90,8 +93,10 @@ cd <where-you-cloned>/sih26037/derisk
 check01_environment
 ```
 
-You should see seven lines saying `[ OK ]`.
-**If any line says `MISSING`, stop and tell Aditya.** Nothing else will work until it is fixed.
+You should see nine lines saying `[ OK ]` under REQUIRED PRODUCTS.
+**If any line says `MISSING`, stop and tell Aditya** — with one exception:
+`[ MISSING ] no ONNX import` blocks only the yield predictor (Stream C, and D's wiring of
+it). D1-D5 and E1 do not need it. Carry on, and say which one you saw.
 
 ---
 
@@ -99,7 +104,8 @@ You should see seven lines saying `[ OK ]`.
 
 Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
 name and signature was checked against the MathWorks documentation, but **checked is not run**.
-Four real defects were already found that way and there are probably more.
+Defects have already been found exactly that way, and **seven more on 4 September 2026** —
+two of which stopped the simulation from running at all.
 
 The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
 everything that has never been executed, in the right order, and says what to look for.
@@ -179,7 +185,7 @@ not *"it says something about a null value"*. The complete message.
 
 **Two things to refuse if your agent suggests them:**
 
-1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — four other people build against it
+1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — five other people build against it
 2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
 
 **And never let it write a number you have not produced.** If the agent puts a figure in a comment

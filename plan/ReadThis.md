@@ -115,10 +115,16 @@ runtests('matlab/tests')
 | `velocityObstacle.m` | `beta`, `lambda`, `tcpa`, `d` for one agent |
 | `assignRoles.m` | which role each agent has (S7) |
 | `NegotiatingStrategy.m` | the OpenTrafficLab subclass your work plugs into |
-| `testPlannerGeometry.m` | 12 geometry tests, all passing. Run them before and after every change |
+| `testPlannerGeometry.m` | **14** geometry tests. Run them before and after every change |
+| `chooseVelocity.m` | D2 — role (S7) to EgoCommand (S4). Merged 3 Sep, 19 tests |
+| `testNegotiatingStrategy.m` | 9 tests guarding the OpenTrafficLab subclass. Needs OpenTrafficLab; skips cleanly without it |
 
 **These are the most trusted code in the repository.** If they break after you change something,
 you changed something you did not mean to.
+
+**Verified by running, not by reading:** 14 geometry + 19 D2 + 9 subclass = **42 tests, all
+passing on MATLAB R2026a, 4 September 2026.** Before you quote that number again, re-run them —
+it was wrong in three files for a week because nobody did.
 
 ## The one number that matters
 

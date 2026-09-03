@@ -41,7 +41,7 @@ Type the slash command in Antigravity, or just open the file and tell your agent
 | **`/ml-models`** | The three MATLAB-native models: YOLOX, DeepLab v3+, PointPillars |
 | **`/plan-work`** | Stream D person A: the planner functions, in build order |
 | **`/plan-harness`** | Stream D person B: the Simulink loop and Stateflow chart |
-| **`/plan-test`** | The 12 planner geometry tests, and what a failure means |
+| **`/plan-test`** | The 14 planner geometry tests, and what a failure means |
 | **`/state`** | Where the project is right now, and what is blocked |
 
 Antigravity reads `.agents/workflows/`; Claude Code reads `.claude/commands/`. **Both are kept

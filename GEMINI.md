@@ -24,3 +24,20 @@ acceptable answer; a plausible-sounding number is not.
 ## Errors
 Report them in full — the whole message, the whole stack. Never summarise. A trimmed error costs
 the team a day.
+
+## Two things that will waste your day if you do not know them
+
+**`runtests` needs the `.m`.** `runtests('matlab/tests/testPlannerGeometry.m')` works;
+without the extension MATLAB reads it as a folder and errors with
+`MATLAB:unittest:TestSuite:UnrecognizedSuite`. It is not a broken test file.
+
+**OpenTrafficLab does not run unmodified on R2026a.** Stock `DrivingStrategy` dies on the
+first `advance()` with `MATLAB:noSuchMethodOrField ... 'ReferencePoint'`. Two fixes, both
+outside `OpenTrafficLab/`, both already applied. Read `plan/OPENTRAFFICLAB-R2026a.md` before
+debugging any harness failure, and **never edit `OpenTrafficLab/`** — it is gitignored
+third-party code and every teammate has their own clone.
+
+## Current test counts, verified by running on 4 September 2026
+14 geometry + 19 D2 + 9 subclass = **42 passing** on MATLAB R2026a.
+**Re-run before quoting these.** Three files carried a stale count for a week, and one said
+13 when it had never been 13.

@@ -38,7 +38,8 @@ control arm. A tuned baseline is a strawman and kills the result.
   import (no `Gather`/`Scatter`) - written as an adjacency **matmul + softmax** it imports fine.
   `Adjacency` exists for exactly this. **The LSTM ships first and is never blocked by the GNN.**
 - **Do not import YOLO.** Use MATLAB's built-in YOLOX
-- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete `TrafficController`
+- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete `TrafficController`.
+  **Needs 2 fixes on R2026a** - see `plan/OPENTRAFFICLAB-R2026a.md`. Never edit its folder
 - **Dataset is METEOR**, not IDD-X
 - **Project the simulation down to the image plane. Never lift METEOR up to 3-D**
 

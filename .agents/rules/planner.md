@@ -53,5 +53,16 @@ Without it MATLAB says `Undefined base class 'DrivingStrategy'`, which reads lik
 broken. It is not.
 
 ## Never edit a test to make it pass
-The 12 geometry tests encode `AGENTS.md` S4 and S7. A test edited to go green hides a planner
+The 14 geometry tests encode `AGENTS.md` S4 and S7. A test edited to go green hides a planner
 that will drive into something.
+
+```matlab
+runtests('matlab/tests/testPlannerGeometry.m')   % the .m is REQUIRED - without it MATLAB
+                                                % errors: UnrecognizedSuite
+```
+
+## OpenTrafficLab does not run unmodified on R2026a
+Answered by running it on 4 September 2026. Stock `DrivingStrategy` dies on the first
+`advance()` with `MATLAB:noSuchMethodOrField ... 'ReferencePoint'`. Two fixes, both **outside**
+`OpenTrafficLab/`, both applied. **Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any
+harness failure** — you will otherwise spend a day on a known incompatibility.
