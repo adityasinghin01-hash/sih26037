@@ -2,6 +2,14 @@
 
 **Written 4 September 2026, 20:18 IST. Every row traces to something that was RUN.**
 
+> ### CORRECTED 4 September 2026, 22:0x IST — read `plan/BACKUP-PROBE-FINDING.md` first
+> The backup demo was run for the first time this evening and it changed three things in this
+> ledger. **The planner DOES drive** — the backup calls the real `sih.planner.*` unmodified and
+> completes a 610 m route, so Part 2 row 1 and Part 3's second sentence were understating us.
+> But **the probe never fires in either scenario**, S1 contains a genuine collision at 0.735 m,
+> and the defensive stand-in currently BEATS us on both scenarios. Part 2 has four new rows.
+> **Nothing about the probe-and-commit mechanism may be claimed until that gate is fixed.**
+
 `TEAM.md`, `HANDOFF.md`, `plan/D-planner.md`, `plan/E-evidence.md`, `ml/C-prediction.md` and three
 world files all refer to "the claim ledger". **It had never been written.** This is it, for the code
 side. The World's visual claims are Aditya's and live elsewhere.
@@ -31,7 +39,7 @@ side. The World's visual claims are Aditya's and live elsewhere.
 
 | ✗ Do not say | ✓ Say instead | Why |
 |---|---|---|
-| *"`h` never goes below zero"* | **"The planner is not yet in the loop. `h` is measured passively while OpenTrafficLab's car-following model drives, and it goes negative 13.3% of the time. Closing that loop is the next step."** | Measured: `min h = -0.782088`, **241 of 1815 samples negative**, deterministic. `NegotiatingStrategy.m:105` is still a TODO |
+| *"`h` never goes below zero"* | **"It does, and we report it. In the OpenTrafficLab harness the planner is only watching — 241 of 1815 samples negative. In the backup demo, where the planner actually drives, S1 is 47 of 1060 negative and S2 is 573 of 960."** | Three separate measured runs. `NegotiatingStrategy.m:105` is still a TODO **in the OpenTrafficLab harness only** — the backup calls the real planner and it drives |
 | *"We beat MathWorks' planner"* | **"We ran theirs unmodified and it does not complete. We do not yet have both planners on one scenario."** | No head-to-head exists. Theirs is a six-lidar urban intersection; ours is the OpenTrafficLab T-junction |
 | *"MathWorks' planner is broken"* | **"It fails identically on macOS/Apple Silicon and Windows x86 under R2026a Update 5."** | Two platforms, **one MATLAB version**. Older releases untested |
 | *"We formally verified our safety property"* | **"We log the barrier every step of every run, and the runs are reproducible."** | E9 cancelled — all 8 toolboxes absent from the licence |
@@ -39,7 +47,11 @@ side. The World's visual claims are Aditya's and live elsewhere.
 | *"Our ML model decides who yields"* | **"It does not clear its own safety bar, so it emits `Valid = false` and the planner falls back to geometry. Here is the number."** | 20.18% dangerous-error rate against a ≤1% target |
 | *"Validated on real road data"* | **"Tested against hand-constructed S9/S10. Not yet validated against World data."** | `matlab/+sih/+scenario/` and `+perception/` are empty |
 | *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples, so we cannot claim detection performance for them. Cows and tractors are present."** | Features `[23,24,25,27]` are dead — dog, pushcart, animal-drawn cart, static obstacle |
-| *"51 / 42 / 213 tests pass"* — any bare number | **Re-run it first.** `main` = 51 tests / 50 pass. `stream-d-a` = 214 / 213 | The count has been wrong in the docs three separate times |
+| *"51 / 42 / 213 tests pass"* — any bare number | **Re-run it first.** `main` = 51 tests / 50 pass. `stream-d-a` = **214 total, 213 pass, 1 fail, 0 skipped** — and only with `OpenTrafficLab/` cloned into the repo root; without it 7 tests silently SKIP and you get 206 | The count has been wrong in the docs **four** separate times |
+| *"The car probes, reads the response, then commits"* | **"The mechanism is implemented and the gate that triggers it does not currently open. Here is the measurement."** | `any(contains(o.Reason,"probe"))` = **0** in both S1 and S2. `plan/BACKUP-PROBE-FINDING.md` |
+| *"We pass the cow with 0.95 m clearance"* | **"The written manoeuvre does not run. Measured closest approach to the cow is 3.656 m."** | Per-actor minimum distance, S1, 1060 samples |
+| *"A defensive planner freezes where ours gets through"* | **"Not yet. On both scenarios the defensive stand-in currently does better than we do, and that is what we are fixing."** | S1: defensive 50.6 s vs ours 53.0 s. S2: defensive 208.5 m vs ours 90.9 m of 382.6 m |
+| *"S1 is collision-free"* | **Say nothing about S1 safety until it is fixed.** | `MC_WRONGSIDE` closes to **0.735 m** centre-to-centre against 1.30 m of body. The bodies overlap |
 
 ---
 
@@ -47,8 +59,14 @@ side. The World's visual claims are Aditya's and live elsewhere.
 
 > **"We do not yet have both planners on a common scenario. That is the next piece of work."**
 
-> **"Our planner computes the commands; in this run it is observing rather than driving. Closing that
-> loop is the last integration step."**
+> **"Our planner drives the demo — it computes every acceleration in it. In the separate
+> multi-agent OpenTrafficLab harness it is still only observing, and we will say which one you
+> are watching."**
+
+> **"The negotiation mechanism is built and its trigger is not firing yet, so what you are seeing
+> is the barrier and the geometry, not the probe."** — say this only while
+> `plan/BACKUP-PROBE-FINDING.md` step 1 is outstanding. Once the gate is fixed, delete this line
+> and re-measure.
 
 Saying these costs nothing. Having them extracted from us costs the project.
 

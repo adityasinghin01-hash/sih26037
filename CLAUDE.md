@@ -101,9 +101,12 @@ the same thing.
 - Three Python test suites: contract, parity fixture, evaluation metrics
 - `matlab/+sih/+planner/`: `assignRoles`, `velocityObstacle`, `chooseVelocity` (D2, merged
   3 Sep) and `NegotiatingStrategy`
-- **42 passing MATLAB tests on R2026a, verified by running on 4 September 2026:** 14 geometry
-  + 19 D2 + 9 subclass. The `.m` extension is required — `runtests('.../testX')` without it
-  errors with `MATLAB:unittest:TestSuite:UnrecognizedSuite`
+- **Test counts, re-run 4 September 2026 21:xx:** `main` = **51 tests, 50 pass, 1 fail**.
+  `stream-d-a` = **214 tests, 213 pass, 1 fail, 0 skipped**. The old "42 passing" counted only
+  three of the five files. **`OpenTrafficLab/` must be cloned into the repo root or 7 tests
+  silently SKIP** (206 instead of 213) — a skip is not a pass. The `.m` extension is required for
+  a FILE — `runtests('.../testX')` without it errors `MATLAB:unittest:TestSuite:UnrecognizedSuite`;
+  the folder form `runtests('matlab/tests')` is fine without it
 - **OpenTrafficLab runs, but NOT unmodified** on R2026a. Two fixes, both outside their folder.
   See `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure
 
@@ -117,14 +120,31 @@ stopped the simulation running at all. Function names and signatures were verifi
 MathWorks documentation, but **verified by reading is not verified.** `/first-run` exists to
 close this. Expect it to find something.
 
+### Built on a BRANCH, not yet on `main` — say which branch when you quote it
+- **`stream-d-a`** (12 ahead of `main`, no PR open as of 4 Sep 22:00): **D6 and D8** —
+  `planContingency`, `generateCandidates`, `predictAgentFutures`, `checkTrajectorySafety`,
+  `findSharedTrunk`, `checkTerminalStop`, `followTrunk`, `roadBarrier`, `speedLimit`.
+  Trunk mode **"B" is the default**. 214 tests.
+- **`stream-d-b`** (3 ahead, **20 behind** `main`): `sih_planner.slx` — 38 blocks, Stateflow chart
+  with seven outputs, a vehicle model and an `h` calculation. **Loads with 0 unresolved refs and
+  simulates in 47 s on the Mac.** It is the only harness that actually consumes `SteerAngle` —
+  see `plan/HARNESS-STEERING-FINDING.md`.
+
 ### Not built at all
 - Everything in `matlab/+sih/+scenario/`, `+perception/`, `+metrics/`
-- `matlab/+sih/+planner/` **D6 through D11** — the contingency planner, the barriers,
-  reversibility, turns, handover. (**D2 is done**, merged 3 Sep.)
-- The Simulink model and the Stateflow chart
-- **`matlab/baseline/` has never been RUN.** MathWorks' shipped planner is now in there,
-  unmodified and checksummed (4 Sep) and it parses cleanly — but `checkcode` is not a run, so
-  **no number this project produces is comparable to anything yet.** See `matlab/baseline/BASELINE.md`.
+- `matlab/+sih/+planner/` **D9, D10, D11** — reversibility, turns, handover
+- **`arbitrate.m`** — ruled in `plan/ARBITRATION-RULING.md`, not yet written. It is what wires
+  `chooseVelocity` into `NegotiatingStrategy.m:105`
+
+### RUN, and the result was a finding
+- **`matlab/baseline/` HAS been run — and it FAILS.** It dies **19.7 s** into its own shipped
+  scenario at MathWorks' own `error()`, **0 of 120 candidates collision-free**, identically on
+  macOS/Apple Silicon and Windows x86 under R2026a Update 5. **That is the result. Never edit
+  that folder to make it survive.** `plan/BASELINE-R2026a.md`.
+- **The planner DRIVES in the backup demo** — `~/Desktop/SIH26037-Reference/build/backup/` calls
+  the real `sih.planner.*` unmodified and completes a 610 m route. **But the probe never fires,
+  S1 contains a collision at 0.735 m, and the defensive stand-in currently beats us on both
+  scenarios.** Read `plan/BACKUP-PROBE-FINDING.md` before repeating any demo claim.
 
 ---
 

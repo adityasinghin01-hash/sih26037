@@ -44,7 +44,7 @@ proven. It now is. **The demo runs on the Mac.**
 
 | Piece | On the Mac | Evidence |
 |---|---|---|
-| Stream D planner — D6 and D8 | **212 of 213 tests pass** | `stream-d-a` run on the Mac, 4 Sep. The 1 failure is Stream C's `testFeatureParity` |
+| Stream D planner — D6 and D8 | **214 tests: 213 pass, 1 fail, 0 skipped** | `stream-d-a` re-run on the Mac 4 Sep 21:xx. The 1 failure is Stream C's `testFeatureParity`. **Requires `OpenTrafficLab/` cloned in the repo root** — without it 7 tests silently SKIP and the total reads 206 |
 | Simulink model + Stateflow chart | **loads with 0 unresolved refs; simulates in 47 s; logs `h`** | `sih_planner.slx` from `stream-d-b`, loaded and simulated on the Mac |
 | OpenTrafficLab subclass | **9/9** | `testNegotiatingStrategy.m` |
 | `matlab/baseline/` | **runs, and fails at 19.7 s — identically to Windows** | `plan/BASELINE-R2026a.md` |
