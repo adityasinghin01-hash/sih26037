@@ -285,24 +285,53 @@ One baseline is attackable as strawman-by-selection. Three is not.
 evidence that ours discriminates — that is the scientific contribution, and it costs nothing extra
 because we are building all three anyway.
 
-### E9 — Prove it, then break it  *(NEW — we have the whole licence)*
+### ~~E9 — Prove it, then break it~~  **CANCELLED 4 September 2026 — WE DO NOT HAVE THE LICENCE**
 
-**Simulink Design Verifier** does automatic theorem proving on Stateflow. **Prove `h >= 0` holds
-inside our own chart** instead of borrowing a CBF from a paper.
-*Caveat: the literature reports Stateflow has limited formal-analysis support and incomplete
-coverage. Test it on a toy chart in week one before anyone promises it on a slide.*
+> **Do not attempt any part of this task. Every toolbox it depends on is absent.**
+> The heading used to read *"we have the whole licence"*. That was never checked, and it is wrong.
 
-**Simulink Fault Analyzer** injects faults **without modifying the design**, with sensitivity
-sweeps and FMEA linked to requirements. **M3 becomes a standards-form safety analysis** instead of
-hand-rolled noise — and weather (rain, fog, dust) becomes a *physically meaningful* x-axis rather
-than abstract noise. Report the severity at which we stop working; do not pretend there isn't one.
+**Verified by running `ver` on the Mac, R2026a Update 5, 4 September 2026:**
 
-**Requirements Toolbox + Simulink Test + Simulink Coverage** — link every PS requirement to a test
-case to a result, auto-generate the traceability report. **This is what makes "the missing ADAS
-test suite for India" a literal artefact rather than a framing.** Highest-value item on this list.
+| Toolbox E9 needs | Installed? |
+|---|---|
+| Simulink Design Verifier | **NO** |
+| Simulink Fault Analyzer | **NO** |
+| Requirements Toolbox | **NO** |
+| Simulink Test | **NO** |
+| Simulink Coverage | **NO** |
+| Embedded Coder | **NO** |
+| MATLAB Coder | **NO** |
+| Simulink Coder | **NO** |
 
-**Embedded Coder + PIL** — generate C, run it on a real chip, report **measured** replanning latency
-per layer. Everyone else will report simulation time.
+**All eight. Not some of it — all of it.** The complete list of the 11 products we actually have:
+MATLAB, Simulink, Stateflow, Automated Driving, Computer Vision, Deep Learning, Image Processing,
+Lidar, Mapping, Navigation, Sensor Fusion and Tracking.
+
+### What was lost, and what replaces it
+
+| E9 promised | Reality |
+|---|---|
+| Formal proof that `h >= 0` inside the chart | **Not available.** We show `h` **measured** every step across a run, and report `min(h)` and the count of `h < 0`. That is evidence, not proof, and we call it evidence |
+| Fault injection / FMEA as a standards artefact | **Not available.** Any robustness sweep we do is hand-rolled, and must be described that way |
+| Requirement→test→result traceability report | **Not available.** `runtests('matlab/tests')` and the per-function contract headers are what we have |
+| **Measured** C latency on a chip (PIL) | **Not available.** We may report MATLAB timings and must label them **simulation timings**, never "latency on hardware" |
+
+### Two consequences that reach other people
+
+- **Person B: the `.Reason` string concern is void.** It was raised because Embedded Coder restricts
+  strings inside buses, and E9 needed that for the PIL numbers. There is no Embedded Coder, so the
+  constraint does not exist. `.Reason` stays a MATLAB `string` exactly as S4 specifies, and nothing
+  in `AGENTS.md` section 3 needs revisiting.
+- **`%#codegen` directives in the Stateflow charts are inert.** Harmless, but they do not mean the
+  model can generate code — nothing here can.
+
+### The honest sentence, if a judge asks
+
+> We did not do formal verification or hardware-in-the-loop timing. Those need toolboxes outside our
+> licence. What we have instead is the barrier value logged every step of every run, and the runs are
+> reproducible.
+
+**That is a fine answer. Claiming a formal proof we did not run is not.**
 
 ### E10 — Two metrics changed  *(NEW)*
 
