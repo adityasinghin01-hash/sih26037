@@ -175,11 +175,24 @@ end
 
 % ------------------------------------------------- reading (b), the terminal stop
 
-function testModeAIsTheDefaultAndSaysSo(tc)
-% Nobody should have to guess which reading produced a trunk. Person B's chart
+function testModeBIsTheDefaultAndSaysSo(tc)
+% Changed 4 Sep 2026. plan/D6-TRUNK-RULING.md rules the trunk is (b), and while
+% the default was (a) the hard rule forbade Committed from ever going true - so
+% the default could never produce the behaviour the ruling asks for. Nobody
+% should have to guess which reading produced a trunk either: Person B's chart
 % reads .TrunkMode to know whether Committed is allowed to go true.
 out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
           iNoTracks(), iNoYield(), lateralOffsets_m=0, terminalSpeeds_mps=8);
+verifyEqual(tc, out.TrunkMode, "B");
+verifyEqual(tc, out.Trunk.Rule, "STOP_FEASIBLE_PREFIX (reading B)");
+end
+
+function testModeAMustNowBeAskedForExplicitly(tc)
+% (a) is still reachable so the two readings can be compared and so the cost of
+% (b) can be measured. It is no longer what a caller gets by saying nothing.
+out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
+          iNoTracks(), iNoYield(), lateralOffsets_m=0, terminalSpeeds_mps=8, ...
+          trunkMode="A");
 verifyEqual(tc, out.TrunkMode, "A");
 verifyEqual(tc, out.Trunk.Rule, "LONGEST_CLEAR_PREFIX (reading A)");
 end
@@ -195,7 +208,7 @@ end
 function testModeACostsNoTerminalChecks(tc)
 out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
           iTrack(1,[60 0],[0 0],0), iYield(1,0.5,true), ...
-          lateralOffsets_m=0, terminalSpeeds_mps=8);
+          lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="A");
 verifyEqual(tc, out.StopChecks, 0);
 verifyEqual(tc, out.TerminalPrefixSteps, out.WorstPrefixSteps);
 end
@@ -206,7 +219,7 @@ function testModeBNeverCommitsMoreThanModeA(tc)
 tracks = iTrack(1,[45 0],[0 0],0);
 yield  = iYield(1,0.5,true);
 a = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
-        lateralOffsets_m=[-3 0 3], terminalSpeeds_mps=[0 4 8]);
+        lateralOffsets_m=[-3 0 3], terminalSpeeds_mps=[0 4 8], trunkMode="A");
 b = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
         lateralOffsets_m=[-3 0 3], terminalSpeeds_mps=[0 4 8], trunkMode="B");
 verifyLessThanOrEqual(tc, b.TerminalPrefixSteps, a.WorstPrefixSteps);
@@ -223,7 +236,7 @@ function testModeBActuallyCutsBackWhenStoppingIsBlocked(tc)
 tracks = iTrack(1,[42 0],[0 0],0);
 yield  = iYield(1,0.5,true);
 a = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
-        lateralOffsets_m=0, terminalSpeeds_mps=8);
+        lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="A");
 b = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
         lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="B");
 verifyLessThan(tc, b.TerminalPrefixSteps(1), a.WorstPrefixSteps(1));

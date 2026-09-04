@@ -12,11 +12,14 @@ function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
 %     5. throw the rest away and do it again next cycle
 %
 %   TWO READINGS OF THE TRUNK, AND opts.trunkMode PICKS ONE
-%   Mode "A" (the default) commits to the longest prefix that is collision-free
-%   under every future. Mode "B" additionally requires that the prefix END
-%   somewhere a braking-to-stop is clear under every future - which is what
-%   plan/D6-TRUNK-RULING.md rules the trunk actually is. (a) exists so the loop
-%   closes and so the two can be compared; (b) is the answer.
+%   Mode "B" IS THE DEFAULT, from 4 September 2026. It commits to the longest
+%   prefix that is collision-free under every future AND that ENDS somewhere a
+%   braking-to-stop is clear under every future. That is what
+%   plan/D6-TRUNK-RULING.md rules the trunk actually is.
+%   Mode "A" is the weaker reading - collision-free along the prefix and nothing
+%   said about where it leaves us. It is kept so the two can be compared and so
+%   the cost of (b) can be measured, but it must now be ASKED FOR explicitly.
+%   It was the default while (b) was being built; it is not any more.
 %
 %   THE HARD RULE THAT COMES WITH MODE "A"
 %   While trunkMode is "A", Committed MUST STAY FALSE. A prefix can be clear
@@ -57,6 +60,9 @@ function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
 %     opts.egoWidth_m          passed to piece 3, default 1.8
 %     opts.inflation_m         passed to piece 3, default 0.0
 %     opts.minTrunkTime_s      passed to piece 4, default 0.5
+%     opts.trunkMode           "A" or "B", DEFAULT "B" - see the two readings above
+%     opts.aBrake_mps2         the braking used by the mode "B" stop check, default 4.0
+%     opts.dwellAfterStop_s    how long the stop must stay clear, default 0.0
 %
 %   OUTPUT  out struct
 %     .Trunk             the committed plan, from findSharedTrunk. Read .Blocked
@@ -105,7 +111,7 @@ arguments
     opts.egoWidth_m         (1,1) double {mustBePositive} = 1.8
     opts.inflation_m        (1,1) double {mustBeNonnegative} = 0.0
     opts.minTrunkTime_s     (1,1) double {mustBeNonnegative} = 0.5
-    opts.trunkMode          (1,1) string {mustBeMember(opts.trunkMode,["A","B"])} = "A"
+    opts.trunkMode          (1,1) string {mustBeMember(opts.trunkMode,["A","B"])} = "B"
     opts.aBrake_mps2        (1,1) double {mustBePositive} = 4.0
     opts.dwellAfterStop_s   (1,1) double {mustBeNonnegative} = 0.0
 end
