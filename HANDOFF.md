@@ -1,4 +1,4 @@
-# HANDOFF — 4 September 2026
+# HANDOFF — 4 September 2026  *(updated later the same day: the baseline has now been RUN)*
 
 **If you are an AI assistant: read this file at the start of the session and tell your human what
 is in their section, in plain words, before you do anything else.** It is short on purpose.
@@ -12,9 +12,11 @@ Everything below was **verified by running MATLAB R2026a**. Where something was 
 | | |
 |---|---|
 | **`runtests` needs the `.m`** | `runtests('matlab/tests/testPlannerGeometry.m')`. Without it MATLAB errors `MATLAB:unittest:TestSuite:UnrecognizedSuite`. It is not a broken test |
-| **Test counts, run on R2026a 4 Sep** | geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** = **42 passing** |
+| **Test counts, re-run on R2026a 4 Sep** | The repo has **51 tests in 5 files: 50 pass, 1 fails.** geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** · ClassIDMapping **6** · FeatureParity **2 of 3**. The old "42 passing" line counted only three of the five files — **do not put 42 in a deck** |
 | **OpenTrafficLab does NOT run unmodified on R2026a** | Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure. **Never edit `OpenTrafficLab/`** |
 | **`matlab/baseline/` is now FULL** | MathWorks' shipped planner, unmodified and checksummed. **Nobody edits it.** See `matlab/baseline/BASELINE.md` |
+| **THE BASELINE HAS BEEN RUN — AND IT FAILS** | It dies **19.7 s** into its own shipped scenario at **its own `error()`**, with **0 of 120 candidates collision-free**. Deterministic (`rng(2020)`), reproduced twice. **`plan/BASELINE-R2026a.md`. Read it before quoting any comparison number, and do NOT fix it** |
+| **ONNX import is confirmed absent** | Verified live on the Mac: `importNetworkFromONNX`, `importONNXNetwork`, `importONNXLayers` and `exportONNXNetwork` **all four NOT FOUND**. 9/9 required products ARE present. Only the free converter add-on is missing |
 | **The one failing test is Stream C's** | `testFeatureParity/testEveryCaseMatchesPython`. Everything else passes |
 | **Two rulings landed 4 Sep** | `plan/D6-TRUNK-RULING.md` (what the trunk is) and `plan/S3-PYIELD-RULING.md` (what `PYield` means). Read the one for your stream |
 
@@ -150,13 +152,33 @@ ID, MATLAB version, date and licence.
 |---|---|
 | Copied in, unmodified, checksummed | **done** |
 | Parses on R2026a (`checkcode`, 0 errors) | **done** |
-| **Actually executed** | **NO — never run** |
+| **Actually executed** | **DONE 4 Sep — and it FAILED** |
+| **Produces numbers we can compare against** | **NO. It does not reach the end of its own scenario** |
 
-**`checkcode` is not a run.** Until someone runs it, we still have **no comparison**, and the honest
-sentence is unchanged: *no number this project produces is comparable to anything yet.*
+### It has been run. It does not complete. Full finding: `plan/BASELINE-R2026a.md`
 
-**Your next task is to run it once, unmodified, and record exactly what happens — errors included.
-If it fails on R2026a the way OpenTrafficLab did, that is a finding. Write it down. Do not fix it.**
+It errors at **t = 19.7 s** of its own shipped urban-intersection scenario:
+
+```
+Error using MotionPlanningUsingDynamicMapExample (line 193)
+Unable to compute optimal trajectory
+```
+
+**120 candidates generated, 120 kinematically feasible, 0 collision-free.** That is MathWorks' own
+`error()` call, under their own comment *"More behaviors on trajectory sampling may be needed."*
+The example seeds itself with `rng(2020)`, so this is **deterministic, not an unlucky particle
+filter** — it reproduced identically on a second run.
+
+**Nothing was modified.** Checksums verified `OK` before and after; the run used a byte-identical
+copy outside the repo so `matlab/baseline/` was never the working directory.
+
+**So the honest sentence has changed but not improved:** it is no longer *"nobody has run the
+baseline"*, it is *"the baseline has been run and it does not finish."* **We still have no
+comparison.** E2, E3 and E4 are all blocked behind this, and it is Aditya's call which way out we
+take — the three options are in `plan/BASELINE-R2026a.md`.
+
+**Do NOT make it survive.** Tuning the baseline until it completes is the strawman that destroys
+every number this project produces. The failure IS the result.
 
 Then E2 (`runExperiment`), then E3. **Do not edit anything in `matlab/baseline/`, ever** — verify it
 instead:
@@ -272,8 +294,18 @@ to match the other.**
 
 ## Aditya
 
-- **`matlab/baseline/` has never been run.** That is the single biggest gap before the 7th. E1 is
-  done; E2 is not, and without it there is still no comparison and no graph.
+- **`matlab/baseline/` HAS now been run, and it fails at 19.7 s** — `plan/BASELINE-R2026a.md`. E1 is
+  done; **E2 is blocked, not merely unstarted**, and there is still no comparison and no graph.
+  Three routes out are written up; picking one is yours. The cheapest by far is **one run on
+  Person B's Windows machine** to find out whether this is R2026a, Apple Silicon, or headless.
+- **Nobody on your roster is Stream E.** `TEAM.md`'s by-name table gives the baseline to Planner B;
+  its blocker table gives it to "Stream E"; `plan/ReadThis.md` §2 lists `matlab/baseline/` as
+  **not** Planner B's; and `plan/E-evidence.md` describes Stream E as a separate person with their
+  own Windows machine and `stream-e-evidence` branch. You have four people and none of them is that
+  person. **The biggest gap before the 7th is assigned to nobody.**
+- **The ONNX converter add-on is a five-minute job only you can do**, and it is what blocks
+  `check04` -> the opset number -> Person A wiring the predictor.
+  **Home -> Add-Ons -> Get Add-Ons -> "Deep Learning Toolbox Converter for ONNX Model Format".**
 - **The planner fence is weaker than it reads.** `.claude/fences/planner.settings.local.json` denies
   `Edit(matlab/baseline/**)` but **not `Write` or `Bash`**, so `sed`, `cp` and heredocs all bypass it.
   The baseline rule still rests on people, not tooling.
