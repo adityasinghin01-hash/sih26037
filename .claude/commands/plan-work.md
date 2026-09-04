@@ -96,7 +96,11 @@ This is the mechanism the whole pitch rests on. Every cycle:
 2. Roll each forward under **two futures for every agent — they yield, they assert** — weighted
    by `PYield` from S3
 3. Collision-check with `dynamicCapsuleList`
-4. **Commit only the shared trunk that is safe under BOTH futures**
+4. **Commit only the shared trunk** — the longest prefix after which a safe continuation still
+   exists under BOTH futures. **Not just the longest collision-free stretch.** Cheapest way to
+   get this: require the trunk to end where a braking-to-stop is collision-free under both
+   futures — one extra `dynamicCapsuleList` check per candidate, no second generation pass.
+   **Ruling 4 Sep 2026: `plan/D6-TRUNK-RULING.md`.**
 5. Throw the rest away and redo it next cycle
 
 **The trunk IS the probe.** That is the sentence the project is built on: the car edges forward

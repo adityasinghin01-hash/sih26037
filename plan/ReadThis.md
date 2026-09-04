@@ -148,7 +148,9 @@ Every cycle, roughly ten times a second:
 2. **For each agent, imagine two futures**: they yield, or they assert. Weight them by `PYield`,
    the number the machine-learning model gives you
 3. **Check every path against both futures**
-4. **Commit only the part that is safe whichever way it goes** — the shared trunk
+4. **Commit only the part that is safe whichever way it goes** — the shared trunk. "Safe" means
+   *a safe continuation still exists from the end of it*, not merely *nothing hits us on it*.
+   **Ruling 4 Sep 2026: `plan/D6-TRUNK-RULING.md`.**
 5. Throw the rest away and do it again next cycle
 
 **The trunk IS the probe.** That is the sentence the whole project rests on. The car edges
