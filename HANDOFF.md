@@ -11,6 +11,7 @@ Everything below was **verified by running MATLAB R2026a**. Where something was 
 
 | | |
 |---|---|
+| **THE MAIN MACHINE IS ADITYA'S MAC** | Decided 4 Sep by running every piece on it: the planner (**212/213 tests**), the Simulink model (**loads, simulates, logs `h`**), OpenTrafficLab (**9/9**) and the baseline all run there. **The demo runs on the Mac.** You still develop on your own machine — see `TEAM.md`, "The main machine". Write nothing Windows-only: no `C:\` paths |
 | **`runtests` needs the `.m`** | `runtests('matlab/tests/testPlannerGeometry.m')`. Without it MATLAB errors `MATLAB:unittest:TestSuite:UnrecognizedSuite`. It is not a broken test |
 | **Test counts, re-run on R2026a 4 Sep** | The repo has **51 tests in 5 files: 50 pass, 1 fails.** geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** · ClassIDMapping **6** · FeatureParity **2 of 3**. The old "42 passing" line counted only three of the five files — **do not put 42 in a deck** |
 | **OpenTrafficLab does NOT run unmodified on R2026a** | Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure. **Never edit `OpenTrafficLab/`** |
@@ -182,7 +183,7 @@ every number this project produces. The failure IS the result.
 
 ### CONFIRMED ON WINDOWS the same evening — Apple Silicon and headless are ruled out
 
-Person B re-ran the identical seven files on the Windows main machine, in the MATLAB desktop with
+Person B re-ran the identical seven files on the Windows machine, in the MATLAB desktop with
 figures rendering, and got the same failure **to the digit**:
 
 ```

@@ -4,7 +4,7 @@
 "fixes" anything in `matlab/baseline/`.**
 
 > ### CONFIRMED ON WINDOWS, 4 September 2026 (evening)
-> Person B re-ran it on the Windows main machine, with a full display, and got the **identical
+> Person B re-ran it on the Windows machine, with a full display, and got the **identical
 > failure to the digit**: `t = 19.7000 s`, `collision-free: 0 of 120`, same line 193.
 > **Apple Silicon and headless execution are both ruled out.** See "Reproduced on a second
 > platform" below for what this does and does not settle.
@@ -57,7 +57,7 @@ Run three times on two platforms. Identical error, identical line, every time.
 
 ## Reproduced on a second platform — and this is the part that matters
 
-Person B ran the same seven files on the Windows main machine, in the MATLAB desktop with the
+Person B ran the same seven files on the Windows machine, in the MATLAB desktop with the
 figures rendering normally, from `C:\Users\...\AppData\Local\Temp\baseline-run` so the repo
 folder was never the working directory.
 

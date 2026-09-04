@@ -35,7 +35,9 @@
 A working planner with no numbers loses to a worse planner that has a graph. Every claim we make
 in the final presentation comes from your work.
 
-**Your machine:** Windows
+**Your machine:** Windows — that is where you develop.
+**The demo machine is Aditya's Mac** (`TEAM.md`, "The main machine"). Every result that goes in the
+report must be reproducible there, so no `C:\` paths anywhere near `runExperiment`.
 **Your branch:** `stream-e-evidence`
 
 ---
