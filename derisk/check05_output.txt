@@ -1,0 +1,16 @@
+
+===== CHECK 5 : OPENTRAFFICLAB =====
+Date run : 04-Sep-2026 01:24:27
+Release  : 2026a
+
+[1] Added to path: ../OpenTrafficLab
+[2] Key classes we plan to subclass:
+    DrivingStrategy      FOUND
+    TrafficController    not found
+    Vehicle              not found
+    Intersection         not found
+[3] Example scripts in the repo:
+
+===== NEXT =====
+Open ONE example above and run it UNMODIFIED.
+Send back: did it run? any figure? the full error if not.

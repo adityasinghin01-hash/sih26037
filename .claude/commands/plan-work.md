@@ -54,7 +54,9 @@ runtests('matlab/tests')
 | `velocityObstacle.m` | `beta`, `lambda`, `tcpa`, `d`. **Collision iff `lambda < beta`** |
 | `assignRoles.m` | the COLREGs role per track (S7) |
 | `NegotiatingStrategy.m` | the OpenTrafficLab subclass that will call your work |
-| `testPlannerGeometry.m` | 12 geometry tests, all passing. Run them before and after every change |
+| `testPlannerGeometry.m` | **14** geometry tests, incl. two that pin the ego/world frame contract |
+| `chooseVelocity.m` | **D2 is DONE** (PR #3, merged 3 Sep). 19 tests |
+| `testNegotiatingStrategy.m` | 9 tests guarding the subclass. Skips cleanly without OpenTrafficLab |
 
 **`h = lambda - beta` is the safety number.** It must never go below zero, and it is logged every
 step as our evidence. Everything below protects it.
@@ -63,7 +65,14 @@ step as our evidence. Everything below protects it.
 
 ## Build in this order. Each one is useful on its own.
 
-### 1 · D2 · `chooseVelocity.m` — turn a role into a command
+### 1 · D2 · `chooseVelocity.m` — **DONE, merged 3 September 2026 (PR #3)**
+Both open questions on it are now settled: `.Reason` is a `string` and that matches S4; HEAD_ON
+steers **LEFT**, from *Rules of the Road Regulations, 1989* reg. 2, not COLREGs Rule 14 —
+the maritime rule turns to starboard and would steer into oncoming traffic in India.
+Read the header before changing any default. **Next up is D6.**
+
+<details><summary>original brief, kept for reference</summary>
+
 Small, and it gets you oriented. Input: a role (S7) plus the velocity-obstacle output.
 Output: an `EgoCommand` (S4).
 
@@ -78,6 +87,8 @@ SAFE       -> no constraint from this agent
 `Accel` is clamped to `[-6, +3]` m/s², `SteerAngle` to `[-0.6, +0.6]` rad. **S4 fixes those and
 the planner must never emit outside them.**
 
+</details>
+
 ### 2 · D6 · the contingency planner — the biggest job on the project
 This is the mechanism the whole pitch rests on. Every cycle:
 
@@ -85,7 +96,11 @@ This is the mechanism the whole pitch rests on. Every cycle:
 2. Roll each forward under **two futures for every agent — they yield, they assert** — weighted
    by `PYield` from S3
 3. Collision-check with `dynamicCapsuleList`
-4. **Commit only the shared trunk that is safe under BOTH futures**
+4. **Commit only the shared trunk** — the longest prefix after which a safe continuation still
+   exists under BOTH futures. **Not just the longest collision-free stretch.** Cheapest way to
+   get this: require the trunk to end where a braking-to-stop is collision-free under both
+   futures — one extra `dynamicCapsuleList` check per candidate, no second generation pass.
+   **Ruling 4 Sep 2026: `plan/D6-TRUNK-RULING.md`.**
 5. Throw the rest away and redo it next cycle
 
 **The trunk IS the probe.** That is the sentence the project is built on: the car edges forward

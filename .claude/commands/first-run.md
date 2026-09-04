@@ -9,8 +9,9 @@ description: Run the MATLAB files that have never been executed, in the right or
 
 **Most of the MATLAB in this repository has never been executed.** It was written on a Mac with
 no MATLAB installed, and every function name and signature was checked against the MathWorks
-documentation — but **checked-against-docs is not the same as run.** Four defects were already
-found and fixed that way and there are very likely more.
+documentation — but **checked-against-docs is not the same as run.** **Seven more defects were found
+on 4 September 2026**, two of which stopped the simulation running at all. There are very
+likely more.
 
 **This is normal and it is not a reason to distrust the repo.** It is the reason this workflow
 exists. Expect something to break. When it does, that is the workflow working.
@@ -30,7 +31,8 @@ Each step is cheap and each one rules out a class of problem for the next.
 cd derisk
 check01_environment
 ```
-Seven `[ OK ]` lines. **If any says MISSING, stop.** Nothing below can work.
+**Nine** `[ OK ]` lines under REQUIRED PRODUCTS. **If any says MISSING, stop** — except
+`no ONNX import`, which blocks only step 3 and Stream C's handoff. Everything else can proceed.
 The two free add-ons the product installer does NOT provide, both from
 **Home -> Add-Ons -> Get Add-Ons**:
 - **"Deep Learning Toolbox Converter for ONNX Model Format"** — step 3 fails without it
@@ -43,7 +45,7 @@ The two free add-ons the product installer does NOT provide, both from
 python3 ml/python/tests/test_parity.py
 ```
 ```matlab
-runtests('matlab/tests/testFeatureParity')
+runtests('matlab/tests/testFeatureParity.m')
 ```
 **This is the highest-value check here and the cheapest.** The model is trained by
 `ml/python/meteor/features.py` and run by `matlab/+sih/+prediction/buildFeatureFrame.m`. If they
@@ -69,12 +71,28 @@ write. A network full of placeholders imported "successfully" and is useless.
 
 **Send Stream D the opset number the moment you have it. It is the one thing blocking them.**
 
-### 4 · The planner geometry tests
+### 4 · The planner tests
 ```matlab
-runtests('matlab/tests/testPlannerGeometry')
+runtests('matlab/tests/testPlannerGeometry.m')      % 14 - the maths and the frame contract
+runtests('matlab/tests/testChooseVelocity.m')       % 19 - D2, role to command
+runtests('matlab/tests/testNegotiatingStrategy.m')  %  9 - the OpenTrafficLab subclass
 ```
-These are the oldest tests in the repo and the most likely to still pass. If they fail, the
-problem is probably the MATLAB path, not the maths — make sure you are at the repository root.
+**The `.m` is not optional** — without it MATLAB reads the path as a folder and errors with
+`MATLAB:unittest:TestSuite:UnrecognizedSuite`.
+
+**42 tests, all passing on R2026a as of 4 September 2026.** These are the oldest and
+best-verified code in the repo. If they fail, the problem is probably the MATLAB path — make
+sure you are at the repository root.
+
+`testNegotiatingStrategy` needs OpenTrafficLab
+(`git clone https://github.com/mathworks/OpenTrafficLab.git`). Without it those 9 report
+**Incomplete/skipped, never Failed**.
+
+### 4b · Does OpenTrafficLab run at all — ANSWERED
+**It does not, unmodified, on R2026a.** Stock `DrivingStrategy` dies on the first `advance()`
+with `MATLAB:noSuchMethodOrField ... 'ReferencePoint'`. Both fixes and the full evidence are in
+[`plan/OPENTRAFFICLAB-R2026a.md`](../../plan/OPENTRAFFICLAB-R2026a.md). This was the project's
+highest-listed risk since 31 August; it is closed.
 
 ### 5 · The three model trainers — only when their data exists
 These need IDD, which **requires a human signup** at `idd.insaan.iiit.ac.in/accounts/signup/`

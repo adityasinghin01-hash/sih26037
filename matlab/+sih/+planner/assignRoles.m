@@ -8,11 +8,26 @@ function roles = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
 %   Sector boundaries 22.5 / 90 / 112.5 deg; the sign of tCPA separates a closing encounter
 %   from an opening one. Verified in research section 12.
 %
+%   FRAME - THE ONE WAY TO GET THIS WRONG
+%   This function computes r = trkPos - egoPos and relBearing = bearing - egoYaw, so
+%   THE TRACKS AND THE EGO POSE MUST BE IN THE SAME FRAME. It does not care which frame
+%   that is, and it cannot detect a mismatch.
+%
+%     ego frame (AGENTS.md S1, what Stream B delivers) -> pass egoPos = [0 0], egoYaw = 0
+%     scenario/world frame (what NegotiatingStrategy uses today) -> pass the real ego pose
+%
+%   Passing an S1 ego-frame TrackList together with the real world ego pose is the obvious
+%   mistake and it NEVER ERRORS - every bearing, and therefore every role, is silently
+%   wrong. Pinned by testWorldFrameAndEgoFrameGiveTheSameRole and
+%   testEgoFrameTracksWithAWorldEgoPoseAreWrong in matlab/tests/testPlannerGeometry.m.
+%
 %   INPUTS
-%     egoPos 1x2 double  ego position, m
-%     egoVel 1x2 double  ego velocity, m/s
-%     egoYaw double      ego heading, rad
-%     tracks struct array  TrackList  (AGENTS.md section 3 S1)
+%     egoPos 1x2 double  ego position, m      - same frame as tracks (see above)
+%     egoVel 1x2 double  ego velocity, m/s    - same frame as tracks
+%     egoYaw double      ego heading, rad     - same frame as tracks
+%     tracks struct array  TrackList  (AGENTS.md section 3 S1). May be empty; must NOT
+%                        contain the ego - a self-track sits at d = 0, takes the
+%                        d <= dMin branch of velocityObstacle, and pins h at -pi/2
 %     opts.dMin_m      minimum separation, default 2.5 m
 %     opts.maxRange_m  ignore agents beyond this, default 50 m
 %

@@ -41,7 +41,7 @@ try
     fprintf('       and the drop-off must be modelled another way (see NEXT below).\n');
 
     advance(s);
-    [tgts, ~] = targetPoses(ego);
+    tgts = targetPoses(ego);   % returns ONE output, not two
     rdmesh = roadMesh(ego);
     ptCloud = lidar(tgts, rdmesh, s.SimulationTime);
     n = size(ptCloud.Location, 1) * size(ptCloud.Location, 2);
@@ -53,7 +53,21 @@ try
         fprintf('    x %.1f..%.1f   y %.1f..%.1f   z %.1f..%.1f\n', ...
                 min(L(:,1)), max(L(:,1)), min(L(:,2)), max(L(:,2)), min(L(:,3)), max(L(:,3)));
         fprintf('    >> If |y| stops near the 4 m road width, the road edge IS visible.\n');
-        figure; pcshow(ptCloud); title('Check 7 — lidar over a 4 m road'); drawnow;
+        fig = figure('Visible','off');
+        pcshow(ptCloud); title('Check 7 — lidar over a 4 m road'); drawnow;
+        saveas(fig, 'check07_pointcloud.png');
+        fprintf('    Figure saved: check07_pointcloud.png\n');
+
+        % WHAT THIS DOES AND DOES NOT PROVE (corrected 2 Sep 2026)
+        % targetPoses(ego) excludes the ego, and the ego is the only actor here,
+        % so tgts was EMPTY - every one of these points came from rdmesh.
+        % These are ROAD returns. The check proves the road is a surface with a
+        % hard edge, and nothing more.
+        % In the cuboid world there is never ground beside a road, so absence of
+        % returns means only "not road". It CANNOT tell a khai from a shoulder
+        % from a wall. S9 EdgeSide therefore cannot be sensed - it must be
+        % authored as scenario ground truth. A8b geometry is unblocked;
+        % A8b SENSING is not.
     else
         fprintf('    NO POINTS. Road surfaces may not generate returns in this release.\n');
     end

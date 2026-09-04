@@ -53,7 +53,7 @@ returns a fixed command, and the real function drops into a slot that already wo
 |---|---|---|---|
 | `velocityObstacle` | ego pos/vel, agent pos/vel, dMin | `.beta .lambda .tcpa .d` | **done, tested** |
 | `assignRoles` | ego state, TrackList (S1) | Role array (S4) | **done, tested** |
-| `chooseVelocity` | role (S7), vo output, `egoState` struct, `opts` | EgoCommand (S4) | **done, tested** — 19 tests |
+| `chooseVelocity` | role (S7), vo output, `egoState` struct, `opts` | EgoCommand (S4) | **done, tested** — 19 tests (PR #3, 3 Sep) |
 | `predictAgentFutures` | one track (S1), PYield and Valid (S3), `opts` | 1x2 futures, YIELD and ASSERT, each with `.States` `.Speeds` `.Probability` | **done, tested** — 17 tests |
 | `generateCandidates` | `egoState` struct, `referencePathFrenet`, `opts` | candidate array, each with `.States` `.Global` `.LateralOffset_m` | **done, tested** — 13 tests |
 | `checkTrajectorySafety` | one candidate, one future, `opts` | `.Safe` per timestep, `.SafePrefixSteps`, `.AllSafe`, `.FirstUnsafeTime` | **done, tested** — 14 tests |
@@ -63,7 +63,14 @@ returns a fixed command, and the real function drops into a slot that already wo
 | *(add a row before you write the function, not after)* | | | |
 
 **`egoState` is a struct** with `.Position`, `.Velocity` and `.Yaw`, packed by `NegotiatingStrategy`.
-**`chooseVelocity` takes `opts`** — four arguments, not three. Both settled by Aditya, 2 September 2026.
+**`chooseVelocity` takes `opts`.** Settled by Aditya, 2 September 2026.
+**What that means when you CALL it:** `opts` is a set of *optional name-value* tuning arguments,
+not a fourth thing you must pass. Both of these are correct MATLAB:
+```matlab
+cmd = sih.planner.chooseVelocity(role, vo, egoState);                        % defaults
+cmd = sih.planner.chooseVelocity(role, vo, egoState, 'gradient_rad', 0.1);   % tuned
+```
+So a three-argument call is **not** a bug — it just takes every default.
 
 **`followTrunk` needs the vehicle wheelbase** and nothing in this repository states it. It defaults
 to 2.8 m. Person B should pass the real figure via `opts.wheelbase_m`.

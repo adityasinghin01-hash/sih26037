@@ -108,3 +108,66 @@ roles = sih.planner.assignRoles([0 0],[5 0],0,trks);
 verifyNumElements(tc, roles, 3);
 verifyEqual(tc, [roles.TrackID], uint32([1 2 3]));
 end
+
+% ---------------------------------------------------------------- the frame contract
+%
+% AGENTS.md S1 defines TrackList Position in the EGO frame (x fwd, y left).
+% assignRoles computes r = trkPos - egoPos and bearing - egoYaw, so it needs the tracks
+% and the ego pose in the SAME frame. The two tests below pin that down, because every
+% test above happens to use egoPos = [0 0] and egoYaw = 0, where the world frame and the
+% ego frame coincide - so none of them can catch the mistake.
+%
+% THE TRAP: when Stream B delivers a real S1 TrackList (ego frame), the caller must pass
+% egoPos = [0 0] and egoYaw = 0. Passing the real world ego pose instead is the obvious
+% thing to do and it silently corrupts every bearing and therefore every role.
+
+function [pW, pE] = iSameEncounterBothFrames()
+% One encounter, written twice: once in world coordinates, once in the ego frame.
+egoPos = [100 50];  egoYaw = pi/4;  egoSpeed = 5;
+R      = @(a) [cos(a) -sin(a); sin(a) cos(a)];
+
+egoVelW = (R(egoYaw)  * [egoSpeed; 0])';        % ego heading 45 deg, 5 m/s
+relPos  = [15 -15];                              % 15 m ahead, 15 m to STARBOARD, ego frame
+relVel  = [0 5];                                 % crossing left across our bow, ego frame
+
+trkPosW = egoPos  + (R(egoYaw) * relPos')';
+trkVelW =           (R(egoYaw) * relVel')';
+
+pW = struct('egoPos', egoPos,  'egoVel', egoVelW,        'egoYaw', egoYaw, ...
+            'trkPos', trkPosW, 'trkVel', trkVelW);
+pE = struct('egoPos', [0 0],   'egoVel', [egoSpeed 0],   'egoYaw', 0, ...
+            'trkPos', relPos,  'trkVel', relVel);
+end
+
+function testWorldFrameAndEgoFrameGiveTheSameRole(tc)
+% The same physical encounter must produce the same role in either frame, PROVIDED the
+% ego pose is expressed in that same frame.
+[pW, pE] = iSameEncounterBothFrames();
+
+tW = iTrack(1, pW.trkPos, pW.trkVel);
+tE = iTrack(1, pE.trkPos, pE.trkVel);
+
+rW = sih.planner.assignRoles(pW.egoPos, pW.egoVel, pW.egoYaw, tW);
+rE = sih.planner.assignRoles(pE.egoPos, pE.egoVel, pE.egoYaw, tE);
+
+verifyEqual(tc, rE.Role, rW.Role, 'the same encounter must give the same role in either frame');
+verifyEqual(tc, rE.Role, uint8(1), 'this encounter is a starboard crossing: GIVE_WAY');
+verifyEqual(tc, rE.Beta,   rW.Beta,   'AbsTol', 1e-9);
+verifyEqual(tc, rE.Lambda, rW.Lambda, 'AbsTol', 1e-9);
+verifyEqual(tc, rE.TCPA,   rW.TCPA,   'AbsTol', 1e-9);
+end
+
+function testEgoFrameTracksWithAWorldEgoPoseAreWrong(tc)
+% The failure mode this contract exists to prevent, stated as a test: feeding an
+% EGO-FRAME TrackList together with the WORLD ego pose does not error - it silently
+% returns a different answer. If this ever starts matching, the frame handling changed
+% and every role in the project needs re-checking.
+[pW, pE] = iSameEncounterBothFrames();
+
+good = sih.planner.assignRoles(pE.egoPos, pE.egoVel, pE.egoYaw, iTrack(1, pE.trkPos, pE.trkVel));
+bad  = sih.planner.assignRoles(pW.egoPos, pW.egoVel, pW.egoYaw, iTrack(1, pE.trkPos, pE.trkVel));
+
+verifyNotEqual(tc, bad.Role, good.Role, ...
+    ['mixing an ego-frame TrackList with a world ego pose must NOT silently agree - ' ...
+     'if it does, this test is no longer protecting anything']);
+end

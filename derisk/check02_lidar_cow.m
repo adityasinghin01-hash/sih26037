@@ -76,7 +76,7 @@ fprintf('    %s\n', repmat('-',1,50));
 
 maxCowPts = 0; bestCloud = []; bestT = NaN; anyPoints = false;
 while advance(scenario)
-    actors = actorPoses(ego);
+    actors = targetPoses(ego);   % poses of OTHER actors, in ego coordinates
     rdMesh = roadMesh(ego);
     [ptCloud, isValid] = lidar(actors, rdMesh, scenario.SimulationTime);
 

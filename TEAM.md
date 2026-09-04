@@ -78,8 +78,8 @@ and your AI assistant works blind — it invents function names and breaks other
 
 | # | What | Who | Notes |
 |---|---|---|---|
-| 1 | **MATLAB installed on three machines** | Aditya, Planner B, ML person | **The single biggest blocker.** Almost everything downstream needs it |
-| 2 | **Fill `matlab/baseline/`** | Planner B | Empty today. Until it exists, **no number this project produces is comparable to anything** |
+| 1 | **MATLAB installed on three machines** | Aditya, Planner B, ML person | **The single biggest blocker.** Aditya's Mac now has R2026a with 9/9 required products (`derisk/check01_output.txt`); the free ONNX converter add-on is still missing there. The other two machines are unconfirmed |
+| 2 | **RUN `matlab/baseline/`** | Stream E | **FILLED 4 Sep 2026**, unmodified and checksummed (`matlab/baseline/BASELINE.md`). **But it has never been RUN**, so there is still no comparison. Running it once is now the blocker |
 | 3 | **RoadRunner licence 41087767** | Aditya | The one problem-statement requirement we cannot currently meet |
 | 4 | Which label to train on | ML person applies the rule in `ml/ReadThis.md` | Only escalates if BOTH labels come out worse than 1 in 200 |
 
@@ -112,7 +112,8 @@ teammate's footage and OSM exports; the RoadRunner email.
 
 **Most of the MATLAB in this repository has never been executed.** It was written on a machine
 with no MATLAB installed. Every function name was checked against the MathWorks documentation,
-but checked is not run — and **six real defects have already been found that way.**
+but checked is not run — and **defects have been found exactly that way, including seven on
+4 September 2026** — two of which stopped the simulation running at all.
 
 `/first-run` executes it in the right order and tells you what to look for. **Expect something to
 break. That is the process working, not the repository being broken.** Send the whole error.
