@@ -263,6 +263,26 @@
       * Zero forbidden operators. Clean opset 20 export with only 6 standard transforms.
     * All 6 production `.onnx` model files are verified and present in `ml/python/export/`.
 
+* **[04:20 - 04:30 IST] Model Verification, Checksums & Production Archival**
+  * Verified all 8 production model artifacts and calculated SHA-256 digests:
+    * `yield_lstm.pt` (149.1 KB, sha256: `80df684bf392`)
+    * `yield_attention.pt` (285.2 KB, sha256: `ce0a1e0b9428`)
+    * `yield_lstm_opset17.onnx` (6.1 KB, sha256: `32913ab81e54`)
+    * `yield_lstm_opset18.onnx` (30.9 KB, sha256: `f6a39915e23f`)
+    * `yield_lstm_opset20.onnx` (30.9 KB, sha256: `b106124c4c35`)
+    * `yield_gnn_opset17.onnx` (14.5 KB, sha256: `de8b52c815ce`)
+    * `yield_gnn_opset18.onnx` (75.6 KB, sha256: `041f952d1fbc`)
+    * `yield_gnn_opset20.onnx` (71.1 KB, sha256: `76a6f6cf3280`)
+  * Bundled all production models into a standalone archive outside git tracking:
+    `C:\Users\admin\meteor-data\archive\sih26037_trained_models_phase2.zip` (367.5 KB).
+
+* **[04:30 - 04:40 IST] Task 4 Investigation: Feature Parity (`testFeatureParity`)**
+  * Executed `python3 ml/python/tests/test_parity.py` — passed across all 11 test fixtures.
+  * Identified root cause of empty frame discrepancy (`[0 31]` vs `[0 0]`):
+    * Python `features.py` already returns `(0, 31)` for empty frames (`np.zeros((0, 31))`).
+    * JSON serialization writes empty lists as `[]`. In MATLAB's `testFeatureParity.m` line 140, `iExpected(v)` mapped empty JSON arrays to `m = []` (`[0 0]`), causing the shape assertion failure.
+    * Solution submitted to Aditya: update `testFeatureParity.m` line 140 to return `m = zeros(0, 31)` to match the S2 schema contract.
+
 ---
 
 ## 3. Log of Hurdles Faced & Applied Fixes
@@ -277,24 +297,25 @@
 
 ---
 
-## 4. Immediate Next Steps
+## 4. Current Status & Deliverables Summary (Phase 1 & 2 Complete)
 
 ```
-                                  CURRENT STATUS
-                            Both Models Fully Trained
-                        Both Models Exported to ONNX (Opset 17/18/20)
-                          Bitwise Numerics Verified vs PyTorch
-                                        │
-                                        ▼
-                   [Step 38] Run MATLAB Bridge Verification
-                    Pass yield_lstm_opset*.onnx and yield_gnn_opset*.onnx
-                    to Aditya (macOS) / MATLAB for check04_onnx_lstm.m
-                                        │
-                                        ▼
-                   [Phase 2 Directives] Prepare for Internal Demo (Sept 7)
-                    - Verify P_yield = 1 - P_assert rule on MATLAB side
-                    - Confirm Valid = false safety gate fallback (error rate 20.18% > 1.0%)
-                    - Model 3 (YOLOX) setup on KIET GPU cluster
+================================================================================
+AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
+================================================================================
+[x] Frozen Contract Verification (AGENTS.md S2/S3): PASSED
+[x] METEOR Dataset Unpacked & Preprocessed: 1,248 clips, 3.73M sequences
+[x] Partitioning: Clip-based (999 train / 249 val, 0 leakage)
+[x] Model 1 (YieldNet LSTM): AP = 0.3500, loss = 0.3789
+[x] Model 2 (YieldAttentionNet): AP = 0.3691 (+5.5%), loss = 0.2089 (-44.9%), ECE = 0.1502
+[x] Side-by-Side Evaluation: Step 32 Comparison Table completed
+[x] Production ONNX Export: Opsets 17, 18, 20 bitwise verified (< 1e-6 diff)
+[x] Archive Package: sih26037_trained_models_phase2.zip (367.5 KB)
+[x] Safety Gate Protocol Documented: Valid = false fallback (20.18% > 1.0%)
+================================================================================
+All local workstation responsibilities for Predictor Models are 100% COMPLETE.
+Awaiting: Aditya's MATLAB import test (check04) & KIET GPU Cluster setup (Model 3 YOLOX).
+================================================================================
 ```
 
 ### Applied Decision Rule (Decision 2):
