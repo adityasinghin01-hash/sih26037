@@ -15,7 +15,7 @@ Everything below was **verified by running MATLAB R2026a**. Where something was 
 | **Test counts, re-run on R2026a 4 Sep** | The repo has **51 tests in 5 files: 50 pass, 1 fails.** geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** · ClassIDMapping **6** · FeatureParity **2 of 3**. The old "42 passing" line counted only three of the five files — **do not put 42 in a deck** |
 | **OpenTrafficLab does NOT run unmodified on R2026a** | Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure. **Never edit `OpenTrafficLab/`** |
 | **`matlab/baseline/` is now FULL** | MathWorks' shipped planner, unmodified and checksummed. **Nobody edits it.** See `matlab/baseline/BASELINE.md` |
-| **THE BASELINE HAS BEEN RUN — AND IT FAILS** | It dies **19.7 s** into its own shipped scenario at **its own `error()`**, with **0 of 120 candidates collision-free**. Deterministic (`rng(2020)`), reproduced twice. **`plan/BASELINE-R2026a.md`. Read it before quoting any comparison number, and do NOT fix it** |
+| **THE BASELINE HAS BEEN RUN — AND IT FAILS ON BOTH PLATFORMS** | It dies **19.7 s** into its own shipped scenario at **its own `error()`**, with **0 of 120 candidates collision-free**. Deterministic (`rng(2020)`). Reproduced **three times on two machines** — macOS/Apple Silicon headless and **Windows x86 with a full display — identical to the digit**. **`plan/BASELINE-R2026a.md`. Read it before quoting any comparison number, and do NOT fix it** |
 | **ONNX import is confirmed absent** | Verified live on the Mac: `importNetworkFromONNX`, `importONNXNetwork`, `importONNXLayers` and `exportONNXNetwork` **all four NOT FOUND**. 9/9 required products ARE present. Only the free converter add-on is missing |
 | **The one failing test is Stream C's** | `testFeatureParity/testEveryCaseMatchesPython`. Everything else passes |
 | **Two rulings landed 4 Sep** | `plan/D6-TRUNK-RULING.md` (what the trunk is) and `plan/S3-PYIELD-RULING.md` (what `PYield` means). Read the one for your stream |
@@ -180,6 +180,33 @@ take — the three options are in `plan/BASELINE-R2026a.md`.
 **Do NOT make it survive.** Tuning the baseline until it completes is the strawman that destroys
 every number this project produces. The failure IS the result.
 
+### CONFIRMED ON WINDOWS the same evening — Apple Silicon and headless are ruled out
+
+Person B re-ran the identical seven files on the Windows main machine, in the MATLAB desktop with
+figures rendering, and got the same failure **to the digit**:
+
+```
+MATLAB 26.1.0.3346908 (R2026a) Update 5 on PCWIN64
+reached t = 19.7000 s
+collision-free: 0 of 120
+```
+
+Same `t = 19.7000 s`, same `0 of 120`, same ego state `[57.5349 -71...]`, same line 193. Identical
+numbers across two CPU architectures means this is **not** floating-point divergence — it is
+structural.
+
+**Still NOT ruled out: R2026a itself.** Both machines are R2026a Update 5, so we varied the platform
+and the display but held the version constant. The defensible sentence is *"it fails identically on
+macOS/Apple Silicon and Windows x86 under R2026a Update 5"* — **not** *"it fails on every MATLAB."*
+
+### What this means for the comparison, said plainly
+
+Route 2 is now the route: **report the baseline's failure as the result.** But that gives a finding
+about the competitor, **not a head-to-head number** — the two planners do not run the same scenario
+(theirs: MathWorks' six-lidar urban intersection; ours: the OpenTrafficLab T-junction). Putting both
+on one scenario is E2's real content and it is not happening before the 7th. **Say that before a
+judge says it for us.**
+
 Then E2 (`runExperiment`), then E3. **Do not edit anything in `matlab/baseline/`, ever** — verify it
 instead:
 
@@ -294,10 +321,11 @@ to match the other.**
 
 ## Aditya
 
-- **`matlab/baseline/` HAS now been run, and it fails at 19.7 s** — `plan/BASELINE-R2026a.md`. E1 is
-  done; **E2 is blocked, not merely unstarted**, and there is still no comparison and no graph.
-  Three routes out are written up; picking one is yours. The cheapest by far is **one run on
-  Person B's Windows machine** to find out whether this is R2026a, Apple Silicon, or headless.
+- **`matlab/baseline/` has been run on BOTH machines and fails identically at 19.7 s** —
+  `plan/BASELINE-R2026a.md`. Person B's Windows run closed the platform question the same evening.
+  E1 is done; **E2 is blocked, not merely unstarted.** Route 2 (report the failure as the result) is
+  now the only honest route, and it yields a finding about the competitor rather than a head-to-head
+  number — the two planners do not share a scenario.
 - **Nobody on your roster is Stream E.** `TEAM.md`'s by-name table gives the baseline to Planner B;
   its blocker table gives it to "Stream E"; `plan/ReadThis.md` §2 lists `matlab/baseline/` as
   **not** Planner B's; and `plan/E-evidence.md` describes Stream E as a separate person with their
