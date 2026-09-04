@@ -317,7 +317,28 @@ installer does not include it. **Home -> Add-Ons -> Get Add-Ons.**
 **Do you have MATLAB installed at all?** Nothing in PROGRESS.md says so. You need MATLAB *plus* that
 add-on before `check04` can run — and the opset number it produces is the one thing blocking Stream D.
 
-### 5. For the claim ledger, before a judge asks
+### 5. Models 3, 4 and 5 belong to the CITY, not to the 7th
+
+**Recorded 4 Sep 2026 — this dependency was nowhere in the repo and it decides what you start.**
+
+The World is being built in two versions: **the city** (the full rendered world) and **the backup**
+(the cuboid fallback). They are separate efforts in separate sessions.
+
+| Model | Needs | Verdict |
+|---|---|---|
+| **3 — Spotter (YOLOX)** | camera pixels | **CITY ONLY.** `AGENTS.md` line 36: *"camera offline. The cuboid environment emits object lists, not pixels."* No city, no pixels, no spotter |
+| **4 — Road-Finder (DeepLab v3+)** | camera pixels | **CITY ONLY**, same reason |
+| **5 — Laser Spotter (PointPillars)** | lidar returns | **Less dependent.** Lidar works in the cuboid world — `check02` put 429 points on a cow mesh. Could run either way |
+
+**Consequences for Stream C:**
+
+- **None of 3, 4, 5 is needed for the internal round on the 7th.** Model 1 alone carries it.
+- **They are not cancelled.** They are the real project, and the KIET GPU cluster can train them.
+  Keep going — just never at the cost of Model 1's opset number, which blocks two other people.
+- **Do NOT start the IDD download or signup until the city decision is made.** 25 GB and a human
+  terms acceptance, and it is wasted entirely if we fall back to the backup world.
+
+### 6. For the claim ledger, before a judge asks
 
 Your dead-feature finding is correct and it is a real limitation. Features `[23,24,25,27]` map to
 S5 ClassID 11, 12, 13, 15 via `feature = 12 + ClassID` — **dog, pushcart, animal-drawn cart, static
@@ -327,7 +348,7 @@ obstacle**. METEOR contains none of them.
 Cows and tractors *are* present. Get the honest sentence ready now rather than discovering it on
 stage.
 
-### 6. Fixed for you in the repo
+### 7. Fixed for you in the repo
 
 - `.gitignore` had **no `*.npz` rule** — your own rule 2 says feature arrays never get committed and
   nothing enforced it. Added.
@@ -335,7 +356,7 @@ stage.
   **without the `.m`**, which errors with `MATLAB:unittest:TestSuite:UnrecognizedSuite`. Fixed.
 - `ml/C-prediction.md` said "four real defects" and "four other people". Corrected.
 
-### 7. Still yours to resolve
+### 8. Still yours to resolve
 
 `testFeatureParity/testEveryCaseMatchesPython` fails on `main`:
 
