@@ -52,5 +52,13 @@ Headline: the dramatic volumetric cloud variant is built and working but **reads
 vapour** — a shading problem, not a memory one. And **6 of the 13 clips are shot at night, a
 condition no scenario script covers.**
 
+## SKY REFERENCE — waiting on photographs
+`real-clouds/` is where Aditya's own sky photographs go — **morning, afternoon and evening, from
+different angles and horizons.** His own photos beat anything downloaded, because they can be
+**measured** and matched numerically rather than guessed at, and because his own photographs can be
+used directly in the film whereas downloaded ones are look-only.
+**He has asked for AFTERNOON — sun high, real cumulus — rather than the 06:45 dawn the scripts
+currently specify. That is a rewrite of S0 and parts of S2, not a sky tweak.**
+
 ## NEXT
 **Component 2 — LAND.** Terrain, the Malin, the 170 m hill with its gully network, the distant range.
