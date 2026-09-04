@@ -48,7 +48,7 @@ python3 ml/python/tests/test_metrics.py      # the evaluation maths itself
 ```matlab
 check01_environment                          % products and BOTH add-ons
 check04_onnx_lstm                            % read for PLACEHOLDER, not for "succeeded"
-runtests('matlab/tests/testFeatureParity')   % after any features.py change
+runtests('matlab/tests/testFeatureParity.m')   % after any features.py change
 runtests('matlab/tests')                     % everything
 ```
 

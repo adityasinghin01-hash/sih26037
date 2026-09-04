@@ -16,10 +16,11 @@ Everything below was **verified by running MATLAB R2026a**. Where something was 
 | **OpenTrafficLab does NOT run unmodified on R2026a** | Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure. **Never edit `OpenTrafficLab/`** |
 | **`matlab/baseline/` is now FULL** | MathWorks' shipped planner, unmodified and checksummed. **Nobody edits it.** See `matlab/baseline/BASELINE.md` |
 | **The one failing test is Stream C's** | `testFeatureParity/testEveryCaseMatchesPython`. Everything else passes |
+| **Two rulings landed 4 Sep** | `plan/D6-TRUNK-RULING.md` (what the trunk is) and `plan/S3-PYIELD-RULING.md` (what `PYield` means). Read the one for your stream |
 
 ---
 
-## Antara — Stream D, Person A (`matlab/+sih/+planner/*.m`)
+## Stream D, Person A (`matlab/+sih/+planner/*.m`)
 
 **Your D2 is merged and both questions you raised are settled. Neither needed a contract change.**
 
@@ -168,37 +169,106 @@ cd matlab/baseline && shasum -a 256 -c CHECKSUMS.txt      # every line must say 
 
 ## Stream C — ML
 
-**One test fails, and it is yours. Nothing was touched in `ml/` or `+prediction/`.**
+**Both predictor models are trained and honestly measured. Good work.** Three things are settled
+below, and **one of them stops you before ONNX export.**
+
+Full ruling with the reasoning: **`plan/S3-PYIELD-RULING.md`**. Read it before you export anything.
+
+### 1. Hurdle 5 is a torch VERSION problem. Do not edit `to_onnx.py`.
+
+**Verified by running it here on 4 Sep 2026, torch 2.13.0, untrained weights** (shapes and
+operators are real, which is exactly what this question is about):
 
 ```
-testFeatureParity/testEveryCaseMatchesPython
-    Test Diagnostic:
-    case "empty": Data is [0 31], Python produced [0 0]
-
-    verifyEqual failed.
-    --> The numeric values are not equal using "isequaln".
-    Actual Value:      0    31
-    Expected Value:    0     0
-    In matlab/tests/testFeatureParity.m (testEveryCaseMatchesPython) at 54
+yield_lstm: exported opsets [17, 18, 20]      forbidden ops: NONE
+yield_gnn : exported opsets [17, 18, 20]      forbidden ops: NONE
+numerics vs PyTorch: max abs diff 1.19e-07 (lstm) / 4.17e-07 (gnn)
 ```
 
-An **empty-input shape disagreement**: `buildFeatureFrame.m` returns `[0 31]` for an empty track
-list, the Python fixture expects `[0 0]`. Both are defensible; they just have to agree.
-**Work out which is right and say why — do not change one side to match the other.**
+`dynamo=True` succeeded on all six. **No `Gather`, no `Scatter`, nothing from `FORBIDDEN`.**
+Shapes match the contract: `sequence [batch,20,31] -> yield_logits [1,2]`, and
+`sequence [batch,16,20,31] + adjacency [batch,16,16] -> yield_logits [batch,16,2]`, `A = 16`.
 
-**Two more things in your folder, flagged not fixed** (they are Stream C's to change):
+So both failure paths you hit are artefacts of the torch on your laptop:
+`aten.mkldnn_rnn_layer.default` under `dynamo=True` is a CPU decomposition gap that later torch
+fixed, and the `Shape -> Gather` under `dynamo=False` is the TorchScript exporter, which newer
+dynamo does not emit.
 
-- `/ml-parity` (both copies) and `ml/CHEATSHEET.md` give
-  `runtests('matlab/tests/testFeatureParity')` **without the `.m`**, which errors. Same bug Antara
-  found in `/plan-test`.
-- `ml/C-prediction.md` still says "seven products" and "four defects". check01 checks **nine**
-  required products.
+**Do this instead of changing code:**
+1. `python3 -c "import torch; print(torch.__version__)"` — **your PROGRESS.md contradicts itself,
+   H1 says 2.14.0 and H5 says 2.4.1. Settle which is real and write it down.**
+2. Upgrade torch, re-run `to_onnx.py` unchanged.
+3. **Do NOT relax `FORBIDDEN` in `to_onnx.py`.** Option A from your write-up risks MATLAB emitting a
+   placeholder custom layer, and `/first-run` warns about exactly that: *read the output for
+   PLACEHOLDER layers, not for the word "succeeded"*.
 
-**Still blocking Stream D:** the **ONNX opset number**. `check01` on Aditya's Mac reports
-`[ MISSING ] no ONNX import` — the free *Deep Learning Toolbox Converter for ONNX Model Format*
-add-on is not installed, so `check04` cannot run yet.
+Operators outside MATLAB's built-in list, which become custom layers: LSTM has `Expand, Shape,
+Slice, Transpose, Unsqueeze`; the GNN adds `Erf, Squeeze` at opsets 17/18 but **not at 20**, so
+opset 20 is the cleanest candidate. `check04` is what settles whether they auto-generate.
 
----
+### 2. The model is NOT allowed to say GO yet
+
+Your own evaluation prints **Check 4 & 5 = FAIL**. Dangerous error rate **20.18%** against a
+**≤1.0%** target — twenty times over. At threshold 0.99 it says GO 1,630 times out of 783,928, so
+it is already maximally conservative and still wrong 1 in 5 times it commits.
+
+Your "Immediate Next Steps" goes straight to ONNX export. **That would ship a model that failed its
+own gate.** Three of our previous entries died that way.
+
+**Ruling: emit `Valid = false` wherever the model cannot meet the ≤1% bar**, and let the planner
+fall back to the geometric role — which S3 already mandates. Record the threshold and the measured
+rate in `results/<run>/config.json`. That is a better thing to present than a hidden 20%.
+
+### 3. `PYield` must carry `1 - P(assert)`
+
+You trained on `assert`. The contract field is `PYield` and D6 weights its two futures by it. Since
+**not asserting is not the same as yielding**, this is not a free `1-p` flip and it has to be
+written down or the planner weights its branches backwards, silently.
+
+**Ruling: `PYield = 1 - P(assert)` — the probability the other road user does NOT take the gap.**
+Convert once, at the S3 boundary, on the MATLAB side. **The `.onnx` output tensor stays
+`yield_logits`** — that file format is frozen in section 3.
+
+Full reasoning, including why an optimistic `PYield` is not a safety hole: `plan/S3-PYIELD-RULING.md`.
+
+### 4. `check04` is blocked, and it is blocking the planner
+
+`importNetworkFromONNX` **does not exist on Aditya's Mac** — confirmed 4 Sep. The free
+**"Deep Learning Toolbox Converter for ONNX Model Format"** add-on is not installed, and the product
+installer does not include it. **Home -> Add-Ons -> Get Add-Ons.**
+
+**Do you have MATLAB installed at all?** Nothing in PROGRESS.md says so. You need MATLAB *plus* that
+add-on before `check04` can run — and the opset number it produces is the one thing blocking Stream D.
+
+### 5. For the claim ledger, before a judge asks
+
+Your dead-feature finding is correct and it is a real limitation. Features `[23,24,25,27]` map to
+S5 ClassID 11, 12, 13, 15 via `feature = 12 + ClassID` — **dog, pushcart, animal-drawn cart, static
+obstacle**. METEOR contains none of them.
+
+**Two of those, pushcart and animal-drawn cart, are classes this project specifically brags about.**
+Cows and tractors *are* present. Get the honest sentence ready now rather than discovering it on
+stage.
+
+### 6. Fixed for you in the repo
+
+- `.gitignore` had **no `*.npz` rule** — your own rule 2 says feature arrays never get committed and
+  nothing enforced it. Added.
+- `/ml-parity` (both copies) and `ml/CHEATSHEET.md` gave `runtests('matlab/tests/testFeatureParity')`
+  **without the `.m`**, which errors with `MATLAB:unittest:TestSuite:UnrecognizedSuite`. Fixed.
+- `ml/C-prediction.md` said "four real defects" and "four other people". Corrected.
+
+### 7. Still yours to resolve
+
+`testFeatureParity/testEveryCaseMatchesPython` fails on `main`:
+
+```
+case "empty": Data is [0 31], Python produced [0 0]
+```
+
+An empty-input shape disagreement between `buildFeatureFrame.m` and `features.py`. Both are
+defensible; they just have to agree. **Work out which is right and say why — do not change one side
+to match the other.**
 
 ## Aditya
 
