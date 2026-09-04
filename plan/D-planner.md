@@ -38,7 +38,10 @@
 
 Good news: the hardest maths is already written and tested for you.
 
-**Your machine:** Windows
+**Your machine:** Windows — that is where you develop.
+**The demo machine is Aditya's Mac**, and everything in this repo has been verified to run there
+(`TEAM.md`, "The main machine"). So write nothing that only works on Windows: no `C:\` paths, no
+backslashes in code, no Windows-only shell commands.
 **Your branch:** `stream-d-a` if you are Person A, `stream-d-b` if you are Person B.
 **You do NOT share a branch** — see `plan/CONTRACT-AB.md`.
 

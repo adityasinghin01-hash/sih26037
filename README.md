@@ -63,7 +63,7 @@ the streams still describe *what* is owned, but the roles describe *who works to
 | **1 · The World** | **Aditya, not handed out** | Everything the car drives in, and everything it sees. Coordinated by call, not through this repo |
 | **2 · The Driver** | **D + E** | Everything the car decides, and the proof it works |
 | Stream C · ML | on its own | Mostly running workflows now — see [`ml/ReadThis.md`](ml/ReadThis.md) |
-| Stream F · Integration | Aditya | Merging, the demo, the pitch, on the main machine |
+| Stream F · Integration | Aditya | Merging, the demo, the pitch — **on Aditya's Mac, which is the main machine** ([`TEAM.md`](TEAM.md)) |
 
 **Why grouped this way**
 
