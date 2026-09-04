@@ -1,0 +1,88 @@
+SIH26037 — REFERENCE LIBRARY
+Read in this order. Everything here is sourced or measured. Nothing is guessed.
+
+notes/REF-01-ROADS-JUNCTIONS.md   road classes and widths · markings · signs · curves and the
+                                  clothoid · gradients · ROUNDABOUTS (IRC 65 tables) ·
+                                  junctions and median openings · HILL ROADS and hairpins ·
+                                  retaining and gabion walls · BRIDGES · FLYOVERS
+notes/REF-02-ELECTRICAL.md        the whole chain: 132 kV lattice towers (span, shielding
+                                  angle, discs, step bolts) · the 11 kV CANDELABRA pole top
+                                  measured off our own footage · stays · the distribution
+                                  transformer · 415 V and service drops · the wire tangle
+notes/REF-03-BUILDINGS-TOWN.md    THE FACADE-PARTS METHOD (30 parts -> 1000 buildings) ·
+                                  NBC dimensions · shutters and awnings · town morphology ·
+                                  the kutcha hut · the temple
+notes/REF-04-LIFE-AND-LANDSCAPE.md vehicles · zebu cattle and gait · buffalo · macaques ·
+                                  human gait · CROWD DENSITY · trees and CANOPY INTERLOCK ·
+                                  the seven vegetation layers by species · the farming
+                                  calendar for late September · soil · birds
+notes/REF-05-TOOLS-PIPELINE.md    THE MAP PIPELINE (real place -> MATLAB -> Blender, one
+                                  source of truth) · every tool proven on this machine ·
+                                  Blender memory rules · the measurement checks that caught
+                                  real errors · THE EIGHT ERRORS ALREADY MADE
+
+notes/REF-06-TREE-GEOMETRY.md     TREES: why same-species trees look different (8 causes) ·
+                                  da Vinci branching numbers · how crowns MEET · how they blend
+                                  with buildings and with open ground · colour and grade.
+                                  Built from Aditya's own bus footage. SUPERSEDES trees-pass-01.
+
+notes/REF-07-LAND-BATCH1.md       LAND: the 9-step method for cutting a road into a hillside ·
+                                  terrain height-layer stacking · rock placement law · the water
+                                  recipe · cloud shadows · scatter culling · repeated structure.
+                                  From Aditya's video batch 1.
+
+notes/REF-08-ROADS-BATCH2.md      ROADS: the one-curve-in-a-road-out parameter set · the road
+                                  cross-section · UV as a straight strip · four ways to clear the
+                                  corridor · elevated decks and piers · scatter budgets.
+                                  From Aditya's video batch 2.
+
+notes/REF-09-BUILDINGS-MONUMENTS-BATCH3.md
+                                  BUILDINGS + MONUMENTS: vertex groups drive facade modules ·
+                                  inset/extrude architecture · spin and radial array · the
+                                  AMBIENT OCCLUSION DOUBLE-STACK (crevice grunge + edge wear) ·
+                                  the texture-variation recipe · scatter-along-curve node graph ·
+                                  face budget and the SPLIT-SKY render workflow for 8 GB.
+                                  From Aditya's video batch 3.
+
+notes/REF-10-TREES-BATCH4.md      TREES: the alpha-card fix for the 51M-face failure · four
+                                  methods and when to use each · Sapling's PRUNING tab as REF-06's
+                                  constraint mechanism · the geo-nodes generator node by node ·
+                                  roots. From Aditya's video batch 4. Read WITH REF-06.
+
+notes/REF-11-GROUND-SCENE-BATCH5.md
+                                  GROUND + WHOLE SCENE: building a plant from a real photo ·
+                                  the layered ground, one scatter per layer · translucent grass ·
+                                  wind that actually bends · clumping by noise · a road as a
+                                  MATERIAL MASK · sky-texture light + HDRI backplate.
+                                  From Aditya's video batch 5.
+
+notes/REF-12-SKY-CLOUDS-LIGHT.md  SKY + CLOUDS + LIGHT: the 90/10 rule · start from pitch black,
+                                  never light from the camera's side · HDRI for LIGHT, image plane
+                                  for what the camera SEES · the full procedural volumetric-cloud
+                                  pipeline in geometry nodes · halation · volume render settings ·
+                                  god rays. From Aditya's video batch 6.
+
+notes/BLENDER-PIPELINE.md         the older production reference. Parts SIX (IRC basics,
+                                  poles, tree species), SEVEN (the two rules and the stage
+                                  order), EIGHT (dashcam lens, haze formula, dimensions),
+                                  NINE (sky, catenary, road curves), TEN (canopy, junction,
+                                  crowd) are still authoritative for what REF-01..05 do not
+                                  repeat.
+
+map/                              najibabad.osm (MATLAB reads this directly) ·
+                                  najibabad_metres.json · matlab_roads.csv (SOURCE OF TRUTH) ·
+                                  plan.html
+scenarios/S1-CATTLE-CROSSING.md   the first Environment Script, rev 3, with its as-built
+                                  corrections. Written BEFORE building — that is Rule 1.
+renders/map_02_cityplan.png       the approved city plan with all five scenarios marked
+
+THE TWO RULES
+1. Nothing is built until it is written.
+2. A stage is finished only when it matches its specification exactly.
+
+ASSET REFERENCE (look-only, model from the shapes, never ship the pixels)
+trees/google-photos/   species and canopy shape
+real-india/            what the place must feel like
+video/clips/           Aditya's own 13 dashcam clips — WE OWN THESE, usable in the final film
+video/frames/          64 frames pulled from them
+video/bus/             3 side-view bus clips (5.2 min) + 170 frames + contact sheets
