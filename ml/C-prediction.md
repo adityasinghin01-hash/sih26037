@@ -111,7 +111,8 @@ get answers to these six questions. **Paste the raw output — do not summarise 
 
 Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
 name and signature was checked against the MathWorks documentation, but **checked is not run**.
-Four real defects were already found that way and there are probably more.
+Defects have been found exactly that way, and **seven more on 4 September 2026** - two of which
+stopped the simulation running at all.
 
 The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
 everything that has never been executed, in the right order, and says what to look for.
@@ -191,7 +192,7 @@ not *"it says something about a null value"*. The complete message.
 
 **Two things to refuse if your agent suggests them:**
 
-1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — four other people build against it
+1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — five other people build against it
 2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
 
 **And never let it write a number you have not produced.** If the agent puts a figure in a comment
