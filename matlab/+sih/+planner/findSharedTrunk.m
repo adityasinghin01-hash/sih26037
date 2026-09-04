@@ -74,9 +74,14 @@ arguments
     candidates  (:,1) struct
     prefixSteps (:,1) double
     opts.minTrunkTime_s (1,1) double {mustBeNonnegative} = 0.5
+    opts.rule (1,1) string = "LONGEST_CLEAR_PREFIX (reading A)"
 end
 
-RULE = "LONGEST_CLEAR_PREFIX (reading A)";
+% This function only ever ranks the prefix lengths it is handed. WHICH reading
+% produced them is decided by the caller - sih.planner.planContingency - so the
+% name of the rule is carried in rather than assumed. The default is reading A
+% because that is what a bare prefix length means if nobody says otherwise.
+RULE = opts.rule;
 
 n = numel(candidates);
 if numel(prefixSteps) ~= n

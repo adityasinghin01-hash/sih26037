@@ -11,6 +11,22 @@ function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
 %     4. sih.planner.findSharedTrunk       how far we actually commit   (piece 4)
 %     5. throw the rest away and do it again next cycle
 %
+%   TWO READINGS OF THE TRUNK, AND opts.trunkMode PICKS ONE
+%   Mode "A" (the default) commits to the longest prefix that is collision-free
+%   under every future. Mode "B" additionally requires that the prefix END
+%   somewhere a braking-to-stop is clear under every future - which is what
+%   plan/D6-TRUNK-RULING.md rules the trunk actually is. (a) exists so the loop
+%   closes and so the two can be compared; (b) is the answer.
+%
+%   THE HARD RULE THAT COMES WITH MODE "A"
+%   While trunkMode is "A", Committed MUST STAY FALSE. A prefix can be clear
+%   along every metre of itself and still end in a state where every continuation
+%   collides, so committing irrevocably to an (a)-trunk is committing to a
+%   trajectory that has already lost. Nothing in this file sets Committed - it is
+%   Person B's Stateflow chart that does - so this is a note for the chart, and
+%   .TrunkMode is reported in the output precisely so the chart can obey it
+%   rather than assume.
+%
 %   WHY THE WORST FUTURE WINS
 %   A candidate's committable length is the MINIMUM of its safe length across
 %   every future of every road user. Not the average, not the probability-weighted
@@ -47,7 +63,15 @@ function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
 %     .Candidates        Nx1 the whole fan, kept so D5 can log what was rejected
 %     .Futures           Mx1 every future of every road user, 2 per track
 %     .SafeSteps         NxM double, safe leading steps per candidate per future
-%     .WorstPrefixSteps  Nx1 double, the minimum of each row - what piece 4 reads
+%     .WorstPrefixSteps  Nx1 double, the minimum of each row - reading (a)
+%     .TerminalPrefixSteps Nx1 double, reading (b): the same, cut back to where a
+%                        braking-to-stop is still clear. Equals .WorstPrefixSteps
+%                        exactly in mode "A", so the two can be compared
+%     .TrunkMode         string, "A" or "B" - WHICH READING PRODUCED THIS.
+%                        Person B's chart must read it: Committed stays false
+%                        while it says "A"
+%     .StopChecks        double, how many terminal checks mode "B" actually cost.
+%                        0 in mode "A"
 %     .BindingFuture     Nx1 double, which future limited each candidate. NaN if
 %                        the candidate was safe under all of them
 %     .NumTracks         double
@@ -81,6 +105,9 @@ arguments
     opts.egoWidth_m         (1,1) double {mustBePositive} = 1.8
     opts.inflation_m        (1,1) double {mustBeNonnegative} = 0.0
     opts.minTrunkTime_s     (1,1) double {mustBeNonnegative} = 0.5
+    opts.trunkMode          (1,1) string {mustBeMember(opts.trunkMode,["A","B"])} = "A"
+    opts.aBrake_mps2        (1,1) double {mustBePositive} = 4.0
+    opts.dwellAfterStop_s   (1,1) double {mustBeNonnegative} = 0.0
 end
 
 iRequireFields(yieldPred, {'TrackIDs','PYield','Valid'}, 'yieldPred');
@@ -136,9 +163,40 @@ for k = 1:nC
     end
 end
 
+% ---- 3b. can we still stop from the end of that prefix? ----------------------
+% This is the whole difference between reading (a) and reading (b). Under (a) a
+% prefix only has to be clear ALONG itself; under (b) it must also END somewhere
+% a braking-to-stop is clear under every future. Skipped entirely in mode "A",
+% so the (a) path costs exactly what it did before.
+terminal   = worst;
+stopChecks = 0;
+if opts.trunkMode == "B" && nF > 0
+    for k = 1:nC
+        terminal(k) = 0;
+        % Walk back from the (a) prefix and take the FIRST length whose stop is
+        % clear - which is therefore the longest one that is. In the ordinary
+        % case the very end already works and this costs one check per future.
+        for p = worst(k):-1:1
+            [ok, used] = iStopIsSafe(candidates(k), futures, p, opts);
+            stopChecks = stopChecks + used;
+            if ok
+                terminal(k) = p;
+                break
+            end
+        end
+    end
+end
+
 % ---- 4. how far we commit ----------------------------------------------------
-trunk = sih.planner.findSharedTrunk(candidates(:), worst, ...
-            minTrunkTime_s = opts.minTrunkTime_s);
+if opts.trunkMode == "B"
+    rule = "STOP_FEASIBLE_PREFIX (reading B)";
+else
+    rule = "LONGEST_CLEAR_PREFIX (reading A)";
+end
+
+trunk = sih.planner.findSharedTrunk(candidates(:), terminal, ...
+            minTrunkTime_s = opts.minTrunkTime_s, ...
+            rule           = rule);
 
 out = struct( ...
     'Trunk',            trunk, ...
@@ -146,12 +204,36 @@ out = struct( ...
     'Futures',          futures, ...
     'SafeSteps',        safeSteps, ...
     'WorstPrefixSteps', worst, ...
+    'TerminalPrefixSteps', terminal, ...
+    'TrunkMode',        opts.trunkMode, ...
+    'StopChecks',       stopChecks, ...
     'BindingFuture',    binding, ...
     'NumTracks',        nT, ...
     'Blocked',          trunk.Blocked);
 end
 
 % ------------------------------------------------------------------ helpers
+
+function [ok, used] = iStopIsSafe(candidate, futures, p, opts)
+%ISTOPISSAFE  Is braking to a stop from step p clear under EVERY future?
+%   Stops at the first future that says no, so a hopeless prefix costs one check
+%   rather than all of them. `used` reports how many were actually run.
+ok   = true;
+used = 0;
+for j = 1:numel(futures)
+    used = used + 1;
+    r = sih.planner.checkTerminalStop(candidate, futures(j), p, ...
+            aBrake_mps2      = opts.aBrake_mps2, ...
+            dwellAfterStop_s = opts.dwellAfterStop_s, ...
+            egoLength_m      = opts.egoLength_m, ...
+            egoWidth_m       = opts.egoWidth_m, ...
+            inflation_m      = opts.inflation_m);
+    if ~r.Safe
+        ok = false;
+        return
+    end
+end
+end
 
 function [pY, isValid] = iLookupYield(yieldPred, trackID)
 %ILOOKUPYIELD  S3 for one track. Absent counts as invalid, never as a guess.

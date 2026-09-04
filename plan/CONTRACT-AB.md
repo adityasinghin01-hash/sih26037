@@ -58,8 +58,9 @@ returns a fixed command, and the real function drops into a slot that already wo
 | `generateCandidates` | `egoState` struct, `referencePathFrenet`, `opts` | candidate array, each with `.States` `.Global` `.LateralOffset_m` | **done, tested** — 13 tests |
 | `checkTrajectorySafety` | one candidate, one future, `opts` | `.Safe` per timestep, `.SafePrefixSteps`, `.AllSafe`, `.FirstUnsafeTime` | **done, tested** — 14 tests |
 | `findSharedTrunk` | candidate array, per-candidate safe steps, `opts` | `.States` `.Steps` `.Time` `.Blocked` `.Rule` | **done, tested** — 16 tests |
-| `planContingency` | `egoState`, `referencePathFrenet`, TrackList (S1), YieldPrediction (S3), `opts` | `.Trunk` `.Candidates` `.Futures` `.SafeSteps` `.Blocked` | **done, tested** — 15 tests |
+| `planContingency` | `egoState`, `referencePathFrenet`, TrackList (S1), YieldPrediction (S3), `opts` incl. **`trunkMode`** `"A"`/`"B"` | `.Trunk` `.Candidates` `.Futures` `.SafeSteps` `.TerminalPrefixSteps` **`.TrunkMode`** `.StopChecks` `.Blocked` | **done, tested** — 23 tests |
 | `followTrunk` | `trunk` (from `findSharedTrunk`), `egoState` struct, `opts` | EgoCommand (S4), plus an `info` struct for logging | **done, tested** — 21 tests |
+| `checkTerminalStop` | one candidate, one future, the step to brake from, `opts` | `.Safe` `.StopDistance_m` `.StopDuration_s` `.StopStates` | **done, tested** — 17 tests |
 | `roadBarrier` | DrivableSpace (S9), speed, `opts` | `.h_road` `.Violated` `.dMin_m` `.Clearance_m` `.UsedFallback` `.Reason` | **done, tested** — 22 tests |
 | `speedLimit` | DrivableSpace (S9), speed, `opts` (curvature, `vRoute_mps`) | `.v_max_mps` `.Binding` and the three terms | **done, tested** — 19 tests |
 | *(add a row before you write the function, not after)* | | | |
@@ -76,6 +77,17 @@ So a three-argument call is **not** a bug — it just takes every default.
 
 **`followTrunk` needs the vehicle wheelbase** and nothing in this repository states it. It defaults
 to 2.8 m. Person B should pass the real figure via `opts.wheelbase_m`.
+
+**PERSON B — READ `.TrunkMode` BEFORE YOU SET `Committed`.** `planContingency` reports which
+reading of the trunk produced its answer. `"A"` is the longest collision-free prefix; `"B"` also
+requires that a braking-to-stop from the end of it is clear under both futures.
+**While `.TrunkMode` is `"A"`, `Committed` must stay false** — `plan/D6-TRUNK-RULING.md` is
+explicit that (a) plus `Committed` lets the planner commit irrevocably to a trajectory that has
+already lost. `"B"` is the ruling's answer and is what the demo should run.
+
+Measured on one scene, 5 Sep 2026 (ego 8 m/s, a car standing at x = 42 m): (a) commits 4.00 s and
+32.0 m, leaving the car needing 8 m to stop with only 10 m to the obstacle. (b) commits 3.40 s and
+27.2 m, which stops clear. It cost 56 terminal checks over 20 candidates and 2 futures.
 
 **`roadBarrier` and `speedLimit` are D8, and they take a hand-made `DrivableSpace`.** S9 is frozen
 in `AGENTS.md` section 3 but the World has not delivered it, so both are *built and unit-tested,

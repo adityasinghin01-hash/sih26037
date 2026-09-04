@@ -172,3 +172,84 @@ verifyError(tc, @() sih.planner.planContingency(tc.TestData.ego, ...
             tc.TestData.refPath, iTrack(1,[40 0],[0 0],0), bad), ...
             'sih:planner:planContingency:missingField');
 end
+
+% ------------------------------------------------- reading (b), the terminal stop
+
+function testModeAIsTheDefaultAndSaysSo(tc)
+% Nobody should have to guess which reading produced a trunk. Person B's chart
+% reads .TrunkMode to know whether Committed is allowed to go true.
+out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
+          iNoTracks(), iNoYield(), lateralOffsets_m=0, terminalSpeeds_mps=8);
+verifyEqual(tc, out.TrunkMode, "A");
+verifyEqual(tc, out.Trunk.Rule, "LONGEST_CLEAR_PREFIX (reading A)");
+end
+
+function testModeBNamesItselfDifferently(tc)
+out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
+          iTrack(1,[60 0],[0 0],0), iYield(1,0.5,true), ...
+          lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="B");
+verifyEqual(tc, out.TrunkMode, "B");
+verifyEqual(tc, out.Trunk.Rule, "STOP_FEASIBLE_PREFIX (reading B)");
+end
+
+function testModeACostsNoTerminalChecks(tc)
+out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
+          iTrack(1,[60 0],[0 0],0), iYield(1,0.5,true), ...
+          lateralOffsets_m=0, terminalSpeeds_mps=8);
+verifyEqual(tc, out.StopChecks, 0);
+verifyEqual(tc, out.TerminalPrefixSteps, out.WorstPrefixSteps);
+end
+
+function testModeBNeverCommitsMoreThanModeA(tc)
+% (b) is (a) plus an extra requirement, so it can only ever cut the prefix back.
+% If it were ever longer, the extra requirement would not be a requirement.
+tracks = iTrack(1,[45 0],[0 0],0);
+yield  = iYield(1,0.5,true);
+a = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
+        lateralOffsets_m=[-3 0 3], terminalSpeeds_mps=[0 4 8]);
+b = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
+        lateralOffsets_m=[-3 0 3], terminalSpeeds_mps=[0 4 8], trunkMode="B");
+verifyLessThanOrEqual(tc, b.TerminalPrefixSteps, a.WorstPrefixSteps);
+verifyLessThanOrEqual(tc, b.Trunk.Steps, a.Trunk.Steps);
+end
+
+function testModeBActuallyCutsBackWhenStoppingIsBlocked(tc)
+% A car parked squarely ahead, placed in the window that separates the two
+% readings. The ego does 8 m/s for 4 s, so the candidate ends near x = 32 and is
+% clear the whole way - reading (a) commits all 41 steps. Braking from 8 m/s at
+% 4 m/s^2 takes another 8 m, which puts the stop at x = 40, right on top of it.
+% So reading (b) MUST cut back. Move the car much further out and there is
+% nothing to catch; much nearer and (a) is cut too and the test proves nothing.
+tracks = iTrack(1,[42 0],[0 0],0);
+yield  = iYield(1,0.5,true);
+a = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
+        lateralOffsets_m=0, terminalSpeeds_mps=8);
+b = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, yield, ...
+        lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="B");
+verifyLessThan(tc, b.TerminalPrefixSteps(1), a.WorstPrefixSteps(1));
+verifyGreaterThan(tc, b.StopChecks, 0);
+end
+
+function testModeBCostsOneCheckPerFutureWhenTheEndAlreadyWorks(tc)
+% The ruling says (b) is one extra check per candidate. On an open road the very
+% end of the (a) prefix already stops cleanly, so the walk-back never runs.
+tracks = iTrack(1,[30 -60],[0 0],pi/2);          % well off to the side
+out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, tracks, ...
+          iYield(1,0.5,true), lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="B");
+verifyEqual(tc, out.StopChecks, numel(out.Candidates) * numel(out.Futures));
+end
+
+function testModeBWithNoRoadUsersChangesNothing(tc)
+% With nothing to hit, there is nothing a stop could be blocked by, so (b) must
+% agree with (a) exactly rather than being conservative for its own sake.
+out = sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
+          iNoTracks(), iNoYield(), lateralOffsets_m=0, terminalSpeeds_mps=8, trunkMode="B");
+verifyEqual(tc, out.TerminalPrefixSteps, out.WorstPrefixSteps);
+verifyEqual(tc, out.Trunk.Steps, 41);
+end
+
+function testAnUnknownTrunkModeIsRefused(tc)
+verifyError(tc, @() sih.planner.planContingency(tc.TestData.ego, tc.TestData.refPath, ...
+                    iNoTracks(), iNoYield(), trunkMode="C"), ...
+            'MATLAB:validators:mustBeMember');
+end
