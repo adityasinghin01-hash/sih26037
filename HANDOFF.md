@@ -317,26 +317,33 @@ installer does not include it. **Home -> Add-Ons -> Get Add-Ons.**
 **Do you have MATLAB installed at all?** Nothing in PROGRESS.md says so. You need MATLAB *plus* that
 add-on before `check04` can run — and the opset number it produces is the one thing blocking Stream D.
 
-### 5. Models 3, 4 and 5 belong to the CITY, not to the 7th
+### 5. Models 3, 4 and 5 — TRAIN THEM NOW. Deployment is what waits, not training.
 
-**Recorded 4 Sep 2026 — this dependency was nowhere in the repo and it decides what you start.**
+**Recorded 4 Sep 2026. Aditya's decision.**
 
-The World is being built in two versions: **the city** (the full rendered world) and **the backup**
-(the cuboid fallback). They are separate efforts in separate sessions.
+**Training and deployment are decoupled, and that is the whole point:**
 
-| Model | Needs | Verdict |
+- **Training data is IDD — real Indian road footage.** It has nothing to do with our rendered
+  world. Nothing about training these models depends on the city existing.
+- **The city is where they get deployed**, and the city is **committed**. It will not be finished by
+  the 7th, and that is fine — Aditya is completing it because it is the main goal of the project.
+- The cuboid **backup** is a fallback for the *demo*, not a change of direction. It does not cancel
+  anything.
+
+| Model | Trains on | Deploys in |
 |---|---|---|
-| **3 — Spotter (YOLOX)** | camera pixels | **CITY ONLY.** `AGENTS.md` line 36: *"camera offline. The cuboid environment emits object lists, not pixels."* No city, no pixels, no spotter |
-| **4 — Road-Finder (DeepLab v3+)** | camera pixels | **CITY ONLY**, same reason |
-| **5 — Laser Spotter (PointPillars)** | lidar returns | **Less dependent.** Lidar works in the cuboid world — `check02` put 429 points on a cow mesh. Could run either way |
+| **3 — Spotter (YOLOX)** | IDD, real footage | the city (needs camera pixels — `AGENTS.md` line 36) |
+| **4 — Road-Finder (DeepLab v3+)** | IDD, real footage | the city, same reason |
+| **5 — Laser Spotter (PointPillars)** | lidar data | either — lidar already works in the cuboid world (`check02`: 429 points on a cow mesh) |
 
-**Consequences for Stream C:**
+**So, for Stream C:**
 
-- **None of 3, 4, 5 is needed for the internal round on the 7th.** Model 1 alone carries it.
-- **They are not cancelled.** They are the real project, and the KIET GPU cluster can train them.
-  Keep going — just never at the cost of Model 1's opset number, which blocks two other people.
-- **Do NOT start the IDD download or signup until the city decision is made.** 25 GB and a human
-  terms acceptance, and it is wasted entirely if we fall back to the backup world.
+- **Start the IDD signup and the 25 GB download now.** `idd.insaan.iiit.ac.in` needs a human to
+  accept the terms. The download is long and training takes days on the KIET cluster, so starting
+  early is pure gain. **It is not wasted under any outcome — these models have to be trained.**
+- **None of 3, 4, 5 is needed for the 7th.** Model 1 alone carries the internal round.
+- **The one hard rule: never let them delay Model 1's opset number.** Two other people are blocked
+  on it. Everything else, do as much as you can.
 
 ### 6. For the claim ledger, before a judge asks
 
