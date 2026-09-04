@@ -312,7 +312,10 @@ Every cycle:
 2. Roll each forward under **two futures per agent — they yield, they assert** — weighted by
    `P(yield)` from Stream C
 3. Collision-check with `dynamicCapsuleList`
-4. **Commit only the shared trunk** — the first piece safe under *both* futures
+4. **Commit only the shared trunk** — the longest prefix after which a safe continuation still
+   exists under *both* futures. **NOT merely the longest collision-free stretch:** a stretch can
+   be collision-free and still end where every continuation crashes, and committing to that is
+   the crash. **Ruling 4 Sep 2026: `plan/D6-TRUNK-RULING.md`.**
 5. Throw it away and redo it
 
 **The trunk IS the probe.** Creeping forward is not a special behaviour; it is the committed part

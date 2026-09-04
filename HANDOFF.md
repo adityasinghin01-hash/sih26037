@@ -54,6 +54,14 @@ an ego-frame TrackList with a real world ego pose it **does not error** — it s
 wrong role for every agent. Every older test used `egoPos=[0 0], egoYaw=0`, where the two frames
 coincide, so none of them could catch it.
 
+### The trunk question is answered: `plan/D6-TRUNK-RULING.md`
+
+It is **(b)** — the longest prefix after which a safe continuation still exists under both
+futures, not merely the longest collision-free stretch. Ship **(a)** first to close the loop,
+but **`Committed` stays false until the terminal check lands** — (a) plus `Committed` lets the
+planner commit irrevocably to a trajectory that has already lost. The cheap route to (b) is one
+extra braking-to-stop check per candidate, not a second generation pass. Read the file.
+
 ### Next: D6, the contingency planner
 
 It is the biggest job on the project and nothing blocks it. `/plan-work` has the build order.
