@@ -47,10 +47,6 @@ function cmd = chooseVelocity(role, vo, egoState, opts)
 %
 %   FRAME: x forward, y left, z up. Positive SteerAngle is LEFT.
 %
-%   TODO(unverified): .Reason is a string scalar. AGENTS.md section 3 defines S4
-%   and has not been read here. If S4 fixes Reason as a char array or a numeric
-%   code, this is a one-line change in iPack. Check with Aditya.
-%
 %   See also SIH.PLANNER.VELOCITYOBSTACLE, SIH.PLANNER.ASSIGNROLES
 
 arguments
