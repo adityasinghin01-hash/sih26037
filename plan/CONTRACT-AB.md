@@ -83,7 +83,8 @@ reading of the trunk produced its answer. `"A"` is the longest collision-free pr
 requires that a braking-to-stop from the end of it is clear under both futures.
 **While `.TrunkMode` is `"A"`, `Committed` must stay false** — `plan/D6-TRUNK-RULING.md` is
 explicit that (a) plus `Committed` lets the planner commit irrevocably to a trajectory that has
-already lost. `"B"` is the ruling's answer and is what the demo should run.
+already lost. **`"B"` is the DEFAULT from 4 September 2026** — a caller who passes no `trunkMode` gets the
+ruling's answer automatically. `"A"` still exists but must now be asked for by name.
 
 Measured on one scene, 5 Sep 2026 (ego 8 m/s, a car standing at x = 42 m): (a) commits 4.00 s and
 32.0 m, leaving the car needing 8 m to stop with only 10 m to the obstacle. (b) commits 3.40 s and
