@@ -60,6 +60,8 @@ returns a fixed command, and the real function drops into a slot that already wo
 | `findSharedTrunk` | candidate array, per-candidate safe steps, `opts` | `.States` `.Steps` `.Time` `.Blocked` `.Rule` | **done, tested** — 16 tests |
 | `planContingency` | `egoState`, `referencePathFrenet`, TrackList (S1), YieldPrediction (S3), `opts` | `.Trunk` `.Candidates` `.Futures` `.SafeSteps` `.Blocked` | **done, tested** — 15 tests |
 | `followTrunk` | `trunk` (from `findSharedTrunk`), `egoState` struct, `opts` | EgoCommand (S4), plus an `info` struct for logging | **done, tested** — 21 tests |
+| `roadBarrier` | DrivableSpace (S9), speed, `opts` | `.h_road` `.Violated` `.dMin_m` `.Clearance_m` `.UsedFallback` `.Reason` | **done, tested** — 22 tests |
+| `speedLimit` | DrivableSpace (S9), speed, `opts` (curvature, `vRoute_mps`) | `.v_max_mps` `.Binding` and the three terms | **done, tested** — 19 tests |
 | *(add a row before you write the function, not after)* | | | |
 
 **`egoState` is a struct** with `.Position`, `.Velocity` and `.Yaw`, packed by `NegotiatingStrategy`.
@@ -74,6 +76,11 @@ So a three-argument call is **not** a bug — it just takes every default.
 
 **`followTrunk` needs the vehicle wheelbase** and nothing in this repository states it. It defaults
 to 2.8 m. Person B should pass the real figure via `opts.wheelbase_m`.
+
+**`roadBarrier` and `speedLimit` are D8, and they take a hand-made `DrivableSpace`.** S9 is frozen
+in `AGENTS.md` section 3 but the World has not delivered it, so both are *built and unit-tested,
+not validated*. Every header says so. `speedLimit` also needs `vRoute_mps` passed in, because S10
+Route carries `GoalHeading`, `GoalPoint`, `BlockedEdges` and `EscapePoints` and **no speed**.
 
 ## When you disagree about where something belongs
 
