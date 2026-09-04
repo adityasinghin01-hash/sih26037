@@ -59,10 +59,14 @@ returns a fixed command, and the real function drops into a slot that already wo
 | `checkTrajectorySafety` | one candidate, one future, `opts` | `.Safe` per timestep, `.SafePrefixSteps`, `.AllSafe`, `.FirstUnsafeTime` | **done, tested** — 14 tests |
 | `findSharedTrunk` | candidate array, per-candidate safe steps, `opts` | `.States` `.Steps` `.Time` `.Blocked` `.Rule` | **done, tested** — 16 tests |
 | `planContingency` | `egoState`, `referencePathFrenet`, TrackList (S1), YieldPrediction (S3), `opts` | `.Trunk` `.Candidates` `.Futures` `.SafeSteps` `.Blocked` | **done, tested** — 15 tests |
+| `followTrunk` | `trunk` (from `findSharedTrunk`), `egoState` struct, `opts` | EgoCommand (S4), plus an `info` struct for logging | **done, tested** — 21 tests |
 | *(add a row before you write the function, not after)* | | | |
 
 **`egoState` is a struct** with `.Position`, `.Velocity` and `.Yaw`, packed by `NegotiatingStrategy`.
 **`chooseVelocity` takes `opts`** — four arguments, not three. Both settled by Aditya, 2 September 2026.
+
+**`followTrunk` needs the vehicle wheelbase** and nothing in this repository states it. It defaults
+to 2.8 m. Person B should pass the real figure via `opts.wheelbase_m`.
 
 ## When you disagree about where something belongs
 
