@@ -66,6 +66,33 @@ but **`Committed` stays false until the terminal check lands** — (a) plus `Com
 planner commit irrevocably to a trajectory that has already lost. The cheap route to (b) is one
 extra braking-to-stop check per candidate, not a second generation pass. Read the file.
 
+### Arbitration is ruled, and it was never written down — `plan/ARBITRATION-RULING.md`
+
+You asked whether `arbitrate` should take the role list plus positions (your Option 1) or the ego
+and tracks (Option 2). **Neither. It takes the role list and nothing else.**
+
+`assignRoles` already builds a full `vo` for every track at line 64 and throws it away. Return it:
+
+```matlab
+[roles, vos] = sih.planner.assignRoles(egoPos, egoVel, egoYaw, tracks);   % vos is NEW
+[winner, k]  = sih.planner.arbitrate(roles);
+cmd          = sih.planner.chooseVelocity(winner, vos(k), egoState);
+```
+
+**No positions in, so no frame to get wrong** — Option 1's silent-wrong-answer trap is not guarded
+against, it is made unrepresentable. Nothing recomputed, so Option 2's duplication is gone too.
+Adding an output is backward compatible; existing callers are untouched.
+
+Winner is the **smallest `h = Lambda - Beta`** — tightest, not nearest. Ties: lowest `TrackID`.
+Empty tracks: no winner, `h = NaN`. It must **not** read `PYield` and must **not** choose between
+`h_agent` and `h_road`. Reasons in the file.
+
+**You have already written the hard part**: `minBarrierFromRoles()` at line 141 is exactly this,
+minus the index.
+
+**And you were right that it was nowhere.** The word "arbitration" appeared in no file in this repo.
+That is fixed.
+
 ### Next: D6, the contingency planner
 
 It is the biggest job on the project and nothing blocks it. `/plan-work` has the build order.
