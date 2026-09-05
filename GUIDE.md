@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **73%** | 51 active milestones addressed across 70 total steps |
-| **Completed Steps** | **55** | `[🟢COMPLETED]` — All Predictor, Evaluation & Calibration steps complete |
-| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Model 3 dataset acquired (22.8 GB); training deferred |
-| **Active Planned Steps** | **0** | `[🔵TO DO]` — All active exploration directives fulfilled |
+| **Overall Pipeline Progress** | **75%** | 57 active milestones addressed across 76 total steps |
+| **Completed Steps** | **56** | `[🟢COMPLETED]` — Predictor, Evaluation, Calibration benchmarks & H7/H8 loader fixed |
+| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Model 3 dataset acquired (22.8 GB); fast curation planned |
+| **Active Planned Steps** | **5** | `[🔵TO DO]` — Part 14: Fast-Track Model 3 (YOLOX Spotter) Curation & Training |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -28,7 +28,8 @@
 | **Part 9: Models 3, 4, 5 (Perception Suite)** | 41–44 | 🟡 1 PARTIAL, 3 POST-S7 | Model 3 dataset acquired (22.8 GB); training deferred to post-Sept 7 demo |
 | **Part 11: Model 3 Local Setup & Audit** | 45–58 | 🟢 10 PREP, 4 DEFERRED | MATLAB R2024b, toolboxes, YOLOX add-on, GPU & 46k images ready; training deferred |
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
-| **Part 13: Calibration Exploration** | 65–70 | 🔵 6 TO DO (ACTIVE) | Ensemble of Models 1 & 2 + Temperature Scaling exploratory benchmark |
+| **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
+| **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟡 1 COMPLETED, 5 TO DO | Dual-bug fix (H7/H8) VERIFIED; 4-5k curation & 1-hr training next |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1053,3 +1054,98 @@ After building the table, answer exactly one of these two statements:
 > **Option B:** *"No method tested brings the dangerous-error rate meaningfully closer to 1.0% at a usable n_go (>= 30). The honest conclusion is: still gated off (`Valid = false`), the best real number is [X]% at n_go = [N], and it does not go lower without more labeled data."*
 
 **Either answer is fine.** Say which one it is. Do not hedge.
+
+---
+
+## Part 14 - Fast-Track Model 3 (YOLOX Spotter) Curation & Training (Post-Sept 6)
+
+This phase establishes the plan to train Model 3 (YOLOX Spotter) on the local NVIDIA RTX A1000 GPU in **1–2 hours** instead of 18–20 hours, by curating a high-value clip-balanced subset of IDD Detection focused on our critical unstructured classes (`cow` and `auto-rickshaw`) and resolving the dual bug in `readDetectionData.m`.
+
+### The Core Guidelines for This Phase
+1. **Never cherry-pick individual frames.** Subsample strictly by clip/sequence to eliminate adjacent-frame leakage.
+2. **Keep the S5 class order.** Class names and indices must come from `sih.util.classNames("detector")`.
+3. **Preserve background diversity.** Include non-target frames so the detector does not hallucinate false positives.
+4. **VRAM Safety:** Train with `MiniBatchSize = 2` to stay strictly within 4.5–5.5 GB VRAM on the RTX A1000.
+5. **Document data limitations honestly.** Note that `pushcart` does not exist in IDD annotations.
+
+---
+
+### Phase M: Data Loader Dual-Bug Resolution
+
+#### Step 71 Resolve Hurdles H7 & H8 in `readDetectionData.m` [🟢COMPLETED] [HIGH]
+Fix the two interdependent bugs in `matlab/+sih/+models/readDetectionData.m`:
+1. **Hurdle H7:** Change line 47 from flat `dir(fullfile(annDir, '*.xml'))` to recursive `dir(fullfile(annDir, '**', '*.xml'))`.
+2. **Hurdle H8:** In `iFindImage`, strip `annDir` to determine the subfolder relative path (e.g., `frontFar/0000149.xml`) and pair it directly with `fullfile(imgDir, relImgPath)`. This prevents cross-folder collision when identical filenames appear across subdirectories.
+
+Done when: MATLAB can parse sample annotations without errors or cross-folder mismatch.
+
+---
+
+### Phase N: IDD Dataset Curation
+
+#### Step 72 Curate Clip-Balanced IDD Subset (~4,000–5,000 Images) [🔵TO DO] [HIGH]
+Construct a curated VOC-compliant folder at `C:\Users\admin\idd-curated\`:
+1. Scan forward camera folders (`frontFar`, `frontNear`, `highquality_16k`).
+2. Retain all clips containing `animal` (`cow`).
+3. Retain balanced sample clips containing `autorickshaw`.
+4. Include representative background vehicle/pedestrian clips.
+5. Link/copy to standard `Annotations/` and `JPEGImages/` structure.
+
+Done when: `C:\Users\admin\idd-curated\` holds ~4,000–5,000 image/annotation pairs ready for training.
+
+---
+
+### Phase O: Datastore Validation
+
+#### Step 73 Verify Datastores and Class Distribution [🔵TO DO] [HIGH]
+In MATLAB Command Window, execute:
+```matlab
+[imds, blds] = sih.models.readDetectionData("C:\Users\admin\idd-curated\JPEGImages", "C:\Users\admin\idd-curated\Annotations", sih.util.classNames("detector"));
+```
+Verify that:
+1. `numel(imds.Files)` is non-zero and matches the curated count.
+2. The count of `cow` and `auto-rickshaw` boxes is healthy.
+3. No unmapped class collisions occur.
+
+Done when: Datastores load cleanly and print non-zero box counts for target classes.
+
+---
+
+### Phase P: Fast YOLOX Training
+
+#### Step 74 Train YOLOX Spotter with VRAM Guard [🔵TO DO] [HIGH]
+Run native YOLOX training on the local RTX A1000:
+```matlab
+detector = sih.models.trainSpotter( ...
+    "C:\Users\admin\idd-curated", ...
+    "C:\Users\admin\meteor-data\spotter_yolox.mat", ...
+    MaxEpochs=15, ...
+    MiniBatchSize=2);
+```
+Expected execution:
+- Peak VRAM: ~5.0 GB (safe below 7.54 GB ceiling).
+- Duration: ~45–60 minutes.
+- Artifact saved: `C:\Users\admin\meteor-data\spotter_yolox.mat`.
+
+Done when: Training completes 15 epochs and detector checkpoint is saved.
+
+---
+
+### Phase Q: Evaluation & Logging
+
+#### Step 75 Evaluate Average Precision on Target Classes [🔵TO DO] [HIGH]
+Evaluate the detector on the validation split:
+1. Measure per-class Average Precision (AP) for `cow`.
+2. Measure per-class Average Precision (AP) for `auto-rickshaw`.
+3. Document `pushcart` as 0 instances in IDD (unobserved class finding).
+
+Done when: AP numbers are computed and recorded.
+
+---
+
+### Phase R: Deliverables Documentation
+
+#### Step 76 Record Model 3 Results in `PROGRESS.md` [🔵TO DO] [HIGH]
+Log all final numbers, loss curve, per-class AP, and resolution of Hurdles H7/H8 into `PROGRESS.md`.
+
+Done when: `PROGRESS.md` is updated with Model 3 deliverables.

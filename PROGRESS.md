@@ -365,6 +365,15 @@
       - Platt Model 1 (thr 0.80) / Isotonic (thr 0.95): 8.33% dangerous rate ($n_{\text{go}} = 12$, FP = 1) — flagged as *not a measurement* ($n_{\text{go}} < 30$).
     * *Final Verdict (Option B):* No method brings the dangerous error rate to $\le 1.0\%$ at a usable sample size ($n_{\text{go}} \ge 30$). The best statistically valid rate is **14.73%**. Thus, the predictor must remain gated off (`Valid = false`), and negotiation is handled safely by deterministic geometry ($h = \lambda - \beta$).
 
+* **[00:33 - 00:36 IST] Phase 6: Model 3 (YOLOX Spotter) Dual-Bug Resolution (Step 71 COMPLETE)**
+  * **Step 71: Resolved Hurdles H7 & H9 in `readDetectionData.m` — VERIFIED IN MATLAB**
+    * **Directory Traversal (H7):** Replaced non-recursive `dir(fullfile(annDir, '*.xml'))` with recursive scan `dir(fullfile(annDir, '**', '*.xml'))`. Successfully detects all 41,857 nested XMLs across subdirectories (`frontFar`, `frontNear`, `highquality_16k`, etc.).
+    * **Basename Cross-Pairing (H9):** Replaced flat-stem image matching in `iFindImage` with relative path resolution. The function strips `annDir` to determine the subfolder relative stem (e.g., `frontFar/BLR-2018-03-22_17-39-26_2_frontFar/0000060`) and joins with `imgDir`, preventing silent cross-folder mismatching between duplicate filenames across clip directories.
+    * **MATLAB Verification Output:** Tested on live IDD clip `frontFar/BLR-2018-03-22_17-39-26_2_frontFar`:
+      * Successfully parsed **387 images with at least one usable box**.
+      * Dropped non-S5 classes safely: `vehicle fallback` (146 boxes) and `rider` (614 boxes) without data corruption.
+      * `boxLabelDatastore` and `imageDatastore` initialized with valid `[x y w h]` bounding boxes and S5 categorical labels.
+
 ---
 
 ## 3. Log of Hurdles Faced & Applied Fixes
@@ -377,8 +386,9 @@
 | **H4** | `[SSL: CERTIFICATE_VERIFY_FAILED]` on file download | Network firewall / captive portal proxy issued self-signed certificates, breaking urllib SSL validation. | Switched network interface to mobile hotspot, establishing a direct, untampered HTTPS connection. |
 | **H5** | `OnnxExporterError: aten.mkldnn_rnn_layer.default` on PyTorch 2.4 | PyTorch 2.4 TorchDynamo lacks MKLDNN RNN layer decomposition for CPU export. | Switched to `python3` runtime with PyTorch `2.14.0+cpu` + `onnxscript` as specified in Phase 2 Directive 1. All opsets 17, 18, 20 exported cleanly with `max abs diff < 1e-6`! |
 | **H6** | `gpuDevice requires Parallel Computing Toolbox` in MATLAB | MATLAB installed without GPU execution engine by default. | Installed Parallel Computing Toolbox via Add-On Explorer to enable CUDA on local NVIDIA RTX A1000. |
-| **H7** | `readDetectionData.m` non-recursive search returns 0 boxes | `dir(fullfile(annDir, '*.xml'))` only scans root, but IDD Detection nests clips in subfolders. | Identified requirement to use recursive `dir(fullfile(annDir, '**', '*.xml'))` with relative path resolution. |
+| **H7** | `readDetectionData.m` non-recursive search returns 0 boxes | `dir(fullfile(annDir, '*.xml'))` only scans root, but IDD Detection nests clips in subfolders. | Fixed in `readDetectionData.m` using recursive `**/*.xml`. Verified in MATLAB (detects all 41,857 files). |
 | **H8** | `nnet_cnn_onnx:onnx:ExternalData` in MATLAB import | PyTorch 2.14 TorchDynamo saved initializers into `.onnx.data` external files not supported by MATLAB. | Embedded external initializers directly into self-contained `.onnx` files using `onnx.load`/`onnx.save`. |
+| **H9** | Basename cross-pairing in `readDetectionData.m` | IDD repeats filenames (e.g. `0000149.xml`) across clip subdirectories; matching by filename stem causes silent cross-folder mismatching. | Updated `iFindImage` to resolve paths relative to the subfolder tree. Verified in MATLAB (387 images parsed cleanly). |
 
 ---
 
