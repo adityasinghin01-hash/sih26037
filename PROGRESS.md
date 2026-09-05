@@ -285,6 +285,28 @@
 
 ---
 
+* **[05:55 - 06:35 IST] Phase 3: Model 3 (YOLOX Spotter) Local Environment Setup (Steps 45-48, 52 COMPLETE)**
+  * **MATLAB Installation (Steps 45-46):** Installed MATLAB R2024b locally at `C:\Program Files\MATLAB\R2024b\bin\matlab.exe`.
+  * **Verified Toolboxes & Add-ons (Step 47):**
+    * Deep Learning Toolbox: Installed (`exist('trainingOptions', 'file') == 2`).
+    * Computer Vision Toolbox: Installed (`exist('yoloxObjectDetector', 'file') == 2`).
+    * Automated Visual Inspection Library: Installed (`exist('trainYOLOXObjectDetector', 'file') == 2`).
+    * ONNX Converter Add-on: Installed (`exist('importNetworkFromONNX', 'file') == 2`).
+  * **GPU Acceleration Verified (Step 48):**
+    * Device: `NVIDIA RTX A1000` (8.59 GB Total, 7.54 GB Available VRAM).
+    * Compute Capability: `8.6` (Ampere architecture).
+    * Status: `READY FOR CUDA TRAINING` via Parallel Computing Toolbox.
+  * **Repo Path Configured (Step 52):**
+    * `cd('C:\Users\admin\sih26037'); addpath('matlab')`
+    * Verified resolution: `C:\Users\admin\sih26037\matlab\+sih\+models\trainSpotter.m`.
+  * **Dataset Acquisition & Extraction (Steps 49-51 COMPLETE):**
+    * Downloaded `idd-detection.tar.gz` (24,429,124,510 bytes, 22.75 GB) via direct S3 auto-resume transfer.
+    * Extracted to `C:\Users\admin\idd-detection\`.
+    * Verified counts: **46,659 images** in `JPEGImages/` and **41,857 XML annotations** in `Annotations/`.
+  * **Hurdle Identified in `readDetectionData.m`:** Line 47 uses flat `dir(fullfile(annDir, '*.xml'))`, which does not traverse IDD's subdirectories (`frontFar/`, `highquality_16k/`, etc.). Requires recursive `**/*.xml` and relative path matching.
+
+---
+
 ## 3. Log of Hurdles Faced & Applied Fixes
 
 | # | Hurdle / Error | Root Cause | Exact Resolution Applied |
@@ -294,10 +316,12 @@
 | **H3** | Shell syntax incompatibilities (`tail -1`, `df -h`) | Windows PowerShell lacks standard POSIX pipeline utilities. | Configured integrated terminal profile in Antigravity to use **Git Bash**. |
 | **H4** | `[SSL: CERTIFICATE_VERIFY_FAILED]` on file download | Network firewall / captive portal proxy issued self-signed certificates, breaking urllib SSL validation. | Switched network interface to mobile hotspot, establishing a direct, untampered HTTPS connection. |
 | **H5** | `OnnxExporterError: aten.mkldnn_rnn_layer.default` on PyTorch 2.4 | PyTorch 2.4 TorchDynamo lacks MKLDNN RNN layer decomposition for CPU export. | Switched to `python3` runtime with PyTorch `2.14.0+cpu` + `onnxscript` as specified in Phase 2 Directive 1. All opsets 17, 18, 20 exported cleanly with `max abs diff < 1e-6`! |
+| **H6** | `gpuDevice requires Parallel Computing Toolbox` in MATLAB | MATLAB installed without GPU execution engine by default. | Installed Parallel Computing Toolbox via Add-On Explorer to enable CUDA on local NVIDIA RTX A1000. |
+| **H7** | `readDetectionData.m` non-recursive search returns 0 boxes | `dir(fullfile(annDir, '*.xml'))` only scans root, but IDD Detection nests clips in subfolders. | Identified requirement to use recursive `dir(fullfile(annDir, '**', '*.xml'))` with relative path resolution. |
 
 ---
 
-## 4. Current Status & Deliverables Summary (Phase 1 & 2 Complete)
+## 4. Current Status & Deliverables Summary
 
 ```
 ================================================================================
@@ -312,9 +336,9 @@ AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
 [x] Production ONNX Export: Opsets 17, 18, 20 bitwise verified (< 1e-6 diff)
 [x] Archive Package: sih26037_trained_models_phase2.zip (367.5 KB)
 [x] Safety Gate Protocol Documented: Valid = false fallback (20.18% > 1.0%)
-================================================================================
-All local workstation responsibilities for Predictor Models are 100% COMPLETE.
-Awaiting: Aditya's MATLAB import test (check04) & KIET GPU Cluster setup (Model 3 YOLOX).
+[x] Local MATLAB R2024b Setup: Toolboxes, YOLOX add-on, GPU verified, repo path configured
+[x] Model 3 (YOLOX Spotter): IDD Detection downloaded & extracted (46,659 images, 41,857 annotations)
+[ ] Model 3 Training: sih.models.trainSpotter execution on NVIDIA RTX A1000
 ================================================================================
 ```
 

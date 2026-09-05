@@ -1,0 +1,700 @@
+# SIH26037 - The Al Training Guide [cite: 1]
+
+For whoever takes the AI work. Everything from an empty laptop to trained models handed over to the simulation team. [cite: 1]
+
+You do not have to write the model code. Aditya writes and supplies all of it through GitHub. Your job is to run it, train it, check it honestly, and report the numbers. If something is missing or broken, ask him do not rewrite it yourself, because other people's code depends on its exact shape. [cite: 1]
+
+Every step is marked [HIGH] or [LOW]. Do every [HIGH] step first. [LOW] steps are real work we intend to do, just not before the high ones are done. [cite: 1]
+
+If a step fails, send the WHOLE error. Never a summary. A trimmed error costs a day. [cite: 1]
+
+---
+
+## The models [cite: 1]
+### what we are training and why [cite: 1]
+
+Five models. Two of them are essential; the rest are evidence. [cite: 1]
+
+| # | NAME | WHAT IT DOES, IN ONE LINE | DATA IT LEARNS FROM | PRIORITY |
+|---|------|---------------------------|---------------------|----------|
+| 1 | The predictor | Says whether a vehicle beside us will let us in | METEOR markings, 1.8 GB | HIGH |
+| 2 | The predictor, group version | Same job, but looks at all nearby vehicles together instead of one at a time | the same 1.8 GB | HIGH |
+| 3 | The spotter | Looks at a photo and says that is a cow / auto-rickshaw/pushcart | IDD Detection + FGVD + animal photos, ~25 GB | HIGH |
+| 4 | The road-finder | Marks which part of a photo is drivable road | IDD Segmentation, 24 GB | LOW |
+| 5 | The laser spotter | Finds vehicles in laser scans instead of photos | IDD-3D, 236 GB | LOW |
+
+Models 1 and 2 do the same job in two different ways. We train both, compare them, and report both results. [cite: 1]
+That comparison is itself something worth reporting it is not indecision. [cite: 1]
+
+Only model 1 or 2 goes inside the car. Models 3, 4 and 5 run on files and produce numbers that prove things. [cite: 1]
+They never touch the simulation, so they cannot break it. [cite: 1]
+
+---
+
+## Read this before anything else [cite: 1]
+
+To the two of you taking the Al work. [cite: 1]
+
+You are not writing the model code. It is already written and on GitHub. Every script in this guide exists, and the ones that could be tested on real data have been. Your job is to run them, check the results honestly, and report the numbers. [cite: 1]
+
+If something is missing or broken, tell Aditya. Do not rewrite it yourself other people's code depends on its exact shape, and a helpful rewrite is how five people's work quietly stops fitting together. [cite: 1]
+
+How to split it between two people. In week one, both of you do everything together you will both need to understand the data. After that, one takes the data side (Parts 3 and 4) and one takes the training side (Parts 5 to 8). The handover between you is the file of numbers produced by Part 4. [cite: 1]
+
+---
+
+## What is on GitHub [cite: 1]
+
+Repository: github.com/adityasinghin01-hash/sih26037 [cite: 1]
+
+| FILE | WHAT IT IS |
+|---|---|
+| AGENTS.md | The project rules and the frozen contract. Section 3 is the exact shape of everything passed between people. Read it. Never change it without asking |
+| ML.md | Instructions for your Al, not for you. It carries the verified facts about the dataset its real specification, and the rules for using it |
+| DGX.md | The supercomputer |
+| .agents/rules/ | Rules your Al loads by itself |
+| python/meteor/fetch_annotations.py | Downloads the data 1.8 GB, not 93 GB |
+| python/meteor/parse_xml.py | Reads METEOR's annotation files |
+| python/meteor/check_balance.py | The gate. Run before training. It measures how rare the answer is |
+| python/meteor/build_dataset.py | Turns annotations into numbers the model reads |
+| python/meteor/split.py | Splits the data for testing by clip, never by frame |
+| python/model/yield_lstm.py | Model 1 |
+| python/model/yield_attention.py | Model 2 |
+| python/model/train.py | Trains either one and reports the honest numbers |
+| python/export/to_onnx.py | Converts a trained model into a file MATLAB can read |
+| python/tests/test_contract.py | Checks nothing has broken. Run this first, and after any change |
+| derisk/check06_dgx_probe.sh | Measures the supercomputer in one command |
+
+---
+
+## Using Antigravity on this project [cite: 1]
+
+Open the whole repository, not a subfolder. The rules load from the repository root. Open a subfolder and your Al starts blind wrong function names, invented code, edits that break other people. [cite: 1]
+
+Three things load by themselves once you open it: [cite: 1]
+* AGENTS.md the project rules, always [cite: 1]
+* .agents/rules/no-unrequested-actions.md always [cite: 1]
+* .agents/rules/ml-pipeline.md when you are doing AI work, and it tells your Al to read ML.md [cite: 1]
+
+So you do not have to explain the project to it. It already knows our units, our naming, and what the data contains. [cite: 1]
+
+Four habits that make the difference: [cite: 1]
+* Paste the whole error. Every line, plus the command you ran. "It didn't work" wastes a round trip; the full text usually contains the answer. [cite: 1]
+* Ask it to check, not just to write. Say: "before using a function, confirm it exists." Both MATLAB and Python have functions that sound right and do not exist. We have lost time to this already. [cite: 1]
+* One file at a time. Ask for one script, run it, confirm, move on. Five files at once means five files nobody has run. [cite: 1]
+* Delete any number it did not measure. If it writes an accuracy or a timing it did not produce by running something, that number is fiction. A plausible wrong number is worse than a blank. [cite: 1]
+
+---
+
+## Before you download three things to know [cite: 1]
+
+1. It is 1.8 GB, not 93 GB. We take only the markings, not the video. Everything the model reads comes from the markings. [cite: 1]
+2. Put it outside the repository. Data must never be committed. ~/meteor-data is fine. [cite: 1]
+3. The download is resumable. Stop it, rerun it, it skips what it already has and checks every file. A dropped connection costs nothing. [cite: 1]
+
+---
+
+## Before you train five things to know [cite: 1]
+
+These were measured on real data, not assumed. They will decide how you spend your first week. [cite: 1]
+
+1. The answer we want is very rare. Across 25,000 vehicles, "this one yielded" was ticked about 20 times roughly 1 in 1,262. A model can answer "no" every single time and be right 99.9% of the time. This is why accuracy is banned in this guide. [cite: 1]
+2. Two other labels are far more common. "Overtaking" was ticked 1 in 25, "changing lane" 1 in 1. Two labels "zigzagging" and "speeding" were never ticked at all, in 25,000 vehicles. [cite: 1]
+3. So the question may need to change. Predicting "will this vehicle assert itself" instead of "will it yield" gives roughly 70 times more examples, and tells our car nearly the same thing. That is Aditya's decision. Measure it, report it, wait. [cite: 1]
+4. Four of the 31 numbers are empty. METEOR records the car's own position once per clip, not as it moves, so we cannot compute our own speed, turning or acceleration from it. The model is effectively working with 27 numbers. build_dataset.py warns you about this do not ignore the warning. [cite: 1]
+5. There are almost no animals. Five, in 24 clips. This data cannot teach us how animals behave, which is why our cow is simulated rather than learned. Do not try to train an animal model on it. [cite: 1]
+
+---
+
+## The order to work in [cite: 1]
+
+1. Run python3 python/tests/test_contract.py proves your setup is sound before you touch data [cite: 1]
+2. Download (Part 3) [cite: 1]
+3. Run the gate (Step 13) and send Aditya the ratio. Stop there and wait [cite: 1]
+4. While waiting: get supercomputer accounts and run the probe (Part 6) [cite: 1]
+5. Then Parts 4 to 10 in order [cite: 1]
+
+---
+
+## Part 1 Set up [cite: 1]
+
+### Step 1 Any laptop will do [HIGH] [cite: 1]
+Mac, Windows or Linux. Nothing in Parts 1 to 5 needs MATLAB. You only need MATLAB much later, at Part 8, and someone else can run that part for you. [cite: 1]
+
+### Step 2 Check Python [HIGH] [cite: 1]
+```bash
+python3 --version
+```
+Done when: it prints 3.11 or higher. If it errors, install Python from python.org, close the terminal, reopen it, try again. [cite: 1]
+
+### Step 3 Get the project [HIGH] [cite: 1]
+```bash
+cd ~
+git clone https://github.com/adityasinghin01-hash/sih26037.git
+cd sih26037
+```
+Done when: you see folders named python, matlab, derisk, teammates. [cite: 1]
+
+### Step 4 Make your own branch [HIGH] [cite: 1]
+Never work on main several people would overwrite each other. [cite: 1]
+```bash
+git checkout -b stream-ml
+```
+Done when: git branch shows * stream-ml. Once only. From now on you cannot break anyone. [cite: 1]
+
+### Step 5 Read AGENTS.md [HIGH] [cite: 1]
+This file is the rules of the project. Two reasons it matters. [cite: 1]
+
+One: section 3 is the frozen contract. It is the exact shape of everything handed between people the list of detected objects, the 31 numbers, the prediction output. If it changes quietly, other people break and only find out days later. [cite: 1]
+
+Two: the Al reads it by itself. Antigravity and Claude Code both load AGENTS.md from the project folder automatically. That is why the Al already knows our function names and units without being told. [cite: 1]
+
+Done when: you have read section 3 and can point to the parts your work produces S2 (the 31 numbers) and S3 (the prediction). [cite: 1]
+
+### Step 6 Install what Python needs [HIGH] [cite: 1]
+```bash
+pip3 install --user torch numpy onnx
+python3 -c "import torch; print(torch.__version__)"
+```
+Done when: a version prints with no red errors. [cite: 1]
+
+---
+
+## Part 2 - Working with Antigravity [cite: 1]
+
+### Step 7 How to get good code out of the Al [HIGH] [cite: 1]
+You will use Antigravity constantly. These are the habits that make the difference. [cite: 1]
+
+It already knows the project. It reads AGENTS.md on its own, so you do not need to explain our units, our naming, or the contract. Just say what you want. [cite: 1]
+
+Always give it the whole error. Paste every line, from the first to the last, plus the command you ran. A summary like "it didn't work" wastes a round trip. The full text usually contains the exact answer. [cite: 1]
+
+Ask it to check, not just to write. MATLAB and Python both have functions that sound right but do not exist. A useful instruction: "before you use a function, confirm it exists and check the argument order." We have already lost time to a made-up function name once. [cite: 1]
+
+One file at a time. Ask for one script, run it, confirm it works, then move on. Asking for five files at once produces five files that have never been run. [cite: 1]
+
+Never let it invent a number. If it writes an accuracy or a timing you did not produce by running something, delete it. A plausible-sounding number that turns out false is worse than a blank. [cite: 1]
+
+When you get stuck, say what you expected. "I expected the loss to go down and it stayed flat" is far more useful than "this is broken." [cite: 1]
+
+---
+
+## Part 3 - Get the data [cite: 1]
+
+### Step 8 Choose where the data lives [HIGH] [cite: 1]
+Not inside the project folder. Data must never be committed. [cite: 1]
+```bash
+mkdir -p ~/meteor-data
+df -h ~ | tail -1
+```
+Done when: you have 15 GB free. If not, use an external drive and use that path everywhere below. [cite: 1]
+
+### Step 9 Download the markings [HIGH] [cite: 1]
+1.8 GB, not 93 GB. We take only the markings, not the video every number our model reads comes from the markings. [cite: 1]
+```bash
+python3 python/meteor/fetch_annotations.py --out ~/meteor-data
+```
+20-40 minutes. Safe to stop and rerun it skips what is already there. Done when: it prints fetched=2502 skipped = 0 failed = 0. [cite: 1]
+
+### Step 10 Confirm it arrived [HIGH] [cite: 1]
+```bash
+du -sh ~/meteor-data
+ls ~/meteor-data/METEOR_Dataset/
+```
+Done when: about 10 GB, showing Frame XML Annotations and Video XML Annotations. [cite: 1]
+
+---
+
+## Part 4 - Preparing the data (preprocessing) [cite: 1]
+
+This part turns raw markings into something a model can read. Aditya supplies the scripts you run them and check the output at each stage. [cite: 1]
+
+### Step 11 Unpack the clips [HIGH] [cite: 1]
+Each clip arrives as a zip containing one marking file per frame. [cite: 1]
+```bash
+python3 python/meteor/unpack.py --data ~/meteor-data
+```
+Done when: you have folders of frame_000000.xml files. A full clip has 1,800 one minute at 30 frames per second. [cite: 1]
+
+### Step 12 Look inside one file, once [HIGH] [cite: 1]
+```bash
+head -60 ~/meteor-data/unpacked/*/Annotations/frame_000045.xml
+```
+For every vehicle you should see: its type, its box on the screen, and attributes including Yield, Cutting and track_id. [cite: 1]
+
+Three things already checked, so you do not have to: [cite: 1]
+* Every non-ego vehicle carries these labels. [cite: 1]
+* track_id means we do not write our own tracking. A vehicle keeps its number across frames. [cite: 1]
+* The x-axis / y-axis / z-axis values are the ego car's own GPS repeated, not each vehicle's position. There is no 3-D per vehicle. Do not try to build any. [cite: 1]
+
+### Step 13 THE CHECK THAT DECIDES EVERYTHING [HIGH] [cite: 1]
+Do this before any model is trained. If yielding is rare, a model can answer "no" every time, score 99%, and be useless. [cite: 1]
+```bash
+python3 python/meteor/check_balance.py --data ~/meteor-data
+```
+It prints how many vehicles were seen and how many yielded. [cite: 1]
+
+Send that ratio to Aditya immediately. It decides what happens next: [cite: 1]
+
+| RATIO | MEANING | WHAT WE DO |
+|---|---|---|
+| Better than 1 in 20 | healthy | train normally |
+| 1 in 20 to 1 in 200 | imbalanced | weight the rare answer during training |
+| Worse than 1 in 200 | severe | change the question itself |
+
+### Step 14 Reduce 30 frames a second to 10 [HIGH] [cite: 1]
+The data is recorded 30 times a second. Our model uses 10. Take every third frame. Two seconds of history then becomes 20 steps, which is what the contract expects. [cite: 1]
+```bash
+python3 python/meteor/build_dataset.py --data ~/meteor-data --out ~/meteor-data/features
+```
+
+### Step 15 What this script is actually doing [HIGH] [cite: 1]
+For every vehicle in every frame it produces 31 numbers: where its box is, how big, how fast the box is growing, what type of vehicle, and what our own car was doing. [cite: 1]
+
+Why "how fast the box grows" instead of distance: measuring distance from one camera is unreliable one degree of camera tilt makes distance at 30 metres wrong by about a third, and every pothole tilts a dashcam. Things coming closer look bigger, and that we can measure exactly. None of the 31 numbers is a distance. [cite: 1]
+
+The exact list is in AGENTS.md under S2. The order never changes other people's code reads them by position. [cite: 1]
+
+### Step 16 Check the shape [HIGH] [cite: 1]
+```bash
+python3 -c "
+import numpy as np, glob
+d = np.load(sorted(glob.glob('$HOME/meteor-data/features/*.npz'))[0])
+print(d['x'].shape, d['y'].shape, d['adj'].shape)"
+```
+Done when: the last number is 31. If it is not, stop and tell Aditya the contract is broken and the planner team's code will read the wrong values. [cite: 1]
+
+### Step 17 Split the data the RIGHT way [HIGH] [cite: 1]
+This one mistake silently ruins results, so it is worth understanding. [cite: 1]
+
+Split by clip, never by frame. Frames next to each other are nearly identical. If some frames from a clip go into training and others into testing, the model has effectively seen the test answers, and your scores will look great and mean nothing. [cite: 1]
+```bash
+python3 python/meteor/split.py --features ~/meteor-data/features --by clip
+```
+Done when: it reports how many clips went to training and how many to testing not how many frames. [cite: 1]
+
+---
+
+## Part 5 - Model 1, and proving it runs [cite: 1]
+
+### Step 18 What model 1 does [HIGH] [cite: 1]
+It reads 20 steps of those 31 numbers two seconds of one vehicle's history and answers one question: will this vehicle let us in? It outputs a number between 0 and 1. [cite: 1]
+
+It reads events in order and remembers what came before, the way you read a sentence. [cite: 1]
+
+It does not drive the car. It answers one question. Everything that keeps the car safe is geometry, not learning. [cite: 1]
+
+### Step 19 Train it small, on your laptop [HIGH] [cite: 1]
+Do not go near the supercomputer yet. Prove it runs first. [cite: 1]
+```bash
+python3 python/model/train.py --features ~/meteor-data/features --model lstm --epochs 2 --limit 5000
+```
+Done when: the loss goes down between the two rounds and a model file is saved. If the loss does not move: send the whole output. That is a data problem, not a model problem. [cite: 1]
+
+### Step 20 Look at the numbers that matter [HIGH] [cite: 1]
+Accuracy alone is a lie when one answer is rare. You need both: [cite: 1]
+* Precision when it says "they will yield", how often is that true? [cite: 1]
+* Recall of all the vehicles that did yield, how many did it catch? [cite: 1]
+
+Done when: both are reported separately for yield and no-yield. [cite: 1]
+
+---
+
+## Part 6 The supercomputer [cite: 1]
+
+### Step 21 Get an account [HIGH] [cite: 1]
+Ask whoever runs the DGX A100. Ask at the same time: is MATLAB installed on it? Another part of the team needs that answer. [cite: 1]
+
+### Step 22 Log in [HIGH] [cite: 1]
+```bash
+ssh yourusername@the-machine-address
+```
+
+### Step 23 Run the probe before anything else [HIGH] [cite: 1]
+One script answers every question about the machine free disk, what you can write to, whether it reaches the internet, whether there is a job queue, what Python it has. [cite: 1]
+```bash
+git clone https://github.com/adityasinghin01-hash/sih26037.git
+cd sih26037
+bash derisk/check06_dgx_probe.sh 2>&1 | tee dgx_probe.txt
+```
+Run it on a compute node, not the login node the answers differ. Done when: send the whole dgx_probe.txt to Aditya, unedited. [cite: 1]
+
+### Step 24 Find the right disk [HIGH] [cite: 1]
+```bash
+df -h /raid $HOME
+```
+The big fast disk is usually /raid, around 15 TB. Warning: /raid is fast but not backed up. Never keep the only copy of anything there. [cite: 1]
+
+### Step 25 Move code the right way [HIGH] [cite: 1]
+Code always travels through GitHub. Never copy files by hand. [cite: 1]
+
+On your laptop: [cite: 1]
+```bash
+git add -A && git commit -m "what I changed" && git push -u origin stream-ml
+```
+
+On the supercomputer: [cite: 1]
+```bash
+cd sih26037 && git fetch && git checkout stream-ml && git pull
+```
+Laptop → GitHub → supercomputer. Every single time. [cite: 1]
+
+### Step 26 Get the data there directly [HIGH] [cite: 1]
+Do not copy 10 GB from your laptop. The supercomputer has a much faster connection. [cite: 1]
+```bash
+pip install --user torch numpy onnx
+python3 python/meteor/fetch_annotations.py --out /raid/yourname/meteor-data
+```
+
+### Step 27 Check the graphics cards [HIGH] [cite: 1]
+```bash
+nvidia-smi
+python3 -c "import torch; print('GPUs:', torch.cuda.device_count())"
+```
+Done when: you see 8. If you see 0, PyTorch was installed without GPU support - say so. [cite: 1]
+
+### Step 28 Train so it survives you logging out [HIGH] [cite: 1]
+If your connection drops, the job dies unless you do this. [cite: 1]
+```bash
+tmux new -s training
+python3 python/model/train.py --features /raid/yourname/meteor-data/features --model lstm --epochs 50
+# press Ctrl+B then D to leave it running
+```
+Return later with `tmux attach -t training`. [cite: 1]
+
+### Step 29 Many small runs, not one long one [HIGH] [cite: 1]
+Our model trains in minutes, not days. The supercomputer is not for one huge model it is for trying many settings at once and keeping the best. [cite: 1]
+
+Run 20-40 short runs varying the settings. Done when: you have a table of settings and scores and know which won. Say this honestly in the report: eight graphics cards, forty small experiments not one giant model. [cite: 1]
+
+---
+
+## Part 7 - Model 2, the group version [cite: 1]
+
+### Step 30 Why a second model [HIGH] [cite: 1]
+Model 1 looks at each vehicle alone. But a scooter's behaviour depends on the bus beside it, not only on us. Model 2 looks at all nearby vehicles together. [cite: 1]
+
+It is built using attention, not message-passing. Both would work, but attention is made of ordinary multiplication that MATLAB can import. Message-passing uses operations MATLAB does not support and would fail at the very last step. Aditya's code already uses the safe one. [cite: 1]
+
+### Step 31 Same data, same test [HIGH] [cite: 1]
+Identical features, labels and split. Only the model changes. Done when: both models' scores sit side by side. [cite: 1]
+
+### Step 32 Report both [HIGH] [cite: 1]
+Do not quietly keep the winner. Publish both. Comparing a sequence model with a group model on identical data is a result in itself. [cite: 1]
+
+---
+
+## Part 8 - Test it before it goes anywhere near MATLAB [cite: 1]
+
+Do not export a model you have not tested. Once it is inside the simulation, a fault in the model looks like a fault in the car, and two people spend a day arguing about whose problem it is. [cite: 1]
+
+### Step 33 Understand what "good" means here [HIGH] [cite: 1]
+The model will never be perfect, and it does not need to be. [cite: 1]
+
+It is predicting what a human will do next. The same scooter rider, in the same gap, on the same road, lets you in on Monday and pushes through on Tuesday. No model can be right every time, because the information is not there. [cite: 1]
+
+Our car survives that, because the safety comes from the geometry underneath, which does not care what the model said. [cite: 1]
+
+So the goal is not "never wrong". It is "wrong in the safe direction". There are two ways to be wrong and they are not equal: [cite: 1]
+
+| THE MISTAKE | WHAT HAPPENS |
+|---|---|
+| Says "they will let me in" they do not | We pull out in front of someone. DANGEROUS |
+| Says "they will not" they would have | We wait a few seconds longer. Harmless |
+
+Make the first rare. Accept the second. [cite: 1]
+
+### Step 34 Run the eight checks [HIGH] [cite: 1]
+```bash
+python3 python/model/evaluate.py --features ~/meteor-data/features --model <your-model.pt>
+```
+It checks, in order: [cite: 1]
+1. The outputs are usable numbers finite, between 0 and 1, and not the same value every time [cite: 1]
+2. There is something to measure the test set actually contains examples of yielding [cite: 1]
+3. The operating point sweeps every threshold and picks the one where the dangerous mistake happens at most 1% of the time, while still letting the car go as often as possible [cite: 1]
+4. Honesty when it says 80%, does it happen 80% of the time? An overconfident model is worse than a weak one, because the planner believes the number [cite: 1]
+5. It actually reads its inputs scrambles the input and confirms the answer changes. A model that ignores its input can still score well and is worthless [cite: 1]
+6. Degradation adds noise and shows how fast it falls apart. This is the perception curve [cite: 1]
+7. Per class where it fails worst. It may be fine on cars and useless on scooters [cite: 1]
+8. The exported file agrees with the model a conversion can silently change behaviour, and this is the last place to catch it [cite: 1]
+
+It ends with READY FOR MATLAB or NOT READY, and a threshold number. [cite: 1]
+
+### Step 35 Send three things, not one [HIGH] [cite: 1]
+When it says ready, report: [cite: 1]
+1. The threshold. Below it the planner treats the prediction as unusable and falls back to geometry alone. [cite: 1]
+2. The dangerous error rate. This is the honest number and it goes on the slide. [cite: 1]
+3. The degradation table from check 6. [cite: 1]
+
+If it says NOT READY, do not export. Send the whole output and wait. [cite: 1]
+
+### Step 36 How long to spend here [HIGH] [cite: 1]
+As long as it takes. Training again is cheap minutes. Discovering a bad model after it is wired into the simulation costs days, and you will find it by watching a car behave strangely rather than by reading a number. [cite: 1]
+
+---
+
+## Part 9 - Handing it to the simulation [cite: 1]
+
+### Step 37 Test the crossing FIRST, in week one [HIGH] [cite: 1]
+This is the most likely thing in the whole project to break, and it blocks another person completely. Do it with a throwaway model before training the real one. [cite: 1]
+
+On your machine: [cite: 1]
+```bash
+python3 derisk/check04_onnx_lstm.py
+```
+Then someone with MATLAB runs `derisk/check04_onnx_lstm.m`. Done when: you know which version number MATLAB accepts. [cite: 1]
+
+### Step 38 Send that number immediately [HIGH] [cite: 1]
+One number, sent the moment you have it. The planner team cannot connect anything without it. Do not wait for training to finish. [cite: 1]
+
+### Step 39 Export the trained model [HIGH] [cite: 1]
+```bash
+python3 python/export/to_onnx.py --model <your-trained-file> --opset <the-number-that-worked>
+```
+Done when: the file exists and its shapes match AGENTS.md. [cite: 1]
+
+### Step 40 Never commit models or data [HIGH] [cite: 1]
+git status should never list a .onnx, .pt, or data file. Share those through Google Drive. [cite: 1]
+
+---
+
+## Part 10 The other three models [cite: 1]
+
+These never enter the car. They run on files and produce numbers that prove things. [cite: 1]
+
+### Step 41 The spotter [HIGH] [cite: 1]
+What it does: looks at a photo and names what it sees cow, auto-rickshaw, pushcart, person. Why it matters: the task explicitly asks for camera perception and names these objects. That is currently a gap in our work, and this closes it with measured numbers. Which model: YOLOX. We checked the newer alternative, RTMDet - it cannot be trained on new classes, only run on its original ones. YOLOX trains, and is specifically better at small objects, which Indian traffic is full of. Data: IDD Detection 22.8 GB + FGVD 2.6 GB + DATS 2022 for animals. Done when: accuracy is reported per class, especially cow, auto-rickshaw and pushcart. [cite: 1]
+
+### Step 42 The road-finder [LOW] [cite: 1]
+What it does: marks which part of a photo is drivable road. Why: our car has a rule about never leaving drivable ground. This shows the idea works on real Indian roads with no lane markings best shown on our own village footage. Model: DeepLab v3+. Data: IDD Segmentation, 24 GB. [cite: 1]
+
+### Step 43 The laser spotter [LOW] [cite: 1]
+What it does: finds vehicles in laser scans instead of photos. Why: the car's main sensor is the laser and it currently uses a generic tool. This one is trained on real Indian laser data. Model: PointPillars. Data: IDD-3D, 236 GB. Note: MATLAB already includes this model, pretrained, so retraining it there takes a few lines. In Python it needs a large extra framework installed first. Since this model never enters the car, doing this one in MATLAB costs us nothing decide with Aditya before starting. [cite: 1]
+
+### Step 44 Use IDD-3D with no training at all [HIGH] [cite: 1]
+Two of its best uses need no model: [cite: 1]
+1. Replay real Indian traffic. Every object has an ID that follows it across frames, so real vehicles that drove on real roads can be replayed inside our simulation. Nobody can then say we arranged the traffic to flatter our car. [cite: 1]
+2. Check our simulated laser is realistic. Compare our pretend scans with real ones density, range, points landing on a vehicle. This defends the claim that our simulation is a fair test. [cite: 1]
+
+Done when: both are written up with numbers. [cite: 1]
+
+---
+
+## Done, and what to send [cite: 1]
+
+| # | THIS COMPONENT IS FINISHED WHEN |
+|---|----------------------------------|
+| 1 | The yield ratio from Step 13 is reported |
+| 2 | The split is by clip, and you can say how many clips are in each side |
+| 3 | Both predictor models are trained and compared |
+| 4 | Precision and recall are reported separately, not just accuracy |
+| 5 | The working version number has been sent to the planner team |
+| 6 | The exported file matches the shapes in AGENTS.md |
+| 7 | The spotter's per-class accuracy is reported |
+| 8 | One command regenerates every number above |
+
+When something breaks, send: the whole error from first line to last the exact command you ran what you expected instead. [cite: 1]
+
+Never: commit data or model files change section 3 of AGENTS.md without asking work on main report a number you did not produce by running something. [cite: 1]
+
+SIH26037 ML Training Guide 01 Sep 2026 [cite: 1]
+
+
+---
+
+## Phase 2 Update: Critical Path for Internal Demo (Sept 7)
+
+### 1. Model Matrix & Deployment Allocation
+
+| Model | Architecture | Role & Dataset | Internal Demo (Sept 7) | Final Deployment |
+|---|---|---|---|---|
+| **Model 1 (Predictor)** | 1-Layer LSTM ($H=64$) | Single-vehicle intent (METEOR 1.8 GB) | **CRITICAL PATH:** Export to ONNX, run MATLAB check, send opset | Baseline in-car model |
+| **Model 2 (Attention)** | Dense Attention ($H=64, A=16$) | Multi-vehicle spatial interaction (METEOR 1.8 GB) | **DONE / BENCHMARKED:** Slide owned ($AP=0.3691$, $ECE=0.1502$) | Primary in-car model (post-Sept 7) |
+| **Model 3 (Spotter)** | YOLOX | Unstructured object detection (IDD 25 GB) | Parallel setup on KIET GPU cluster | Offline perception benchmark |
+| **Model 4 (Road-Finder)** | DeepLab v3+ | Drivable area segmentation (IDD Seg 24 GB) | Staged for cluster execution | Offline safety boundary check |
+| **Model 5 (Laser Spotter)**| PointPillars | 3D bounding box LiDAR detection (IDD-3D 236 GB) | Staged for cluster execution | Offline LiDAR validation |
+
+---
+
+### 2. Immediate Technical Directives
+
+**1. PyTorch Version & ONNX Export**
+* Do not modify `ml/python/export/to_onnx.py` or the `FORBIDDEN` list under any circumstances.
+* Check real PyTorch version: `python3 -c "import torch; print(torch.__version__)"`.
+* Re-run `to_onnx.py` using Opset 20 on an environment running PyTorch 2.13+.
+* Send `yield_lstm.onnx` to Aditya for macOS verification if local MATLAB add-on setup is delayed.
+
+**2. Contract Logic & The Safety Gate**
+* **The Target Flip:** The model was trained on `assert` ($P_{\text{assert}}$). The planner consumes $P_{\text{yield}}$. The conversion must occur exclusively on the MATLAB side:
+  $$P_{\text{yield}} = 1 - P_{\text{assert}}$$
+  Do not alter naming or inversion inside the `.onnx` model graph.
+* **The Safety Gate:** With a measured dangerous error rate of 20.18% (target $\le 1.0\%$), set `Valid = false`[cite: 2]. The vehicle simulation falls back directly to deterministic geometry. Presenting an active safety fallback with honest validation metrics is our primary evaluation defense.
+
+**3. Integration & Demo Backup Scenario**
+* The full demo will execute on macOS. All modules integrate via GitHub commits on `stream-ml`.
+* If the full rendered 3D city environment is not finished in time, simulation runs against two pre-built standalone backup driving scenarios.
+
+**4. Parity Test Resolution (`testFeatureParity`)**
+* **Discrepancy:** Case `"empty"` produces `[0 31]` in MATLAB and `[0 0]` in Python.
+* **Verdict:** `[0 31]` is correct. Under `AGENTS.md` Section 3 (S2 Contract), an empty detection frame with zero vehicles still preserves a 31-dimensional feature schema. Returning `[0 0]` strips the feature dimension, causing downstream matrix multiplications expecting `array.shape[1] == 31` to raise runtime dimension errors. Python's empty extraction handler must be aligned to output `shape = (0, 31)`.
+
+---
+
+## Part 11 - Training Model 3 (The Spotter / YOLOX) on Local Workstation
+
+Model 3 is an offline camera perception benchmark. It takes dashcam photos and detects unstructured Indian road actors (cow, auto-rickshaw, pushcart, bicycle, truck, etc.). It never enters the real-time simulation loop.
+
+Because MATLAB's native YOLOX training is already written in `matlab/+sih/+models/trainSpotter.m`, you do NOT write any code. You simply install the exact required MATLAB toolboxes, download the IDD dataset, and run the training pipeline with VRAM adjustments for your local GPU.
+
+---
+
+### Phase A: Installing MATLAB with the Exact Required Toolboxes
+
+Do NOT install all 110+ MATLAB toolboxes — that wastes 35-45 GB of disk space. A minimal installation tailored for Model 3 takes only ~4-6 GB.
+
+#### Step 45 Download the MATLAB Installer [HIGH]
+1. Go to [mathworks.com](https://www.mathworks.com/) and sign in using your institute academic email.
+2. Navigate to your license and download the installer for **MATLAB R2024b** (or R2025a) for Windows.
+3. Run the installer executable (`setup.exe`).
+
+#### Step 46 Select ONLY the Essential Products [HIGH]
+When prompted to choose which products to install, check **ONLY** these three:
+1. **MATLAB**
+2. **Deep Learning Toolbox** (required for neural networks, `trainingOptions`, and `check04`)
+3. **Computer Vision Toolbox** (required for bounding boxes, image datastores, and `yoloxObjectDetector`)
+
+*(Optional: If you later decide to run Model 5 PointPillars locally, check **Lidar Toolbox**. Do NOT check Simulink, Stateflow, Automated Driving Toolbox, Navigation Toolbox, or ROS Toolbox — those belong to the simulation stream and waste tens of gigabytes).*
+
+Done when: MATLAB installer completes and you can launch MATLAB from your Windows Start Menu.
+
+#### Step 47 Install the Critical YOLOX Free Add-On [HIGH]
+The standard product installer does NOT include the YOLOX training backend. `yoloxObjectDetector` exists without it, but `trainYOLOXObjectDetector` will throw an error when training starts unless this add-on is present.
+
+1. Open MATLAB Desktop.
+2. On the top toolstrip: **Home** -> **Add-Ons** -> **Get Add-Ons**.
+3. In the Add-On Explorer search bar, paste:
+   ```
+   Automated Visual Inspection Library for Computer Vision Toolbox
+   ```
+4. Click on it and click **Install** (it is free with your academic license).
+5. Also search and install (if you plan to run `check04_onnx_lstm.m`):
+   ```
+   Deep Learning Toolbox Converter for ONNX Model Format
+   ```
+
+Done when: Running `disp(exist('trainYOLOXObjectDetector', 'file'))` in the MATLAB Command Window prints `2`.
+
+#### Step 48 Verify MATLAB GPU Detection [HIGH]
+In MATLAB Command Window, run:
+```matlab
+gpuDevice
+```
+Done when: It outputs `CUDADevice with properties:` showing `NVIDIA RTX A1000` with ~8.5 GB TotalMemory.
+
+---
+
+### Phase B: Download and Prepare the IDD Detection Dataset
+
+#### Step 49 Download IDD Detection via Academic Account [HIGH]
+IDD terms require a human login. A script cannot download it.
+1. Log in to [idd.insaan.iiit.ac.in/accounts/signup/](https://idd.insaan.iiit.ac.in/).
+2. Navigate to datasets and download **IDD Detection** (~22.8 GB, Pascal VOC XML format).
+
+#### Step 50 Extract Outside the Repository [HIGH]
+Data must never be placed inside the git repository. Extract the downloaded archives to:
+```
+C:\Users\admin\idd-detection\
+```
+
+#### Step 51 Verify Dataset Directory Structure [HIGH]
+The data loader (`readDetectionData.m`) strictly expects Pascal VOC layout with matching image/annotation pairs:
+```
+C:\Users\admin\idd-detection\
+├── JPEGImages\
+│   ├── *.jpg (or .png)
+└── Annotations\
+    ├── *.xml
+```
+Verify from MATLAB Command Window:
+```matlab
+fprintf('Images: %d\n', numel(dir('C:\Users\admin\idd-detection\JPEGImages\*.jpg')));
+fprintf('XMLs:   %d\n', numel(dir('C:\Users\admin\idd-detection\Annotations\*.xml')));
+```
+Done when: Both numbers print thousands of files and neither is zero.
+
+---
+
+### Phase C: Environment Setup & Local VRAM Guard
+
+#### Step 52 Add Repository to MATLAB Path [HIGH]
+In MATLAB Command Window:
+```matlab
+cd('C:\Users\admin\sih26037')
+addpath('matlab')
+which sih.models.trainSpotter
+```
+Done when: It prints `C:\Users\admin\sih26037\matlab\+sih\+models\trainSpotter.m`.
+
+#### Step 53 Understand the 8 GB VRAM Adjustment [HIGH]
+`trainSpotter.m` defaults to `MiniBatchSize = 8` for cluster GPUs (16-32 GB VRAM).
+On your local **NVIDIA RTX A1000 (8 GB VRAM)**, batch size 8 will trigger CUDA Out-Of-Memory.
+We run with **`MiniBatchSize = 2`**. This fits cleanly inside 4-6 GB of VRAM while preserving the exact same YOLOX-small architecture and loss calculations.
+
+---
+
+### Phase D: Training & Evaluating Model 3
+
+#### Step 54 Run the Spotter Training [HIGH]
+In MATLAB Command Window, run:
+```matlab
+detector = sih.models.trainSpotter( ...
+    "C:\Users\admin\idd-detection", ...
+    "C:\Users\admin\meteor-data\spotter.mat", ...
+    MiniBatchSize=2);
+```
+
+What the script does automatically:
+1. Loads S5 class names from `sih.util.classNames("detector")` to lock S5 ordering.
+2. Reads IDD Pascal VOC XMLs and maps aliases (e.g., `autorickshaw` -> `auto-rickshaw`, `animal`/`cattle` -> `cow`).
+3. Safely drops unmapped classes (`vehicle fallback`, `rider`) so lorries aren't taught as walls.
+4. Splits 80% train / 20% validation.
+5. Trains YOLOX-small on your RTX A1000 for 30 epochs.
+6. Evaluates per-class Average Precision (AP) on held-out validation images.
+7. Saves the trained model to `C:\Users\admin\meteor-data\spotter.mat` (outside git).
+
+#### Step 55 How to Handle Errors if They Occur [HIGH]
+- **If CUDA Out of Memory occurs:** Reduce batch size to 1:
+  ```matlab
+  detector = sih.models.trainSpotter("C:\Users\admin\idd-detection", "C:\Users\admin\meteor-data\spotter.mat", MiniBatchSize=1);
+  ```
+- **If GPU training fails entirely:** Fall back to CPU execution:
+  ```matlab
+  detector = sih.models.trainSpotter("C:\Users\admin\idd-detection", "C:\Users\admin\meteor-data\spotter.mat", MiniBatchSize=2, Execution="cpu");
+  ```
+- **If missing add-on error appears:** Re-verify Step 47.
+
+---
+
+### Phase E: Reporting the Honest Metrics
+
+#### Step 56 Record Average Precision Per Class [HIGH]
+At the conclusion of training, `trainSpotter.m` prints the evaluation table.
+Per `AGENTS.md`, you MUST report **per-class AP**, specifically for the 3 unstructured traffic classes:
+- **`cow` AP**
+- **`auto-rickshaw` AP**
+- **`pushcart` AP**
+- **`overall mAP`**
+
+*Rule: Never report overall mAP alone. A high mAP driven by cars while cows are missed is a failed perception model for Indian roads.*
+
+#### Step 57 Check Dropped Classes Count [HIGH]
+Inspect the initial output from `readDetectionData`:
+```
+Dropped X unmapped class name(s) - add them to the alias table if they matter:
+  vehicle fallback     XXX box(es)
+  rider                XXX box(es)
+```
+Confirm only known intentional exclusions (`vehicle fallback`, `rider`) were dropped. If any genuine road class was dropped, record it.
+
+#### Step 58 Log in PROGRESS.md [HIGH]
+Copy the full terminal output, paste the AP table and dropped counts into `PROGRESS.md`, commit, and push.
