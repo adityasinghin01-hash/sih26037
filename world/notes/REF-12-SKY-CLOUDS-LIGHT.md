@@ -168,3 +168,36 @@ is right by construction, but resist raising it by eye.
 Max Hay *How to get good lighting in Blender* (27:52) · Max Hay *How to Create Beautiful Skies* (9:10) ·
 adrien_ltn *Perfect Procedural Clouds — Geometry Nodes* (18:12) · blenderian *Dynamic Sky addon* ·
 Split Graphics · BlenderVitals · Ankan Moyra · Blend Tweaks · CG Aman (Hindi).
+
+## 10 · WHAT BUILDING IT ACTUALLY TAUGHT — 4 Sep 2026, added after component 1 v2
+**Four things that no video in this batch said, all found by building and measuring.**
+
+**a · `Principled Volume > Color` IS THE SCATTERING ALBEDO, NOT A PAINT COLOUR.**
+This was the single biggest error and it cost three iterations. Real cloud droplets scatter
+almost everything that hits them — **albedo ≈ 0.99**. Setting the underside to a "storm grey"
+(0.70) makes the volume **absorb 30 % of every bounce**, so the cloud goes grey and heavy no
+matter how much light is thrown at it. **A real cumulus underside is dark because light does not
+REACH it** — self-shadowing through depth — **not because the material is grey.**
+**Fix: albedo near white everywhere (0.90 → 1.00, a bare cool tint on the base), and let multiple
+scattering produce the dark base by itself.** That is what makes tops read bright white.
+
+**b · `volume_bounces` IS THE FORM CONTROL.** The default of 0 — and even 2 — starves a cloud of
+the multiple scattering that lights its interior. **6 to 8 is where cumulus starts to look like
+cumulus.** REF-12 §5 said "the higher the nicer"; it is stronger than that. It is the difference
+between a lit shell and a cloud.
+
+**c · `Interior Band Width` IS ABSOLUTE METRES, and that makes it dangerous with mixed sizes.**
+It is the density falloff inward from the surface — the vapour-vs-rock control. But because it is
+absolute, **a band larger than the smallest cloud turns that whole population into pure falloff:
+grey mush with no form.** A 135 m band erased a fractus population whose lobes were ~20 m.
+**Keep the band small relative to the SMALLEST population, then raise density to restore form.**
+
+**d · ONE POPULATION CANNOT MAKE A SKY.** Measured against Aditya's photographs, a real sky has a
+**max/median cloud-size ratio near 1800**; one Poisson population gave **37–103**. The fix is
+**three populations with their own spacing, seed and size range** — large/mid/fractus — joined
+before the volume conversion. That took the measure to **389–701**. *(The fractus population also
+gets a deliberate Z jitter: cumulus and stratocumulus have flat coplanar bases, fractus does not.)*
+
+**AND THE HONEST NOTE ON HARDWARE:** peak memory across all of this was **391 MB, 1.1 GB on the
+heaviest frame, out of 8 GB**. **Not one of the four problems above was a memory or GPU problem.**
+They were shading and geometry decisions and they would have looked identical on a 64 GB machine.

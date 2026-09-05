@@ -1,0 +1,8 @@
+MATLAB 26.1.0.3346908 (R2026a) Update 5
+IMPORT OK
+scenario properties: SampleTime, StopTime, SimulationTime, IsRunning, Actors, Barriers, ParkingLots
+RoadSegments: 425
+roads=425  points=2050
+x range -3676.3 .. 2632.2   y range -1184.9 .. 1742.8
+total centreline length = 59888.8 m
+WROTE /Users/aditya/Desktop/SIH26037-Reference/map/matlab_roads.csv

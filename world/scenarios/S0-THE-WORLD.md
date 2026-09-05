@@ -15,29 +15,113 @@ box top carries almost no haze and there is nothing to seam.
 **Never a world volume — that renders pure black.**
 
 ## 2 · TIME, LIGHT AND AIR — one sun for everything, no exceptions
-Date: **25 September.** Time **06:45.**
-**Sun elevation 7.5°, azimuth 95.2°.** — **CORRECTED 3 Sep 2026 by computing the real solar position
-for 29.6118 N 78.3421 E, 25 Sep 2026, 06:45 IST (NOAA algorithm).**
-The written azimuth of **095° was already correct** — it is the real value to within 0.2°.
-What was wrong was the description: at this date and time the sun is **5° SOUTH of due east**, not
-north of it. And the elevation at 06:45 is **7.5°, not 10°** — 10° does not occur until about 07:00.
-**06:45 is kept because S2 depends on it** ("14 shutters up, 8 down, at quarter to seven"), so the
-elevation moves to match reality instead. **A lower sun is also the better picture:** longer shadows,
-and more backlight through the kans grass, which is what the Translucent BSDF is for (REF-11 §3).
-Sky: Nishita. **Air 2.0 · Aerosols 10.0 · Ozone 1.0 · Background strength 0.25.**
-**MEASURED 4 Sep from Aditya's own 13 dashcam clips, not guessed.** 43 daytime frames sampled:
-**R191 G188 B183 — saturation 4.6 %, brightness 187/255, and WARM grey, not blue.**
-This is the Indo-Gangetic plain; the aerosol load flattens the sky almost to white.
-For contrast, his BUS footage (monsoon midday) measures **17.2 % saturation and blue-dominant** —
-a completely different sky. **The film uses the dashcam condition.**
-Parameters found by sweeping Nishita against that target; **above aerosols 10 the result stops
-changing**, so the remaining warmth comes from the HAZE COLOUR, which must be warm tan, not blue.
-Cloud: **thin, wispy, warm-lit cirrus streaks — NOT cumulus and not a solid stratus sheet.**
-At 4.6 % saturation the sky is nearly featureless; cloud reads as faint warm streaks only.
-**6 of the 13 clips are shot at NIGHT** — a condition the scripts do not yet cover.
-**Haze: visibility 800 m → Koschmieder α = 3.92/800 = 0.0049**, and that number IS Blender's
-Principled Volume Density. A **noise texture into Density** so it is wispy, never uniform.
+**REWRITTEN 4 Sep 2026 after REF-13, the study of Aditya's own 43 photographs.**
+The previous 06:45 dawn condition is superseded. **What he asked for is a CONDITION, not an hour:**
+*"sun rays very good and peaceful · dense clouds, light clouds, every kind of cloud, properly
+harmonizing · the light going above the clouds, beyond the clouds, coming through the streets,
+houses, and everything."*
+
+Date: **25 September** — **unchanged**, because every crop in S1 and S5 depends on it (paddy being
+cut, cane standing, ploughing for rabi, the cold brick kiln).
+Time: **15:30 IST.** **Sun elevation 33.11°, azimuth 246.87°** — computed with the NOAA algorithm
+for 29.6118 N 78.3421 E, 25 Sep 2026. **West-south-west, so the light now comes from the OPPOSITE
+side to the old dawn condition.**
+**Why 15:30 and not another hour:** fair-weather cumulus is fully developed by mid-afternoon, which
+is what he is asking for; the sun is still low enough to model form and throw real shafts; and it is
+not yet golden hour, which he did not ask for. **It is one constant in the build script and can be
+moved without touching anything else.**
+
+**THE SKY — measured off his own photographs (REF-13 §1), three sources agreeing:**
+| | R | G | B | saturation | hue |
+|---|---|---|---|---|---|
+| **target, plains** | ~138 | ~162 | ~179 | **23 %** | **202–206°** |
+| toward zenith | | | | **~26 %** | |
+| toward horizon | | | | **~20 %** | |
+| *(alpine set, for contrast)* | 142 | 165 | 194 | 27 % | 213° |
+| *(the old dawn condition)* | 191 | 188 | 183 | 4.6 % | warm grey |
+**THE GRADIENT IS THE SPECIFICATION, NOT THE AVERAGE** — saturated above, pale at the horizon.
+**Najibabad is plains, so hue ~204°, NOT the alpine 213°** — the aerosol load measurably shifts the
+plains sky warmer and greener. This is a **five-fold** saturation change from the old dawn sky, so
+Nishita's aerosols must come down hard from 10.0 and the haze colour must stop being warm tan.
+
+**CLOUD — and the old "thin wispy cirrus, not cumulus, 25 %" is WRONG for this (REF-13 §2, §3):**
+**Cover 50 ± 15 %, in the "broken" band.** Measured across his 39 sky photographs: median 45 %,
+and the frames matching his description word for word measure 45–68 %.
+**Three types in one sky, at two heights:**
+1. **Cumulus** — cauliflower tops, bright, lit from above, grey-blue undersides.
+2. **Stratocumulus** — flat-based, darker, lumpy-topped, in sheets.
+3. **Fractus** — small torn shreds with no defined base, drifting across the holes.
+Plus **thin fibrous cirrus much higher up**, not interacting with the others.
+**THE RULE THAT MAKES A SKY READ, and nothing in REF-12 said it: EVERY CUMULUS AND STRATOCUMULUS
+BASE SITS AT THE SAME HEIGHT.** They all condense at one level, so the bases line up horizontally
+across the frame. **Vary the tops; never vary the base height.** Cloud bases at random heights is
+the single loudest tell.
+**Blue holes between them, of very different sizes.** A uniform deck is as wrong as a clear sky.
+
+**THE LIGHT COMING THROUGH — the thing he actually asked for (REF-13 §4):**
+This is an **occlusion** problem, not a shader problem. All of it already exists in our toolkit:
+- **The sun sits BEHIND an occluder** — a treeline, a ridge, a cloud edge — never beside it.
+- **Many small occluders, not one big one.** A single ridge gives a hard-edged beam; a pine canopy
+  gives the soft luminous veil in `ref_42`, which is what he described. **This corrects REF-12 §6.**
+- **Bounded volume, anisotropy 0.35** — forward scatter. Already built.
+- **Halation on the cloud shader, coverage 3–6** (REF-12 §4) — the warm fringe on backlit edges.
+- Backlit geometry goes **near-silhouette but never black**: measured, the shaded hillside in
+  `ref_42` still sits at ~95/255.
+
+**THE AIR — and haze must now do TWO things, not one (REF-13 §5):**
+Measured off `ref_31` in depth bands, saturation collapses **53 % → 19 %** from foreground to the
+far range, **and local contrast collapses with it, 43 → 21.**
+**Haze flattens DETAIL as well as washing colour.** Ours only did the second.
+Consequence for the build: **no crisp detail past ~2 km — let the volume do it.**
+And: **the far range is the LEAST saturated thing in frame, less than the sky itself.** A distant
+ridge painted pale blue is wrong; it is pale grey-blue and flatter than the sky behind it.
+**VISIBILITY 20,000 m — derived, not chosen.** `ref_31` clearly shows a far range at ~15 km, pale
+but readable. Koschmieder says at 6 km visibility that range transmits 0.0 % (invisible) and at
+20 km it transmits 5.3 % (pale but there). **The photograph fixes the number.** 800 m was the dusty
+dawn and is wrong for this condition by a factor of 25.
+Density stays **Koschmieder α = 3.92 / visibility**, still with **noise into Density** so it is
+wispy, and still an **altitude falloff** `× exp(−z / 1200)` so the box top carries none.
+**Never a world volume — that renders pure black.**
+
+**THE SKY PLANE IS NOW UNBLOCKED.** REF-12 §2's method needed a real sky photograph and we had none.
+**We now have 43 of his own, which means they can also ship in the film.** Its sun must be on the
+**west-south-west** side to match, or be mirrored with `S X -1`; its horizon aligned to the scene
+horizon; its shadow disabled.
+
+**AS BUILT, 4 Sep 2026 — component 1 v2, 31 assertions:**
+Sun elev **33.11°** azim **246.87°**, energy 3.4→**4.0** · Nishita **air 1.7 / aerosols 1.0 /
+ozone 1.0**, view transform **Standard**, exposure **−3.06** · haze **α = 3.92/20000**, warm tan
+dropped for cool-neutral (0.72,0.75,0.80), anisotropy 0.35, altitude falloff exp(−z/1200) ·
+**cumulus deck: base 1400 m, field 44,000 m, voxel 26 m, interior band 90 m, radial fade
+14,000→21,000 m** · **cirrus: 7,200 m, streaked 1:0.14, shadowless** · **34 small god-ray occluders** ·
+**volume bounces 6** — multiple scattering is why real cumulus undersides are bright rather than
+near-black, and 2 was starving them of it.
+
+**MEASURED ON THE FINAL RENDERS, the same way REF-13 measured his photographs:**
+| render | cloud cover | blue-sky saturation |
+|---|---|---|
+| c2_a_driver | 34.5 % | 16.2 % |
+| c2_b_intosun | **49.7 %** | 14.5 % |
+| c2_c_skyward | 28.8 % | **19.9 %** |
+| c2_d_wide | 28.7 % | 15.8 % |
+**Targets: cover 50 ± 15 %, saturation 23.4 %.** Cover is **inside the band on the into-sun angle
+and below it on the others**; saturation runs **3–9 points under** target. Both are honest misses,
+not passes, and both have the same cause: **the cloud deck itself desaturates the sky it covers.**
+Raising Nishita alone will not fix it — the fix is fewer/thinner clouds or a stronger blue, and that
+is a look call for Aditya, not a number to sweep. **Recorded rather than papered over.**
+
+**THREE THINGS THE BUILD ESTABLISHED THAT NO DOCUMENT SAID:**
+1. **The radial fade must clear the camera's LOWEST sky ray.** A 1400 m cloud at 10° elevation is
+   7,940 m away; at 6° it is 13,320 m. A fade ending at 12,000 m deleted most of the frame. **Fade
+   geometry is decided by the camera's elevation angle, not by taste.**
+2. **The field half-width must exceed the fade end**, or density is still high where the mesh stops
+   and the edge reads as a hard line. **This was caught by an assertion, not by looking.**
+3. **A flat envelope renders pancakes.** Cumulus develops vertically (REF-12 §3), so the envelope is
+   nearly as tall as wide and the per-cloud **Z scale varies MORE than XY** — some tower, some stay
+   shallow, which is what a real field does.
+
 Wind 0.5 m/s from the north-west — it decides which way leaves drift and washing hangs.
+**6 of the 13 dashcam clips are shot at NIGHT** — a condition the scripts still do not cover.
 
 ## 3 · THE LAND
 Alluvial plain, falling gently south. Three scales of undulation (600 m swells, 160 m, field
@@ -47,11 +131,235 @@ scale) plus **abandoned river channels** as shallow broad depressions and **fiel
 carry heavy sediment, so never mud. Two real bridges cross it; the nine other tagged "bridges"
 in this box are **highway flyovers 1.5 km from any water** and must not be built as river spans.
 
-**THE ONE THING WE ADD: a hill**, centred about (−690, 980), roughly 500 × 350 m at the base,
-**170 m** high, long axis running north-west. Ridged, with a **branching network of gullies** —
-the Shivalik drainage density is 4.55 km of channel per km², so many small gullies, not two.
-It is marked as ours on the city plan. Nothing else in this world is invented.
+**THE ONE THING WE ADD: a hill**, centred **(−1050, 900)** — **AMENDED 4 Sep 2026, see below** —
+roughly 500 × 350 m at the base, **170 m** high, long axis running north-west. Ridged, with a
+**branching network of gullies** — the Shivalik drainage density is 4.55 km of channel per km², so
+many small gullies, not two. It is marked as ours on the city plan. Nothing else in this world is
+invented.
+
+**AMENDMENT — the written centre (−690, 980) CANNOT BE BUILT, and this was found by measuring.**
+The Malin's centreline passes **68 m from that point**, with **five river centreline points inside
+the 500 × 350 m footprint**. A 170 m hill would have been built straight on top of the river.
+Measured clearance from the footprint edge to the river, for each candidate:
+| centre | clearance to river | distance from S5 centre | footprint inside the 2 km box |
+|---|---|---|---|
+| (−690, 980) *as written* | **8 m — fails** | 220 m | 56 % |
+| (−690, 1180) due north | 84 m | 420 m | **0 %** |
+| **(−1050, 900) — ADOPTED** | **82 m** | 386 m | **31 %** |
+**Why north-west and not north:** it moves the hill **along its own stated long axis**, so the spec
+is followed rather than fought; it keeps a third of the footprint inside the world box where due
+north keeps none; and it puts **the river along the hill's southern toe**, which is the real
+Bhabar / Shivalik pattern (REF-04 §10, §13) rather than an accident.
+**And it is now correct by REF-05 §5's fourth recorded error** — *"a road that circles a hill never
+faces it; put it ahead on the approach instead."* At 386 m the hill stands ahead of the S5 approach
+instead of looming 220 m to the side. **The climb now begins immediately after the river bridge,
+which is exactly what S5's action already describes.**
 Behind it, a distant range at y ≈ 1900, ~340 m, a pale silhouette through the haze.
+
+**LAND, EXTENDED — written 4 Sep 2026 before building, per Rule 1.**
+The original §3 gives the terrain, the river, the hill and the range. What it does not give is
+**the evidence that people have worked this ground for centuries**, and that is most of what makes
+a plain read as *inhabited* rather than as generated. Every item below is sourced, is EARTH ONLY
+(nothing grown, nothing built — those are components 6 and 4), and is visible at our camera height.
+
+| # | feature | numbers | source |
+|---|---|---|---|
+| 1 | **Scree fans at every gully mouth** | triangular, apex at the gully, spreading downslope | REF-13 §6 — measured in ref_21/ref_15. Placed from the **Eroder's own `deposit` group**, not by hand |
+| 2 | **Rock on the upper third**, foliated and slabby | flat plates splitting along bedding, tan/ochre/grey, stacked at an angle | REF-13 §6 (ref_33/34). **Not spheres, not Voronoi lumps** |
+| 3 | **Three-scale debris law** | large slabs → medium boulders **that fell from them** → small pebbles caught by the small stuff | REF-07 §4. The medium ARE the debris of the large — placement is causal, never random |
+| 4 | **The Bhabar apron** where the hill meets the plain | pebbly alluvial fan, shallow gradient, top layers full of small stones | REF-04 §10 — this is the real named landform for a Shivalik hill foot |
+| 5 | **The quarry scar**, south-west face | cut benches, spoil heap below | S0 §3 as originally written |
+| 6 | **Seasonal waterfall + plunge pool**, north flank | 22 m over a rock step, wet stain on the rock below | S5, REF-04 §13 — alive in late September |
+| 7 | **Village ponds (johad)** ×3 | excavated depressions 25–60 m across, 2–3 m deep, holding water | Ubiquitous in UP villages; the excavated bank is the tell |
+| 8 | **Irrigation channels** | earthen, 0.6–1.2 m wide, following plot edges, feeding from the bunds | REF-01 §15 — a village road crosses a field channel every few hundred metres |
+| 9 | **Drainage nalas** | seasonal watercourses feeding the Malin, 2–6 m wide, dry-ish in late Sep | REF-04 §13 (choes/khads carry heavy sediment) |
+| 10 | **The Malin's flood terrace** | a step 1.5–2.5 m above the channel, marking the monsoon flood level | REF-07 §10b — the bank line falls out of the terrain, so the terrace must be IN the terrain |
+| 11 | **Braided bars and shoals** in the river | pale gravel, same material as the banks, channels splitting and rejoining | REF-13 §6 — measured off ref_21, the Malin at scale |
+| 12 | **Brick-kiln clay pits** | 40–90 m excavated hollows, stepped sides, part water-filled | REF-04 §9 — the kiln is COLD in September but its pits are permanent landform |
+| 13 | **Threshing floors** | swept flat circles 8–14 m across at field edges, hard bare earth | Kharif harvest is under way — REF-04 §9 |
+| 14 | **Bare field shapes** | plot boundaries following the bund grid, ploughed vs stubble vs bare | S0 §7 — late September: paddy cut, cane standing, plots turned for rabi |
+
+**THE GOVERNING PRINCIPLE APPLIES TO ALL OF IT** — *repeat what a reason would repeat; never repeat
+what chance produced.* Ponds sit where the ground was already low. Nalas run downhill into the
+Malin. Scree sits below gullies. Clay pits sit near the kiln. **Nothing is scattered; everything is
+placed by the thing that caused it.**
+
+**THE WATER BODY — SPECIFIED 5 Sep 2026, after the black bar was MEASURED rather than reasoned about.**
+The 4 Sep build gave the Malin a **constant 2.5 m solidified slab** carrying a Principled Volume at
+density 0.26. Two things were wrong with that, and the first one hid the second.
+- **It rendered a hard black bar** across the base of the hill. Ray-cast through the black pixels:
+  the hit object is `WATER_MALIN`, the hit normal is **+1.000** — the water's own TOP face, not a
+  rim. The written "solidify rim" diagnosis was wrong. A/B, measured as the fraction of the strip
+  below luminance 0.02: **as-is 36.3 % · volume unlinked 1.5 % · transmission off 0.0 % ·
+  solidify removed 12.3 %.** **The volume is the cause.** At a grazing view 800 m away the refracted
+  path through a constant 2.5 m of density-0.26 medium extinguishes to nothing.
+- **A constant-thickness slab has NO DEPTH GRADIENT**, which is the entire reason REF-07 §10b puts a
+  volume in the water at all. The build claimed the effect and did not have it.
+
+**THE SPECIFICATION, and it fixes both at once because it is the physically true shape:**
+1. **The water is a WEDGE, not a slab. Its top is the flowing surface; its bottom IS THE RIVER BED.**
+   Depth at any point = `surface − terrain`, so it is **0 at the waterline** and reaches the channel
+   depth mid-stream. Both sheets are built on the terrain grid (REF-05 §10f), so neither can
+   self-intersect and the bed follows the carved channel exactly.
+2. **The shell is CLOSED and manifold** — top sheet, bottom sheet, and a rim wall joining them at the
+   waterline. **`use_rim=True` is correct and required:** a Principled Volume needs a closed boundary
+   to bound its path length, and an open shell is what lets absorption run away. The rim cannot
+   render as a bar because **the shell pinches to zero thickness exactly where it meets the bank** —
+   the black bar is removed by construction, not by hiding a face.
+3. **Depth does the work the slab was faking.** Density stays at REF-07 §5's sediment-laden value, so
+   the shallows over the braided bars read pale and the channel reads dark, and the bars, shoals and
+   cut banks fall out of the terrain for free — which is what REF-07 §10b actually asked for.
+4. **Ponds, johads and clay pits keep their own levels** and are specified the same way: a lens
+   pinching to zero at its own shoreline, never a disc floating at one height (S0 §3 items 7 and 12).
+5. **Assertions, on MASS not on a bounding box** (Rule 4): median and maximum depth in metres; the
+   fraction of the sheet shallower than 0.3 m must be non-zero, proving the wedge actually reaches
+   the bank; the shell must be closed; and no rendered strip may sit below luminance 0.02.
+
+6. **THE WATER'S SHADE — and it is the SCATTERING-ALBEDO error a second time.** Fixing the wedge
+   shrank the black strip but did not remove it: ray-cast still hit `WATER_MALIN`'s top face at
+   **luminance 0.000**. The cause is the one REF-12 §10 already recorded for the clouds —
+   **`Principled Volume > Color` is the SCATTERING ALBEDO, not a paint colour.** The build carried
+   `Color (0.58,0.62,0.55)` at density 0.26, so the water **absorbed ~40 % of every scattering
+   event** and a grazing ray, which travels far through the medium, arrived at nothing.
+   **A silt-laden river is the opposite of an absorber.** Suspended sediment is a strong scatterer:
+   that is *why* such a river is pale and bright rather than dark and clear.
+   **THE MEASURED TARGET, from Aditya's own photographs (REF-13 §6), not chosen:**
+   | source | R | G | B | saturation |
+   |---|---|---|---|---|
+   | braided river, alpine `ref_21` | 143 | 148 | 156 | **8.7 %** |
+   | plains water, Prayagraj `ref_05` | 128 | 141 | 145 | **12.4 %** |
+   REF-13's own words: *"nearly colourless, just bright"* and *"a flat pale sheet, no visible depth
+   colour at all, because it is shallow and silt-laden."*
+   **So: albedo ~0.9 with only a faint grey-green tint, density kept at REF-07 §5's high end.**
+   Opacity then comes from SCATTERING rather than absorption, which is what makes it read pale.
+   **Swept against the measurement and not guessed**, the same way the sky was in §2.
+7. **Recalculate normals on the solid** — REF-07 §5: *"select all and Shift+N ... the volume will
+   not render otherwise."* The rim quads' winding is not guaranteed by the construction order.
+
+**THE LESSON, recorded because it cost a whole session:** the fix that was written on 4 Sep
+(`use_rim=False`) was **already applied in both the script and the .blend and the bar was still
+there** — because the diagnosis had been reasoned from geometry instead of measured. **REF-05 §5's
+rule held again: A/B it or ray-cast it, never argue about it.**
+
+**THE GROUND MATERIAL — SPECIFIED 5 Sep 2026 before building, per Rule 1. It closes S0 §3 item 14
+and it is what actually fixes "the plain reads featureless".**
+The plain is NOT flat: measured, median slope 2.24°, p90 4.63°, and **3.8 m of relief in a 100 m
+window**. The bund grid is real geometry — 75 m × 120 m parcels, each already carrying its own id
+and its own level. **What is missing is that all 4 km² wears ONE soil material**, keyed only to
+height and a single 50 m noise. So the parcels exist in the surface and are invisible in the image.
+**This is LAND's job, not component 6's.** Crops sit ON the fields; the fields themselves are earth,
+and earth is component 2.
+
+**THE THREE-SCALE LAW (PLAN §3b) APPLIED TO THE GROUND — one cause, three readings:**
+| | scale | what carries it | how it is built |
+|---|---|---|---|
+| **L** | from the air | the **field pattern** — parcels of different tone tiling the plain | per-plot tone driven by the EXISTING `plot_id` |
+| **M** | from the street | the **plot boundary** — a bund lip, its dry crest, damp ground behind it | the bund height field, already built, reused as a mask |
+| **S** | up close | **furrows** on ploughed plots, stubble rows on cut ones | anisotropic noise, direction per plot — a MATERIAL, never geometry |
+
+**THE FOUR PLOT STATES, from REF-04 §9 and the 25 September date. Late September, western UP:
+kharif harvest under way, monsoon retreated ~17 Sep, the ground DRYING, not wet.**
+| state | share | colour | why |
+|---|---|---|---|
+| **ploughed for rabi** | ~30 % | darkest, damp-turned earth, **furrowed** | plots turned for the rabi sowing |
+| **stubble** (paddy cut) | ~30 % | pale straw over dark soil, **row-structured** | paddy harvesting is under way |
+| **standing cane** | ~20 % | earth barely visible — component 6 covers it | cane harvest runs Aug–Nov |
+| **bare / fallow** | ~20 % | mid pebbly tan, dry | drying ground |
+**The state is a HASH OF `plot_id`, so it is fixed per parcel and neighbours differ** — the same
+mechanism that already gives each plot its own level. **Repeat what a reason would repeat.**
+
+**COLOUR, MEASURED, NEVER PICKED.** REF-04 §10's two-tone rule stands — **near-black damp humus in
+hollows, light pebbly tan on ridges and sunlit slopes**, boundary noise-masked, never a line. It is
+now driven by the plot state as well as by height. And **REF-13 §7's plains correction governs
+everything on this plain: ~31 % saturation, NOT the alpine 51 %.** Dust and haze sit on it.
+**A saturated colour here reads as wrong immediately.**
+
+**THE HILL'S ROCK — measured, and it is currently too pale.** Rock is on **28 % of hill faces** with
+a base-colour ramp of only 0.115 → 0.330. REF-13 §6 reads foliated rock as **flat slabby plates,
+tan / ochre / grey, stacked at an angle** — that is a wide value range, not a narrow one. Widen the
+ramp, and **add a third, darker element for the shadowed splits between plates**, because what makes
+foliated rock read is the dark line where two plates part.
+
+**THE THREE-SCALE DEBRIS LAW ON THE HILL — S0 §3 item 3, and this is what survives Aditya's zoom
+test.** REF-07 §4: **the medium rocks ARE the debris of the large ones.** So:
+| | scale | what | placed by |
+|---|---|---|---|
+| **L** | the gully network | 4.55 km/km², many small gullies, not two | the Eroder's own `water`/`flowrate` groups — measured drainage |
+| **M** | large slabs on the upper third + scree fans at every gully mouth | plates splitting along bedding | the Eroder's `deposit` group |
+| **S** | boulders **below the slab that shed them**, pebbles caught by the boulders | same shape, smaller | derived from the M placement, never scattered |
+**Scattering the small stuff randomly fails the zoom test instantly — that is the tell.**
+**S is a material and a bump, not geometry** (PLAN §3b): modelling it would cost what the whole
+terrain costs and would be invisible past 30 m.
+
+**POND_2 — a measured failure, fixed by the numbers.** It came out **13 × 13 m = 2 × 2 grid cells**
+on a 6.67 m grid, which is REF-05 §10h's sub-cell rule again. **Minimum pond radius is raised so
+every johad spans at least 4 cells (≈ 27 m across)**, which is inside S0 §3 item 7's stated
+25–60 m range anyway — the spec was right and the build under-filled it.
+
+**THE GROUND SURFACES — SPECIFIED 5 Sep 2026 before building (Rule 1). PLAN §10 Phase 1.**
+**The land is SHAPED but not SURFACED, and that is measurable, not an opinion:** the terrain is
+**100 % one material**, and **not one of the 14 extended features has a material keyed to it.** A
+threshing floor, a gravel bar, the Bhabar apron and a pond's spoil bank all wear farmland with plot
+rectangles painted across them — **exactly the bug already fixed on the hill, never fixed on the
+plain.** Every feature was placed by the thing that caused it; none of them looks like what it is.
+
+**THE METHOD is the one already proved on the hill's `EROSION` attribute:** bake each layer's mask
+into a colour attribute on the terrain, and key the material off it. The masks already exist — they
+are the same arrays that cut the ground — so nothing is painted and nothing is guessed.
+
+| feature | reads as | source |
+|---|---|---|
+| **braided bars + river banks** | **pale grey-tan gravel**, and *the bars are the same material as the banks* | REF-13 §6 |
+| **the Bhabar apron** | pebbly alluvial fan, *top layers full of small stones* | REF-04 §10 |
+| **threshing floors** | hard swept **bare** earth — no crop, no furrow, no plot tone | REF-04 §9 |
+| **pond + clay-pit spoil banks** | raw excavated earth, darker, unvegetated — *the excavated bank is the tell* | S0 §3 items 7, 12 |
+| **nala beds + irrigation channels** | damp sediment, darker than the plot they cross | REF-04 §13 |
+| **the flood terrace** | the step reads as a tonal break, wet below and dry above | S0 §3 item 10 |
+| **paleo channels** | damp low ground — REF-04 §10's *near-black humus in hollows* | REF-04 §10 |
+| **the quarry spoil** | broken rock, not soil | S0 §3 item 5 |
+
+**TWO FREQUENCIES PER SURFACE, NOT ONE — REF-07 §3, and this is the part that is easy to skip.**
+The upgrade over "two materials mixed by a mask" is that the two maps must differ in **FREQUENCY**,
+not merely in colour: one high-frequency, one low. **That, and not the colour, is what kills
+tiling.** It applies to every surface in the table above.
+
+**THE S SCALE ON THE PLAIN — PLAN §3b, and it is placed BY CAUSE, never scattered:**
+- **stones** on the apron and on the gravel bars — the only two places stones actually are
+- **clods** on the ploughed plots, because ploughing is what makes a clod
+- **cracked, curling dry crust** on the fallow, because the monsoon left ~17 September and the
+  ground is drying (REF-04 §9). **Not on the ploughed plots, which were turned wet.**
+All three are **material and bump, never geometry** — 20 mm features on a 6.67 m grid (REF-05 §10h).
+
+**AND THE RULE THAT DECIDES WHAT IS *NOT* HERE:** these surfaces are EARTH. What grows on them is
+component 6. The plain will still not read as *farmland* until the crops land — **that is expected
+and is not a land defect.**
+
+**THE HILL HAS NO PAD — AMENDED 5 Sep 2026, and it removes a whole class of bug.**
+Fixing the water exposed what the black bar had been hiding: **the hill was standing on a flat
+rectangular plate floating above the plain.** Three things combined to make it:
+- The hill is generated on its own 500 × 350 m grid with the dome ellipse **inscribed**, so
+  everything outside the ellipse is a **flat skirt** at one constant height.
+- The terrain carried a `hillpad` layer that levelled the ground out to **2.45× the ellipse
+  (612 m)** so that skirt would have something to stand on.
+- **`river_guard` then punched a hole in that pad so it would not flatten the Malin** — leaving the
+  skirt cantilevered over a dip, with a visible void under its straight south edge.
+Each fix was locally reasonable; together they built a plinth.
+
+**THE SPECIFICATION: the hill FOLLOWS THE GROUND and has no skirt.**
+1. **No `hillpad` layer.** The plain keeps its own undulation right up to the hill foot.
+2. **Every hill vertex is placed at `terrain height (x,y) + its own relief`** — the terrain is
+   sampled bilinearly off the same height field the terrain mesh is built from, so hill and plain
+   are the same surface by construction, not by tuning. The rim reaches zero relief at the ellipse
+   and therefore lands exactly on the ground: **self-correcting, with nothing to sink or measure.**
+3. **The skirt faces are DELETED** — any face whose vertices all carry under 0.4 m of relief. There
+   is then no flat plate to catch the light, and no straight edge to read as a line.
+4. **The Bhabar apron does the transition**, which is what S0 §3 item 4 always said it was for: a
+   pebbly alluvial fan at the hill foot is the real landform, and a levelled plinth is not.
+5. **`river_guard` is deleted with the pad it was guarding.** Nothing now flattens the Malin, so
+   nothing needs to be excepted from it.
+6. **The assertions change with it (Rule 4).** `dimensions.x/y` is a bounding box of a ROTATED
+   ellipse and does not equal the spec's axes. Measure the footprint **along and across the hill's
+   own north-west long axis**, over vertices carrying real relief — mass, not a box.
 
 ## 4 · THE ROAD NETWORK — real, and built at three levels
 **42 km of real road inside the box.** Widths follow the map's own classification:
@@ -94,6 +402,53 @@ unique grime per object, which is exactly what Level 3 does not get.**
 unified memory swaps (REF-05 §3). The ground-cover layers are where that budget is actually spent, so
 they get distance-based density falloff and the cheap texture method in the far field (REF-11 §10).
 **Instance count gets measured after every component, not assumed.**
+
+**COMPONENT 3 · HOW THE ROADS ARE BUILT — written 5 Sep 2026 before building, per Rule 1.**
+
+**THE SOURCE OF TRUTH IS `map/matlab_roads.csv`, and that is the whole point.** It is MATLAB's own
+exported centreline — 2,050 points in 425 resampled segments. Building Blender from it means the
+road the planner drives and the road the camera sees are **the same numbers by construction**, not
+by agreement. This was the biggest hidden risk in the project and this is what closes it.
+
+**THE FRAME. One number, shared with the integrator chat.** MATLAB's frame and the OSM metric frame
+differ by a pure translation. **Re-fitted 5 Sep by brute force over ±15 m: best (+34.0, −99.0),
+median 2.24 m; the recorded (+35.0, −100.0) gives 2.50 m.** The difference is under a metre and
+**the recorded value is kept**, because the integrator is exporting `map/ego_S1.csv` with exactly
+that offset removed — agreeing on one number matters more than a metre of fit.
+**Blender's frame = the OSM metric frame = MATLAB + (35.0, −100.0).**
+
+**CLASS COMES FROM THE OSM JSON, GEOMETRY COMES FROM THE CSV.** `matlab_roads.csv` carries only
+`x, y, road_id` — no tags. `najibabad_metres.json` carries all 213 ways with `class`, `name`,
+`bridge`, `lanes`, `oneway`. So each CSV segment is matched to its nearest JSON way by
+**point-to-SEGMENT** distance (REF-05 §4: never point-to-point) and inherits its class. Widths then
+follow the S0 §4 table exactly.
+
+**THE BUILD, and the order inside it is a dependency too:**
+1. **Conform the terrain to the road first.** Roads are *cut into* land — REF-07 §1 and REF-08 §4.
+   Each corridor is levelled across its width to the road's own longitudinal profile and feathered
+   out over the verge, so the road never floats and never buries.
+2. **The longitudinal profile is smoothed, then gradient-limited**, so a road follows the ground but
+   never exceeds the audit figure. Smooth first, *then* enforce — REF-05 §10d proved the other order
+   lets the smoothing put the violations back.
+3. **The ribbon is built on the conformed profile with 2.5 % camber** (PLAN §3), crown at the
+   centreline, and its own material by class.
+4. **Two methods, deliberately** (PLAN §3): cut geometry where the section matters; **a material
+   mask** for the kaccha rasta, field tracks and the crumbling edge.
+
+**THE AUDIT — assertions, on MASS not on bounding boxes (Rule 4):**
+- **213 roads present**, and every class count matches the OSM tally (residential 148, trunk 17,
+  tertiary 15, unclassified 12, secondary 7, service 7, living_street 5, trunk_link 2).
+- **Total centreline inside the 2 km box = 42.1 km**, the figure S0 §4 gives and PLAN §3 corrected.
+  *(PLAN §3's audit line still says 47.3 km in one place; 42.1 km is the measured figure and wins.)*
+- **Measured width per class**, sampled across the built ribbon, matching the S0 §4 table.
+- **Gradient ≤ 6 %** on the plain roads (the hill road's own limits are a component-3 pass-2 item).
+- **No road floats:** the ribbon's underside is within a tolerance of the conformed terrain
+  everywhere, measured, not assumed.
+- **Camber measured**, crown to edge, not asserted from the parameter that produced it.
+
+**WHAT PASS 1 DOES NOT DO, stated so it is not mistaken for finished:** the 2 river bridges, the 9
+flyover decks and piers, the railway, the S2 gyratory island and the S5 hill road are **pass 2**.
+Pass 1 is every one of the 213 roads, at its real width, cut into the real ground.
 
 ## 5 · BUILDINGS — about 1000, from about 30 parts
 **Do not model whole buildings.** Model ~30 facade parts — window, shutter, balcony, AC box,
