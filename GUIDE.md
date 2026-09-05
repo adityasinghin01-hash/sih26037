@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **78%** | 59 active milestones addressed across 76 total steps |
-| **Completed Steps** | **58** | `[🟢COMPLETED]` — Predictor & Calibration done; Loader fixed & 3.7k Curated Dataset verified |
-| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Model 3 datastore validated; training launch next |
-| **Active Planned Steps** | **3** | `[🔵TO DO]` — Part 14: Fast-Track Model 3 (YOLOX Spotter) Training, AP & Docs |
+| **Overall Pipeline Progress** | **82%** | 62 active milestones addressed across 76 total steps |
+| **Completed Steps** | **61** | `[🟢COMPLETED]` — Predictor, Evaluation, Calibration & Model 3 Spotter pipeline complete |
+| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
+| **Active Planned Steps** | **0** | `[🔵TO DO]` — All master roadmap tasks completed |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -25,11 +25,11 @@
 | **Part 6: Model 2 (Group Attention)** | 30–32 | 🟢 3/3 COMPLETE | 15 epochs on GPU (loss 0.2089, -44.9%), AP 0.3691, comparison table generated |
 | **Part 7: 8-Check Metric Evaluation** | 33–36 | 🟢 4/4 COMPLETE | evaluate.py full suite run on all 249 val clips (772k samples) |
 | **Part 8: ONNX Export & Archival** | 37–40 | 🟢 4/4 COMPLETE | All 6 production ONNX files exported (opsets 17, 18, 20), bitwise verified |
-| **Part 9: Models 3, 4, 5 (Perception Suite)** | 41–44 | 🟡 1 PARTIAL, 3 POST-S7 | Model 3 dataset acquired (22.8 GB); training deferred to post-Sept 7 demo |
-| **Part 11: Model 3 Local Setup & Audit** | 45–58 | 🟢 10 PREP, 4 DEFERRED | MATLAB R2024b, toolboxes, YOLOX add-on, GPU & 46k images ready; training deferred |
+| **Part 9: Models 3, 4, 5 (Perception Suite)** | 41–44 | 🟡 1 COMPLETE, 3 POST-S7 | Model 3 dataset curated, trained & saved (33.5 MB); Models 4 & 5 post-Sept 7 demo |
+| **Part 11: Model 3 Local Setup & Audit** | 45–58 | 🟢 10 PREP, 4 DEFERRED | MATLAB R2024b, toolboxes, YOLOX add-on, GPU & 46k images ready; pipeline verified |
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
-| **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟡 3 COMPLETED, 3 TO DO | Steps 71-73 VERIFIED (3,691 images loaded); 1-hr training (Step 74) next |
+| **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1113,7 +1113,7 @@ Done when: Datastores load cleanly and print non-zero box counts for target clas
 
 ### Phase P: Fast YOLOX Training
 
-#### Step 74 Train YOLOX Spotter with VRAM Guard [🔵TO DO] [HIGH]
+#### Step 74 Train YOLOX Spotter with VRAM Guard [🟢COMPLETED] [HIGH]
 Run native YOLOX training on the local RTX A1000:
 ```matlab
 detector = sih.models.trainSpotter( ...
@@ -1133,7 +1133,7 @@ Done when: Training completes 15 epochs and detector checkpoint is saved.
 
 ### Phase Q: Evaluation & Logging
 
-#### Step 75 Evaluate Average Precision on Target Classes [🔵TO DO] [HIGH]
+#### Step 75 Evaluate Average Precision on Target Classes [🟢COMPLETED] [HIGH]
 Evaluate the detector on the validation split:
 1. Measure per-class Average Precision (AP) for `cow`.
 2. Measure per-class Average Precision (AP) for `auto-rickshaw`.
@@ -1145,7 +1145,7 @@ Done when: AP numbers are computed and recorded.
 
 ### Phase R: Deliverables Documentation
 
-#### Step 76 Record Model 3 Results in `PROGRESS.md` [🔵TO DO] [HIGH]
+#### Step 76 Record Model 3 Results in `PROGRESS.md` [🟢COMPLETED] [HIGH]
 Log all final numbers, loss curve, per-class AP, and resolution of Hurdles H7/H8 into `PROGRESS.md`.
 
 Done when: `PROGRESS.md` is updated with Model 3 deliverables.
