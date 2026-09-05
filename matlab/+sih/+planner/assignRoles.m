@@ -1,4 +1,4 @@
-function roles = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
+function [roles, vos] = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
 %ASSIGNROLES  COLREGs-style role assignment from geometry alone.
 %
 %   No radio. No infrastructure. No shared map. Only relative geometry - which is what a
@@ -31,8 +31,20 @@ function roles = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
 %     opts.dMin_m      minimum separation, default 2.5 m
 %     opts.maxRange_m  ignore agents beyond this, default 50 m
 %
-%   OUTPUT
+%   OUTPUTS
 %     roles  struct array  Role (AGENTS.md section 3 S4), same order as tracks
+%     vos    struct array  the full sih.planner.velocityObstacle result for each track,
+%                        same order as tracks. Added 4 September 2026.
+%
+%   WHY THE SECOND OUTPUT EXISTS
+%   This function always built a complete vo per agent and then kept only three fields
+%   of it. sih.planner.chooseVelocity needs a vo, and sih.planner.arbitrate picks WHICH
+%   agent's vo that should be, so the discarded results were being recomputed downstream
+%   for no reason. Returning them means arbitrate never has to take a position, which is
+%   what makes it impossible to hand it two things measured in different frames - the
+%   silent failure this file's FRAME note above is entirely about.
+%
+%   Asking for one output is unchanged and every existing caller is unaffected.
 
 arguments
     egoPos (1,2) double
@@ -51,11 +63,19 @@ SAFE=uint8(0); GIVE_WAY=uint8(1); STAND_ON=uint8(2); HEAD_ON=uint8(3); OVERTAKIN
 
 n = numel(tracks);
 proto = struct('TrackID',uint32(0),'Role',SAFE,'Beta',NaN,'Lambda',NaN,'TCPA',NaN);
+
+% Field order must match sih.planner.velocityObstacle's own output exactly, or the
+% two cannot be assigned into the same array.
+voProto = struct('d',NaN,'beta',NaN,'lambda',NaN,'h',NaN, ...
+                 'colliding',false,'tcpa',NaN,'dcpa',NaN,'bearing',NaN);
+
 if n == 0
     roles = proto([]);          % honour the empty-TrackList guarantee, S1 rule 3
+    vos   = voProto([]);
     return
 end
 roles = repmat(proto, n, 1);
+vos   = repmat(voProto, n, 1);
 
 for k = 1:n
     t = tracks(k);
@@ -63,6 +83,8 @@ for k = 1:n
 
     vo = sih.planner.velocityObstacle(egoPos, egoVel, ...
             t.Position(1:2), t.Velocity(1:2), opts.dMin_m);
+
+    vos(k) = vo;
 
     roles(k).Beta   = vo.beta;
     roles(k).Lambda = vo.lambda;
