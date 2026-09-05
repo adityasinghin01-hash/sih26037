@@ -21,12 +21,24 @@ function out = planTurn(route, egoState, opts)
 %   no learned classifier, no sign reader, and nothing to mislabel.
 %
 %   WHY A RIGHT TURN IS A CUT AND A LEFT TURN IS NOT
-%   The same reason plan/D6-TRUNK-RULING.md gives for HEAD_ON steering left: the
-%   Rules of the Road Regulations, 1989, reg. 2 keeps traffic to the LEFT. So a left
+%   This is not an inference. sih.planner.chooseVelocity's header, lines 29-45, sets
+%   it out with citations, and it is the same reasoning plan/D6-TRUNK-RULING.md gives
+%   for HEAD_ON steering left.
+%
+%   Rules of the Road Regulations, 1989, reg. 2: a driver shall drive "as close to
+%   the left side of the road as may be expedient and shall allow all traffic which
+%   is proceeding in the opposite direction to pass on his right hand side." So a left
 %   turn peels off the near side and crosses nothing, while a right turn crosses the
 %   oncoming stream and then the one it is joining - exposed in the middle for the
 %   whole manoeuvre. That exposure is what a refuge point exists for. Importing a
-%   keep-right convention here would mark the harmless turn as the dangerous one.
+%   keep-right convention here would mark the harmless turn as the dangerous one -
+%   COLREGs Rule 14 says alter to STARBOARD, which is exactly that mistake, and
+%   chooseVelocity's header records why India wins over it.
+%
+%   Crossing needs no such correction, which is why sih.planner.assignRoles keeps the
+%   maritime sectors: COLREGs Rule 15 and RRR reg. 9 BOTH give way to traffic on the
+%   right, so the two conventions agree there and disagree only head-on.
+%
 %   The frame is x forward, y left, z up, so a POSITIVE heading change is LEFT.
 %
 %   THE SHARP ROW IS ASKED FOR, NOT RECOMPUTED
@@ -122,7 +134,13 @@ function out = planTurn(route, egoState, opts)
 %   DESIGN CHOICES traceable to plan/D-planner.md D10, not measured figures. By the
 %   same ruling every one of them must be written into config.json before any of it
 %   is demonstrated, and none may ever be called measured or sourced.
-%   TODO(unverified): config.json does not exist anywhere in the repository yet.
+%   TODO(unverified): none of them is recorded in config.json. The file itself DOES
+%   exist - sih.runExperiment line 144 writes one into every run directory - but it
+%   captures the scenario only: stop time, sample time, traffic rate, turn ratio,
+%   MATLAB version, git commit. Not one planner design number is in it. The run
+%   directories live under results/, which is gitignored, so a fresh checkout has
+%   none. runExperiment.m is not Person A's file: the numbers are listed for
+%   whoever owns it, never added here.
 %
 %   wheelbase and egoWidth/egoLength match sih.planner.followTrunk and
 %   sih.planner.roadBarrier so the three cannot disagree about the same car;

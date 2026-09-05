@@ -35,14 +35,26 @@ function out = escapeMemory(memory, egoState, space, opts)
 %   and both cars run this same rule, so a symmetric answer would deadlock twice over.
 %   Yielding on the tie costs one reverse and can never gridlock.
 %
-%   WHERE THE ROAD WIDTH COMES FROM, AND THE ASSUMPTION IN IT
-%   S9 DrivableSpace carries .EdgeDistance - the distance to the NEAREST edge - not a
-%   width. This file takes the width as twice that, which is true when the car is
-%   near the middle of the road and an UNDERESTIMATE when it is not. Underestimating
-%   is the safe direction here: it drops fewer breadcrumbs, never phantom ones.
-%   TODO(unverified): ask Aditya whether S9 should carry a width, or whether the
-%   centred assumption is the intended reading. It is stated in the output as
-%   .LocalWidth_m so a log can show what was assumed.
+%   WHERE THE ROAD WIDTH COMES FROM, AND THE ONE THING UNSETTLED ABOUT IT
+%   Aditya ruled on 5 September 2026 that S9 does NOT gain a width field: section 3
+%   is frozen, adding a field costs six people, and the width is to be DERIVED from
+%   the edge distances instead. That ruling is followed - nothing here asks for a new
+%   field.
+%
+%   The derivation he gave is left edge plus right edge. This file cannot do that,
+%   because it can only see ONE edge: sih.planner.roadBarrier, the other S9 consumer,
+%   documents S9 as carrying a single .EdgeDistance (signed, + inside) with a single
+%   .EdgeSide saying which side it is. One distance and one side give the distance to
+%   the NEAREST edge, not both. So the width is taken as twice that, which is exact
+%   for a centred car and an UNDERESTIMATE otherwise - the safe direction, because it
+%   drops fewer breadcrumbs and never phantom ones.
+%
+%   TODO(unverified): this is the one place Aditya's ruling and the repository do not
+%   line up, and it is not resolved by guessing. Either S9 carries two edge distances
+%   and roadBarrier.m's header understates it, or it carries one and the left-plus-
+%   right derivation is not available. Ask him which; do not read AGENTS.md section 3
+%   to settle it. Either way .LocalWidth_m reports what was assumed, so a log always
+%   shows the number that was actually used.
 %
 %   AN INVALID S9 RECORDS NOTHING, AND THAT IS NOT THE SAME AS A NARROW ROAD
 %   With S9 invalid there is no measured edge, so no breadcrumb is dropped and
@@ -70,7 +82,10 @@ function out = escapeMemory(memory, egoState, space, opts)
 %   TODO(unverified): minSpacing and maxPoints are DESIGN CHOICES, not measured
 %   figures, and by Aditya's ruling of 5 September 2026 both must be written into
 %   config.json before any of this is demonstrated, and neither may ever be described
-%   as measured. config.json does not exist in the repository yet.
+%   as measured. NEITHER IS RECORDED THERE YET: sih.runExperiment writes a config.json
+%   on every run, but it captures the scenario only - stop time, sample time, traffic
+%   rate, turn ratio, MATLAB version, git commit - and no planner design number.
+%   runExperiment.m is not Person A's file, so they are listed for its owner.
 %
 %   OUTPUT  out, a struct. FEED IT BACK IN NEXT STEP.
 %     .Points            Nx2 double, the breadcrumbs, world frame

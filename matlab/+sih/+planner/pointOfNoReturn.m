@@ -68,8 +68,10 @@ function out = pointOfNoReturn(exposure_m, progress_m, speed_mps, terminal, opts
 %   gentler than S4's -6 m/s^2 floor, because this sizes a controlled stop and not an
 %   emergency one. It and marginFactor are DESIGN CHOICES, and by Aditya's ruling of
 %   5 September 2026 both must be written into config.json before any of this is
-%   demonstrated, and neither may ever be described as measured. config.json does not
-%   exist in the repository yet.
+%   demonstrated, and neither may ever be described as measured. NEITHER IS RECORDED
+%   THERE YET: sih.runExperiment writes a config.json on every run, but it captures
+%   the scenario only and no planner design number. runExperiment.m is not Person A's
+%   file, so they are listed for its owner rather than added here.
 %
 %   OUTPUT  out, a struct
 %     .Distance_m          double, s*, where the point of no return sits. MAY BE
