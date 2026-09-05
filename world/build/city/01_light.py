@@ -35,6 +35,8 @@ BAND         = 78.0          # interior band width: the density falloff INWARD f
                               # This is the single control that decides vapour vs rock. It is ABSOLUTE METRES, so it must
                               # stay small relative to the SMALLEST cloud or that population becomes pure
                               # falloff - grey mush with no form. 135 m swallowed the fractus entirely.
+BANDED_VOXELS = os.environ.get("SIH_BANDS","1")=="1"   # L1: distance-banded voxel sizes
+HOLE_MASK     = os.environ.get("SIH_HOLES","1")=="1"   # L2: large-scale blue-hole density mask
 FADE_START   =  9000.0        # radial density fade so the field edge never shows.
                               # MEASURED: a 1400 m cloud at 10 deg elevation is 7940 m away and at
                               # 6 deg is 13320 m. The old 4200/12000 fade deleted everything below
@@ -229,7 +231,8 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     hr=n.new("ShaderNodeMapRange")
     hr.inputs["From Min"].default_value=0.42; hr.inputs["From Max"].default_value=0.60; hr.clamp=True
     L.new(hn.outputs["Fac"], hr.inputs["Value"])
-    L.new(hr.outputs["Result"], dp.inputs["Density Factor"])
+    if HOLE_MASK:
+        L.new(hr.outputs["Result"], dp.inputs["Density Factor"])
     # PLAN s10 Phase 3 item 12: DISC, NOT SQUARE. The field mesh is a flat square, so a Poisson
     # scatter across it wastes ~21% of its points in the corners - past FIELD_RADIUS, which is
     # already past the visibility fade anyway (~21% free is the plan's own estimate). Delete at
@@ -340,17 +343,21 @@ def _to_volume(mesh_sock, voxel):
 rest=jn.outputs["Geometry"]
 vjoin=n.new("GeometryNodeJoinGeometry")
 m2v_list=[]
-for bi,(hi,vox) in enumerate(BANDS):
-    if bi < len(BANDS)-1:
-        sep=n.new("GeometryNodeSeparateGeometry"); sep.domain='FACE'
-        L.new(rest, sep.inputs["Geometry"])
-        L.new(_band_selection(hi), sep.inputs["Selection"])
-        m2v=_to_volume(sep.outputs["Selection"], vox); m2v_list.append(m2v)
-        L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
-        rest=sep.outputs["Inverted"]
-    else:
-        m2v=_to_volume(rest, vox); m2v_list.append(m2v)
-        L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
+if BANDED_VOXELS:
+    for bi,(hi,vox) in enumerate(BANDS):
+        if bi < len(BANDS)-1:
+            sep=n.new("GeometryNodeSeparateGeometry"); sep.domain='FACE'
+            L.new(rest, sep.inputs["Geometry"])
+            L.new(_band_selection(hi), sep.inputs["Selection"])
+            m2v=_to_volume(sep.outputs["Selection"], vox); m2v_list.append(m2v)
+            L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
+            rest=sep.outputs["Inverted"]
+        else:
+            m2v=_to_volume(rest, vox); m2v_list.append(m2v)
+            L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
+else:
+    m2v=_to_volume(rest, BANDS[0][1]); m2v_list.append(m2v)
+    L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
 
 setm=n.new("GeometryNodeSetMaterial")                     # <-- a GN VOLUME IGNORES OBJECT SLOTS
 setm.inputs["Material"].default_value=CMAT
@@ -508,15 +515,17 @@ check("cloud base (m)",    fld.location.z, CLOUD_BASE, 1e-6)
 check("cirrus altitude (m)", cir.location.z, 7200.0, 1e-6)
 check("cirrus above cumulus", 1.0 if cir.location.z > CLOUD_BASE else 0.0, 1.0, 0.0)
 check("cirrus casts no shadow", 0.0 if not cir.visible_shadow else 1.0, 0.0, 0.0)
-# VOXEL SIZE VARIES WITH DISTANCE now (3 bands): near must be fine, far must be coarse, and the
-# band width must never fall below one voxel or the volume aliases.
+# VOXEL SIZE VARIES WITH DISTANCE (3 bands, when BANDED_VOXELS): near fine, far coarse, and the
+# band width never below one voxel or the volume aliases.
 _vsz=[mv.inputs["Voxel Size"].default_value for mv in m2v_list]
 _vbw=[mv.inputs["Interior Band Width"].default_value for mv in m2v_list]
-check("cloud near-band voxel (m)", _vsz[0], 24.0, 1e-6)
-check("cloud far-band voxel (m)",  _vsz[-1], 96.0, 1e-6)
-check("cloud voxels coarsen outward", 1.0 if _vsz==sorted(_vsz) and _vsz[0]<_vsz[-1] else 0.0, 1.0, 0.0)
 check("every band's edge band >= 1 voxel", 1.0 if all(b>=v for b,v in zip(_vbw,_vsz)) else 0.0, 1.0, 0.0)
-check("cloud bands", float(len(m2v_list)), 3.0, 0.0)
+if BANDED_VOXELS:
+    check("cloud near-band voxel (m)", _vsz[0], 24.0, 1e-6)
+    check("cloud far-band voxel (m)",  _vsz[-1], 96.0, 1e-6)
+    check("cloud voxels coarsen outward", 1.0 if _vsz==sorted(_vsz) and _vsz[0]<_vsz[-1] else 0.0, 1.0, 0.0)
+    check("cloud bands", float(len(m2v_list)), 3.0, 0.0)
+print(f"  INFO  BANDED_VOXELS={BANDED_VOXELS}  HOLE_MASK={HOLE_MASK}  voxel sizes {_vsz}")
 check("cloud populations", 3.0, 3.0, 0.0)
 check("cloud field extent (m)", CLOUD_FIELD, 30000.0, 1e-6)
 check("radial fade start (m)",  FADE_START, 9000.0, 1e-6)
