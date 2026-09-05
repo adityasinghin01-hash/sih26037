@@ -101,10 +101,11 @@ the same thing.
 - Three Python test suites: contract, parity fixture, evaluation metrics
 - `matlab/+sih/+planner/`: `assignRoles`, `velocityObstacle`, `chooseVelocity` (D2, merged
   3 Sep) and `NegotiatingStrategy`
-- **Test counts, re-run 4 September 2026 21:xx:** `main` = **51 tests, 50 pass, 1 fail**.
-  `stream-d-a` = **214 tests, 213 pass, 1 fail, 0 skipped**. The old "42 passing" counted only
-  three of the five files. **`OpenTrafficLab/` must be cloned into the repo root or 7 tests
-  silently SKIP** (206 instead of 213) — a skip is not a pass. The `.m` extension is required for
+- **Test counts, re-run 5 September 2026:** `main` = **51 tests, 50 pass, 1 fail**.
+  `stream-d-a` = **304 tests in 18 files, 303 pass, 1 fail, 0 incomplete**. "42 passing" counted
+  three of the five files that existed then; "214" predates the seven that landed on 5 Sep.
+  **`OpenTrafficLab/` must be cloned into the repo root or 7 tests silently SKIP** (297 instead
+  of 304) — a skip is not a pass. The `.m` extension is required for
   a FILE — `runtests('.../testX')` without it errors `MATLAB:unittest:TestSuite:UnrecognizedSuite`;
   the folder form `runtests('matlab/tests')` is fine without it
 - **OpenTrafficLab runs, but NOT unmodified** on R2026a. Two fixes, both outside their folder.
@@ -121,28 +122,36 @@ MathWorks documentation, but **verified by reading is not verified.** `/first-ru
 close this. Expect it to find something.
 
 ### Built on a BRANCH, not yet on `main` — say which branch when you quote it
-- **`stream-d-a`** (12 ahead of `main`, no PR open as of 4 Sep 22:00): **D6 and D8** —
+- **`stream-d-a`** (**16 ahead, 0 behind** as of 5 Sep — main is merged in; still no PR): **D6, D8, D9, D10 and arbitration** —
   `planContingency`, `generateCandidates`, `predictAgentFutures`, `checkTrajectorySafety`,
-  `findSharedTrunk`, `checkTerminalStop`, `followTrunk`, `roadBarrier`, `speedLimit`.
-  Trunk mode **"B" is the default**. 214 tests.
-- **`stream-d-b`** (3 ahead, **20 behind** `main`): `sih_planner.slx` — 38 blocks, Stateflow chart
+  `findSharedTrunk`, `checkTerminalStop`, `followTrunk`, `roadBarrier`, `speedLimit`,
+  `arbitrate`, `planTurn`, `escapeMemory` and `pointOfNoReturn`. Trunk mode **"B" is the
+  default**. **304 tests, 303 pass.**
+- **`stream-d-b`** (**20 ahead, 0 behind** as of 5 Sep — main AND `stream-d-a` are merged in):
+  `sih_planner.slx` — 38 blocks, D7's three rates wired, Stateflow chart
   with seven outputs, a vehicle model and an `h` calculation. **Loads with 0 unresolved refs and
   simulates in 47 s on the Mac.** It is the only harness that actually consumes `SteerAngle` —
   see `plan/HARNESS-STEERING-FINDING.md`.
 
 ### Not built at all
-- Everything in `matlab/+sih/+scenario/`, `+perception/`, `+metrics/`
-- `matlab/+sih/+planner/` **D9, D10, D11** — reversibility, turns, handover
-- **`arbitrate.m`** — ruled in `plan/ARBITRATION-RULING.md`, not yet written. It is what wires
-  `chooseVelocity` into `NegotiatingStrategy.m:105`
+- Everything in `matlab/+sih/+scenario/`, `+perception/`, `+metrics/` — so there is no S9, no S10
+  and no metrics code. Stream D builds against hand-made structs
+
+**Moved out of this section on 5 Sep: D9, D10 and `arbitrate.m` are BUILT** — on `stream-d-a`,
+not on `main`, so say which branch when you quote them. `arbitrate` is frozen in
+`plan/CONTRACT-AB.md`. D11 handover is Person B's and is in the Stateflow chart.
 
 ### RUN, and the result was a finding
 - **`matlab/baseline/` HAS been run — and it FAILS.** It dies **19.7 s** into its own shipped
   scenario at MathWorks' own `error()`, **0 of 120 candidates collision-free**, identically on
   macOS/Apple Silicon and Windows x86 under R2026a Update 5. **That is the result. Never edit
   that folder to make it survive.** `plan/BASELINE-R2026a.md`.
-- **The planner DRIVES in the backup demo** — `~/Desktop/SIH26037-Reference/build/backup/` calls
-  the real `sih.planner.*` unmodified and completes a 610 m route. **But the probe never fires,
+- **TWO DIFFERENT THINGS ARE CALLED "the backup" AND ONLY ONE RUNS THE PLANNER.**
+  `~/Desktop/SIH26037-Reference/build/backup/` calls the real `sih.planner.*` unmodified and
+  completes a 610 m route — that is where every number below was measured.
+  `~/Desktop/SIH26037-Reference/matlab/+sc/` is **the 7 Sep demo**, and its driver `sc.s1drive`
+  senses nothing and makes no planning claim. Never quote a number from one as if it came from
+  the other. **But the probe never fires,
   S1 contains a collision at 0.735 m, and the defensive stand-in currently beats us on both
   scenarios.** Read `plan/BACKUP-PROBE-FINDING.md` before repeating any demo claim.
 

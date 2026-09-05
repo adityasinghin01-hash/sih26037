@@ -27,7 +27,7 @@ Update 5`, `MACA64`, 11 products.
 
 | Piece | On the Mac | Number |
 |---|---|---|
-| Planner, `stream-d-a` | ✅ | **214 tests, 213 pass** (the 1 failure is Stream C's) |
+| Planner, `stream-d-a` | ✅ | **304 tests, 303 pass** (the 1 failure is Stream C's) |
 | Simulink + Stateflow, `stream-d-b` | ✅ | loads, 0 unresolved refs, **sims in 47 s**, logs `h` |
 | OpenTrafficLab subclass | ✅ | 9/9 |
 | `matlab/baseline/` | ✅ runs, **fails at 19.7 s** | same as Windows, to the digit |
@@ -70,7 +70,14 @@ whole novelty of this project, does not execute. Three consequences, all measure
 | **The contrast is INVERTED** | S1: defensive **50.6 s** vs ours 53.0 s. S2: defensive **208.5 m** vs ours 90.9 m. **The naive baseline currently beats us on both** |
 
 **Full finding, with the reproduce commands: `plan/BACKUP-PROBE-FINDING.md`.**
-**Fixing the probe gate is now the one thing that decides whether there is a demo.**
+
+> **SCOPE CORRECTION, 5 Sep.** Everything above measures
+> `~/Desktop/SIH26037-Reference/build/backup/`, which calls the real `sih.planner.*`.
+> **That is NOT the demo any more.** The 7 Sep demo is
+> `~/Desktop/SIH26037-Reference/matlab/+sc/`, a different program whose driver
+> (`sc.s1drive`) senses nothing and makes no planning claim. Two things are called
+> "the backup" and only one of them runs the planner. The probe finding still stands
+> as a finding about the planner; it is no longer the thing that decides the demo.
 
 ---
 
@@ -98,15 +105,15 @@ without it. **Closing that loop is Person A's job after arbitration.**
 
 ## Merge queue
 
-**Re-checked 4 Sep 22:0x after `git fetch`. There are ZERO open PRs.**
+**Re-checked 5 Sep after `git fetch`. Counts below were measured, not remembered.**
 
 | | What | State |
 |---|---|---|
-| **PR #9** | Mac is main machine · baseline confirmed on Windows · E9 cancelled · arbitration ruling · runExperiment · claim ledger | **MERGED 16:21 UTC.** `origin/main` = `39ff9f3` |
-| `stream-d-a` | D6 with terminal check, trunk mode **B by default**, D8. **12 ahead, 10 behind** | **Antara to open a PR — she is waiting on Anjali first.** The claim ledger already cites this branch's 214 tests and terminal check, so those claims rest on unmerged code |
-| `stream-d-b` | D3, D4, D5, D11. **Now 20 commits behind, up from 10.** Still has the ego-in-its-own-TrackList defect | Anjali to merge main first — **this is the head of the queue, everything else waits on it** |
-| `stream-ml` | 1 ahead, 18 behind | no PR |
-| `stream-e-baseline` | 1 ahead, 17 behind | no PR |
+| **PR #10** | These two findings · the A/B contract freeze · the `world/` resync that makes the build scripts portable via `SIH_REF` | **OPEN, MERGEABLE.** 43 files, no source code, `matlab/baseline/` and `AGENTS.md` untouched |
+| `stream-d-a` | D6, D8, **D9, D10 and arbitration**. **16 ahead, 0 behind** — main is merged in | **304 tests, 303 pass.** Still no PR. The ledger's claims rest on unmerged code |
+| `stream-d-b` | D3, D4, D5, D7, D11, `sih_planner.slx`. **20 ahead, 0 behind** — main *and* `stream-d-a` are merged in | **The old "20 behind, head of the queue" is gone.** She is not behind and nothing waits on her |
+| `stream-ml` | 4 ahead, 18 behind | docs only; no code fix pushed |
+| `stream-e-baseline` | 1 ahead, 17 behind | dormant since 4 Sep |
 
 ---
 
@@ -120,8 +127,11 @@ without it. **Closing that loop is Person A's job after arbitration.**
 3. **Re-run all four combinations** → confirm ours beats the defensive stand-in again.
 
 **The merge chain:**
-4. **Anjali merges main** (20 behind) → her `h` stops coming from a poisoned track list.
-5. **Antara opens the `stream-d-a` PR**, then writes `arbitrate` and wires line 105.
+4. ~~**Anjali merges main**~~ — **DONE 5 Sep.** Both planner branches are 0 behind.
+5. **Antara opens the `stream-d-a` PR.** `arbitrate` is already written and frozen in
+   `plan/CONTRACT-AB.md`. **Line 105 is NOT wired and must not be.** Integration is OFF until
+   the demo, the planner work and the AI work are all built — Aditya's call, 4 Sep. One clean
+   integration at the end.
 
 **The ML chain — NOT blocking the demo:**
 6. **ONNX add-on** (Aditya, 5 min) → `check04` → the opset number.
@@ -130,14 +140,14 @@ without it. **Closing that loop is Person A's job after arbitration.**
    tonight without the ML pair.** And `chooseVelocity`/`assignRoles` contain zero `PYield`
    references — grepped — so the demo does not wait on it.
 
-**Cutoff: 12:00 noon, 5 September.** Anything not running by then is written up honestly, not shipped.
+**Cutoff: expired at noon on 5 September and was not enforced.** The rule it carried still holds and is the one that matters: anything not running is written up honestly, not shipped.
 
 ---
 
 ## Before quoting ANY number
 
 1. `plan/CLAIM-LEDGER.md` — what we may and may not say, with the honest replacement for each.
-2. Test counts have been wrong in the docs **three times**. `main` = 51/50. `stream-d-a` = 214/213. **Re-run.**
+2. Test counts have been wrong in the docs **five times**. `main` = 51/50. `stream-d-a` = **304/303**. **Re-run.**
 3. `matlab/baseline/` — verify, never edit: `git status --short matlab/baseline/` must print nothing.
 4. A number without its `config.json` is not a result (`AGENTS.md` §3).
 
