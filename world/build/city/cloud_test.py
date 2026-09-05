@@ -2,7 +2,8 @@
 # Purpose: MEASURE what it actually costs on this 8 GB machine before deciding to defer it.
 import bpy, math, os, time, sys
 from mathutils import Vector
-OUT="/Users/aditya/Desktop/SIH26037-Reference/renders/city"
+REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+OUT=f"{REF}/renders/city"
 os.makedirs(OUT, exist_ok=True)
 t0=time.time()
 bpy.ops.wm.read_factory_settings(use_empty=True)

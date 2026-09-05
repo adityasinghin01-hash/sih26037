@@ -12,8 +12,12 @@ Inherits [S0].
 Everything else tagged "bridge" is a flyover 1.5 km away in the south.
 
 ## WHAT WE ADD, AND WE SAY SO
-**The hill.** Centred about (−690, +980), roughly 500 × 350 m at the base, **170 m** high, long
-axis north-west. This is the one invented thing in the world and it is marked as ours on the
+**The hill.** Centred **(−1050, +900)** — **AMENDED 4 Sep 2026; the written (−690, +980) put the
+hill on top of the Malin, five river centreline points inside its footprint. See S0 §3 for the
+measurements and the three candidates.** Roughly 500 × 350 m at the base, **170 m** high, long
+axis north-west. It now sits **386 m ahead on the approach** with **the river along its southern
+toe** — so the ego crosses the Malin bridge and then climbs, which is what the ACTION below already
+says. This is the one invented thing in the world and it is marked as ours on the
 city plan. It is legitimate: Najibabad sits about 25 km from the real Shivaliks, and this belt
 is where the plain meets the hills.
 **Its shape is not free.** Shivalik catchments measure a **drainage density of 4.55 km of
