@@ -40,7 +40,11 @@ outside `OpenTrafficLab/`, both already applied. Read `plan/OPENTRAFFICLAB-R2026
 debugging any harness failure, and **never edit `OpenTrafficLab/`** — it is gitignored
 third-party code and every teammate has their own clone.
 
-## Current test counts, verified by running on 4 September 2026
-14 geometry + 19 D2 + 9 subclass = **42 passing** on MATLAB R2026a.
-**Re-run before quoting these.** Three files carried a stale count for a week, and one said
-13 when it had never been 13.
+## Current test counts, re-run on 5 September 2026
+`main` = **51 tests in 5 files, 50 pass, 1 fail**.
+`stream-d-a` = **304 tests in 18 files, 303 pass, 1 fail, 0 incomplete** — D6, D8, D9, D10 and
+arbitration all landed on 5 Sep and brought seven new test files with them.
+"42 passing" counted three files; "214" predates those seven.
+**`OpenTrafficLab/` must be cloned into the repo root**, or 7 `testNegotiatingStrategy` tests
+report as Incomplete (skipped) and the total reads 297. **A skip is not a pass.**
+**Re-run before quoting any of these.** The count has now been wrong in the docs four times.

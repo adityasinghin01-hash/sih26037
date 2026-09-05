@@ -1,8 +1,26 @@
 # THE WORLD — where Aditya's stream is, and what is done
-**Updated 4 September 2026.** This folder is the 3-D world the car drives in: the map, the
+**Updated 5 September 2026.** This folder is the 3-D world the car drives in: the map, the
 environment scripts, the reference library, the build scripts and the progress renders.
 **Aditya owns this stream.** Streams C, D and E do not need to build any of it — but this is where
 you can see what the film will look like and what the simulation is driving through.
+
+## RESYNCED 5 Sep — `build/` now matches the live component-major build
+`build/` held stale pre-restructure scripts (flat `01_light.py` etc, plus `city_blockout.py` and
+the `stage2_*` scripts). Replaced with the current `build/city/` — same layout as
+`~/Desktop/SIH26037-Reference/build/city/` on Aditya's Mac. `map/`, `notes/` (now REF-01..13 +
+REF-17) and `scenarios/` were resynced too.
+
+## PIPELINE — how a second machine builds this
+Every script in `build/city/` and `map/` reads its root through `SIH_REF`, not a hardcoded path
+(11 files fixed 5 Sep — they all pointed at `/Users/aditya/Desktop/SIH26037-Reference`).
+```
+git clone <this repo>
+set SIH_REF=<path to your clone>\world          (Windows)   or   export SIH_REF=...   (mac/linux)
+blender --background --python build/city/02_land.py
+```
+Leave `SIH_REF` unset on Aditya's Mac and nothing changes — it falls back to the old path.
+**No `.blend` files travel** (gitignored, rebuilt by the scripts). Preview PNGs are small enough
+to commit and push back.
 
 ## THE PLACE IS REAL
 **Najibabad, Bijnor district, western Uttar Pradesh.** Chosen by measuring five candidate towns from

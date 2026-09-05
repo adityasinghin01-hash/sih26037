@@ -62,6 +62,16 @@ notes/REF-12-SKY-CLOUDS-LIGHT.md  SKY + CLOUDS + LIGHT: the 90/10 rule · start 
                                   pipeline in geometry nodes · halation · volume render settings ·
                                   god rays. From Aditya's video batch 6.
 
+notes/REF-13-PHOTOGRAPH-STUDY.md
+                                  ADITYA'S OWN 43 PHOTOGRAPHS (Prayagraj plains + Manali/Lahaul
+                                  alpine): the sky he actually wants, measured · the cloud-cover
+                                  distribution · CLOUD BASES ALL SIT AT ONE HEIGHT · god rays as an
+                                  OCCLUSION problem (many small occluders, not one) · atmospheric
+                                  perspective measured in depth bands (contrast collapses too, not
+                                  just saturation) · scree fans, foliated rock, braided river ·
+                                  grass and tree colour for PLAINS vs alpine · the town palette.
+                                  HIS OWN PHOTOS - unlike trees/ and real-india/ these CAN SHIP.
+
 notes/BLENDER-PIPELINE.md         the older production reference. Parts SIX (IRC basics,
                                   poles, tree species), SEVEN (the two rules and the stage
                                   order), EIGHT (dashcam lens, haze formula, dimensions),
