@@ -409,6 +409,14 @@
     * `GPU name: NVIDIA A100-SXM4-40GB`
     * `VRAM (GB): 42.51 GB`
     * `PyTorch version: 2.3.0a0+40ec155e58.nv24.03`
+* **[04:52 IST] Step 78 & 79: Dataset Transferred, Extracted & COCO JSON Generated on A100 COMPLETE**
+  * Curated dataset zipped (1.91 GB) and transferred to A100 via JupyterLab.
+  * Extracted in `/home/jovyan/idd-curated`: `Annotations/` and `JPEGImages/` verified.
+  * Executed `voc2coco.py` on A100:
+    * 3,691 images with valid S5 objects parsed.
+    * S5 boxes: 12,693 cars, 3,617 trucks, 2,702 buses, 4,492 auto-rickshaws, 14,517 motorbikes, 12,309 pedestrians, 3,635 cows, 1,776 static obstacles.
+    * Train split: 2,952 images (44,781 annotations) | Val split: 739 images (11,304 annotations).
+    * Saved to `/home/jovyan/idd-coco/annotations/instances_{train,val}.json`.
 
 ---
 

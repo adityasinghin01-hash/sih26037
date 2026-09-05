@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **86%** | 63 active milestones addressed across 83 total steps |
-| **Completed Steps** | **62** | `[🟢COMPLETED]` — Step 77 A100 GPU verified; Predictor, Eval, Calibration & Model 3 complete |
+| **Overall Pipeline Progress** | **88%** | 65 active milestones addressed across 83 total steps |
+| **Completed Steps** | **64** | `[🟢COMPLETED]` — Steps 77-79 A100 GPU verified, dataset extracted, COCO JSON generated |
 | **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
-| **Active Planned Steps** | **6** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 78–83) |
+| **Active Planned Steps** | **4** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 80–83) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -30,7 +30,7 @@
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
-| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 1/7 COMPLETE, 6 TO DO | Step 77 A100 GPU verified; transfer dataset & checkpoint → train → export |
+| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 3/7 COMPLETE, 4 TO DO | Steps 77-79 complete (GPU, transfer, COCO conversion); Step 80 YOLOX setup next |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1203,7 +1203,7 @@ Done when: All four lines print correctly and VRAM ≥ 20 GB.
 
 ### Phase B: Transfer Dataset and Checkpoint to A100
 
-#### Step 78 Zip and Upload the Curated IDD Dataset [🔵TO DO] [HIGH]
+#### Step 78 Zip and Upload the Curated IDD Dataset [🟢COMPLETED] [HIGH]
 
 The curated dataset lives at `C:\Users\admin\idd-curated\` on the Windows machine.
 It contains 3,697 image/annotation pairs (~3 GB total).
@@ -1234,7 +1234,7 @@ Done when: `ls idd-curated/images/ | wc -l` prints `3697` (or close — hardlink
 
 ---
 
-#### Step 79 Convert Curated Dataset to COCO JSON Format [🔵TO DO] [HIGH]
+#### Step 79 Convert Curated Dataset to COCO JSON Format [🟢COMPLETED] [HIGH]
 
 Python YOLOX expects annotations in COCO JSON, not Pascal VOC XML. A conversion script is
 needed. Run in JupyterLab Terminal:
