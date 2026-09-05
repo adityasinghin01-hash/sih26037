@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **75%** | 57 active milestones addressed across 76 total steps |
-| **Completed Steps** | **56** | `[🟢COMPLETED]` — Predictor, Evaluation, Calibration benchmarks & H7/H8 loader fixed |
-| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Model 3 dataset acquired (22.8 GB); fast curation planned |
-| **Active Planned Steps** | **5** | `[🔵TO DO]` — Part 14: Fast-Track Model 3 (YOLOX Spotter) Curation & Training |
+| **Overall Pipeline Progress** | **78%** | 59 active milestones addressed across 76 total steps |
+| **Completed Steps** | **58** | `[🟢COMPLETED]` — Predictor & Calibration done; Loader fixed & 3.7k Curated Dataset verified |
+| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Model 3 datastore validated; training launch next |
+| **Active Planned Steps** | **3** | `[🔵TO DO]` — Part 14: Fast-Track Model 3 (YOLOX Spotter) Training, AP & Docs |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -29,7 +29,7 @@
 | **Part 11: Model 3 Local Setup & Audit** | 45–58 | 🟢 10 PREP, 4 DEFERRED | MATLAB R2024b, toolboxes, YOLOX add-on, GPU & 46k images ready; training deferred |
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
-| **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟡 1 COMPLETED, 5 TO DO | Dual-bug fix (H7/H8) VERIFIED; 4-5k curation & 1-hr training next |
+| **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟡 3 COMPLETED, 3 TO DO | Steps 71-73 VERIFIED (3,691 images loaded); 1-hr training (Step 74) next |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1083,7 +1083,7 @@ Done when: MATLAB can parse sample annotations without errors or cross-folder mi
 
 ### Phase N: IDD Dataset Curation
 
-#### Step 72 Curate Clip-Balanced IDD Subset (~4,000–5,000 Images) [🔵TO DO] [HIGH]
+#### Step 72 Curate Clip-Balanced IDD Subset (~4,000–5,000 Images) [🟢COMPLETED] [HIGH]
 Construct a curated VOC-compliant folder at `C:\Users\admin\idd-curated\`:
 1. Scan forward camera folders (`frontFar`, `frontNear`, `highquality_16k`).
 2. Retain all clips containing `animal` (`cow`).
@@ -1097,7 +1097,7 @@ Done when: `C:\Users\admin\idd-curated\` holds ~4,000–5,000 image/annotation p
 
 ### Phase O: Datastore Validation
 
-#### Step 73 Verify Datastores and Class Distribution [🔵TO DO] [HIGH]
+#### Step 73 Verify Datastores and Class Distribution [🟢COMPLETED] [HIGH]
 In MATLAB Command Window, execute:
 ```matlab
 [imds, blds] = sih.models.readDetectionData("C:\Users\admin\idd-curated\JPEGImages", "C:\Users\admin\idd-curated\Annotations", sih.util.classNames("detector"));
