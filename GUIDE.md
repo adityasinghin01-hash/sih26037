@@ -698,3 +698,147 @@ Confirm only known intentional exclusions (`vehicle fallback`, `rider`) were dro
 
 #### Step 58 Log in PROGRESS.md [HIGH]
 Copy the full terminal output, paste the AP table and dropped counts into `PROGRESS.md`, commit, and push.
+
+---
+
+## Part 12 - Aditya's Directives & Immediate Execution Pipeline (Post-Sept 5)
+
+This section reflects the direct guidance and task re-prioritization from Aditya (Lead) on 5 Sept 2026.
+Model 3 is officially deferred to post-Sept 7 (the internal round relies strictly on Model 1). Our immediate focus is unblocking Stream D with verified MATLAB imports, reporting honest evaluation numbers for Model 2, extracting scores for calibration fitting, and syncing with main.
+
+### The Six Hard Rules for This Phase
+1. **Never edit `matlab/baseline/`.** It is the competitor and our control arm.
+2. **Never edit `AGENTS.md` section 3.** The contract is frozen.
+3. **Never open `plan/` or `matlab/+sih/+planner/`.** Not ML stream responsibility.
+4. **Never tune until a safety check goes green.** A failing check is a valid finding, not a bug to hack around.
+5. **Never report accuracy on its own.** Precision and recall, both classes, with confidence intervals.
+6. **Never commit `.npz`, `.onnx`, `.onnx.data`, `.pt`, or `.mat` files.**
+
+---
+
+### Phase A: Documentation Truth Alignment
+
+#### Step 59 Correct Factually Inaccurate Claims in PROGRESS.md [HIGH]
+Before executing new tasks, the status documentation must be aligned with reality. Two specific statements in `PROGRESS.md` are factually inaccurate:
+1. *"All local workstation responsibilities for Predictor Models are 100% COMPLETE"* -> False. `check04` is an open deliverable that belongs to this workstation because only this machine has the MATLAB ONNX Converter add-on.
+2. *"Awaiting: Aditya's MATLAB import test (check04)"* -> False. Aditya does not have the ONNX Converter on macOS and cannot run it; we must run it locally.
+
+Done when: `PROGRESS.md` reflects that `check04` is local work in progress and not complete.
+
+---
+
+### Phase B: Unblocking Stream D via Local MATLAB Import Check
+
+#### Step 60 Run `check04_onnx_lstm` at Opsets 17 and 18 [CRITICAL / HIGHEST PRIORITY]
+Stream D is currently blocked waiting on the opset number that imports cleanly without placeholder stubs.
+
+1. Open MATLAB Desktop.
+2. In the MATLAB Command Window, run:
+   ```matlab
+   cd('C:\Users\admin\sih26037')
+   addpath('matlab')
+   cd('derisk')
+   check04_onnx_lstm
+   ```
+3. **What to look for in output:**
+   - **Opsets:** Evaluate opsets 17 and 18 ONLY. (MATLAB R2024b supports opsets 6–18; it cannot parse opset 20, which is handled on macOS).
+   - **The Placeholder Trap:** Do NOT look for the word "succeeded". Look specifically for `[PLACEHOLDERS]`. If MATLAB cannot translate an ONNX operator natively, it creates an empty `PlaceholderLayer` stub. A model with placeholders is completely unusable.
+   - **Forward Pass:** Confirm the forward pass executes cleanly with contract shapes (`[1, 20, 31]` for LSTM, `[1, 16, 20, 31]` + `[1, 16, 16]` for GNN/Attention).
+4. **Immediate Action:** Copy the ENTIRE output verbatim. Transmit the highest cleanly importing opset number to Aditya and Stream D immediately upon completion.
+
+Done when: Full console output from `check04_onnx_lstm.m` is recorded, confirmed free of `PlaceholderLayer`, and sent to Stream D.
+
+---
+
+### Phase C: Honest Model 2 Evaluation
+
+#### Step 61 Measure and Report Model 2 Dangerous-Error Rate [HIGH]
+Model 1 registered a dangerous-error rate of 20.18% (exceeding the $\le 1.0\%$ safety threshold by 20x), preventing the planner from placing full trust in raw predictions. Model 2 (YieldAttentionNet) demonstrated 28% better calibration ($ECE = 0.1502$ vs $0.2079$). Its dangerous-error rate must now be measured.
+
+1. In Git Bash (using Python 3.10 with CUDA):
+   ```bash
+   cd /c/Users/admin/sih26037
+   python ml/python/model/evaluate.py \
+       --features C:/Users/admin/meteor-data/features \
+       --model C:/Users/admin/meteor-data/features/yield_attention.pt
+   ```
+2. **What to look for in output:**
+   - Section 4: Operating point dangerous-error rate (`dangerous_rate * 100`) and 95% bootstrap confidence interval.
+   - Section 5: Honest operating point across split halves.
+   - Section 6: Population-weighted Expected Calibration Error (ECE) and worst-bin gap.
+   - Final verdict block: Capture the complete output, whether PASS or FAIL.
+
+Done when: Full console output from `evaluate.py` on `yield_attention.pt` is captured and documented in `PROGRESS.md`.
+
+---
+
+### Phase D: Calibration Post-Processing Data Extraction
+
+#### Step 62 Extract and Export Validation Scores (`scores_lstm.npz`) [HIGH]
+Retraining is explicitly forbidden because loss has plateaued and the S2 contract is frozen at 31 features. Addressing the 20.18% dangerous error rate requires post-processing on the predictions:
+- Threshold sweep extending beyond 0.99 (up to 0.995 and 0.999).
+- Probability calibration fitting (isotonic regression, Platt scaling, or temperature scaling).
+
+To enable Aditya to run threshold sweeps and fit calibration models, export the raw predictions and validation ground truth:
+
+1. Create and execute a temporary extraction script in Python:
+   ```python
+   import json
+   from pathlib import Path
+   import numpy as np
+   import torch
+   from ml.python.model.yield_lstm import YieldNet
+   from ml.python.model.train import load
+   from ml.python.model.evaluate import _predict
+
+   feat_dir = Path("C:/Users/admin/meteor-data/features")
+   ck = torch.load(feat_dir / "yield_lstm.pt", map_location="cpu", weights_only=False)
+   net = YieldNet(hidden=ck.get("hidden", 64))
+   net.load_state_dict(ck["state_dict"])
+   net.eval()
+
+   split = json.loads((feat_dir / "split.json").read_text())
+   x, y, adj = load(feat_dir, split["val"], grouped=False)
+   p_all = _predict(net, x, adj, grouped=False)
+   t_all = y.numpy().reshape(-1)
+   keep = t_all >= 0
+   p, t = p_all[keep], t_all[keep]
+
+   out_path = Path("C:/Users/admin/meteor-data/archive/scores_lstm.npz")
+   out_path.parent.mkdir(parents=True, exist_ok=True)
+   np.savez_compressed(out_path, p=p, t=t)
+   print(f"Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)")
+   ```
+2. Verify that `scores_lstm.npz` is approximately 6 MB.
+3. Upload `scores_lstm.npz` to Google Drive and provide the link to Aditya.
+
+Done when: `scores_lstm.npz` is generated (~6 MB), verified, and shared with Aditya.
+
+---
+
+### Phase E: Repository Synchronization
+
+#### Step 63 Merge `main` into `stream-ml` [HIGH]
+The local branch `stream-ml` is 24 commits behind `main` (which incorporates PR #11 parity fix, PR #12 Stream D arbitration updates, and planner advancements).
+
+1. In Git Bash:
+   ```bash
+   cd /c/Users/admin/sih26037
+   git fetch origin main
+   git merge origin/main --no-edit
+   git push origin stream-ml
+   ```
+2. Confirm that working tree is clean and all upstream changes are integrated without conflicts.
+
+Done when: `git status` is clean and `stream-ml` is synchronized with `origin/main`.
+
+---
+
+### Phase F: Model 3 Technical Debt Reference (Deferred to Post-Sept 7)
+
+#### Step 64 Document Model 3 Dual Bug Audit [LOW / DEFERRED]
+Model 3 is NOT required for the Sept 7 internal presentation (Model 1 carries the internal demo). When returning to Model 3 post-demo, `matlab/+sih/+models/readDetectionData.m` must resolve TWO distinct bugs simultaneously:
+1. **Hurdle H7 (Directory Traversal):** Line 47 uses flat `dir(fullfile(annDir, '*.xml'))`, which misses subdirectories (`frontFar/`, `highquality_16k/`, etc.). Requires recursive `dir(fullfile(annDir, '**', '*.xml'))`.
+2. **Hurdle H8 (Basename Cross-Pairing):** Line 61 (`iFindImage`) searches by filename stem alone across flat directories. Because IDD repeats filenames (e.g., `0000149.xml`) across different clip subdirectories, fixing H7 alone would cause silent cross-folder mismatching between images and bounding boxes. `iFindImage` must resolve paths relative to the subfolder tree.
+
+Both bugs must be fixed together in a single commit before training on the KIET GPU box. Inform Aditya prior to launching cluster jobs as the GPU environment is shared.

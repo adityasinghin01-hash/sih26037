@@ -317,29 +317,68 @@
 | **H4** | `[SSL: CERTIFICATE_VERIFY_FAILED]` on file download | Network firewall / captive portal proxy issued self-signed certificates, breaking urllib SSL validation. | Switched network interface to mobile hotspot, establishing a direct, untampered HTTPS connection. |
 | **H5** | `OnnxExporterError: aten.mkldnn_rnn_layer.default` on PyTorch 2.4 | PyTorch 2.4 TorchDynamo lacks MKLDNN RNN layer decomposition for CPU export. | Switched to `python3` runtime with PyTorch `2.14.0+cpu` + `onnxscript` as specified in Phase 2 Directive 1. All opsets 17, 18, 20 exported cleanly with `max abs diff < 1e-6`! |
 | **H6** | `gpuDevice requires Parallel Computing Toolbox` in MATLAB | MATLAB installed without GPU execution engine by default. | Installed Parallel Computing Toolbox via Add-On Explorer to enable CUDA on local NVIDIA RTX A1000. |
+* **[20:05 - 20:25 IST] Phase 4: Execution of Aditya's Directives (Tasks 2 & 3 Complete)**
+  * **Task 2: MATLAB Import Check (`check04_onnx_lstm.m`) — PASSED [OPSET 18]**
+    * **Hurdle H8 Resolved:** PyTorch 2.14 TorchDynamo exported weights to external `.onnx.data` files, which triggered `nnet_cnn_onnx:onnx:ExternalData` in MATLAB. Embedded all tensor weights directly into the self-contained `.onnx` files and deleted external `.data` files.
+    * **Execution Output (MATLAB R2024b):**
+      * `yield_lstm_opset17.onnx`: **WORKS** (6 layers, 0 placeholders, forward pass output `[20 2]`).
+      * `yield_lstm_opset18.onnx`: **WORKS** (6 layers, 0 placeholders, forward pass output `[20 2]`).
+    * **Stream D Unblocked:** Highest cleanly importing opset on R2024b is **Opset 18**.
+  * **Task 3: Model 2 (YieldAttentionNet) Dangerous-Error Rate — MEASURED**
+    * Evaluated `yield_attention.pt` over all 249 validation clips (772,475 samples, 75,835 positives):
+      * **Dangerous Error Rate (Sec 4):** **40.76%** (95% CI: `[39.63%, 41.93%]`) at threshold 0.99.
+      * **Honest Operating Point (Sec 5):** **41.72%** (threshold 0.99 chosen on 124 clips, tested on 125 clips, drift 0.97 points).
+      * **Worst Calibration Gap:** In bin 0.9–1.0, model predicted 95.7% but empirical reality was only 41.5% (gap = 61.4 points).
+      * **Comparison:** Model 2 dangerous rate (40.76%) is approximately double Model 1 (20.18%).
+      * **Safety Gate Ruling:** Confirms that raw probabilities cannot be trusted without calibration fitting; the safety gate (`Valid = false`) is mandatory and justified.
+
+  * **Task 4: Validation Scores Export (`scores_lstm.npz`) — COMPLETE**
+    * Extracted raw model predictions `p` and ground truth `t` for Model 1 (YieldNet LSTM) across all 249 validation clips:
+      * **File Path:** `C:\Users\admin\meteor-data\archive\scores_lstm.npz` (2.92 MB compressed).
+      * **Total Samples:** 783,928 predictions.
+      * **Positives:** 77,373 ground truth assertions.
+      * **Purpose:** Provides Aditya with exact raw predictions to run threshold sweeps (0.995, 0.999) and fit probability calibration models (isotonic regression, temperature scaling) without retraining.
+
+---
+
+## 3. Log of Hurdles Faced & Applied Fixes
+
+| # | Hurdle / Error | Root Cause | Exact Resolution Applied |
+|---|---|---|---|
+| **H1** | `ModuleNotFoundError: No module named 'torch'` | Multiple Python installations on Windows; `pip3` pointed to Python 3.10 while terminal executed Python 3.14. | Used `python3 -m pip install torch numpy onnx` to bind package installation directly to the active executable. |
+| **H2** | `No such file or directory: python/tests/test_contract.py` | Local repository structure houses Python code under `ml/python/`, whereas top-level guide referenced `python/`. | Located script via `Get-ChildItem -Recurse -Filter "*test_contract*"` and executed via `python3 ml/python/tests/test_contract.py`. |
+| **H3** | Shell syntax incompatibilities (`tail -1`, `df -h`) | Windows PowerShell lacks standard POSIX pipeline utilities. | Configured integrated terminal profile in Antigravity to use **Git Bash**. |
+| **H4** | `[SSL: CERTIFICATE_VERIFY_FAILED]` on file download | Network firewall / captive portal proxy issued self-signed certificates, breaking urllib SSL validation. | Switched network interface to mobile hotspot, establishing a direct, untampered HTTPS connection. |
+| **H5** | `OnnxExporterError: aten.mkldnn_rnn_layer.default` on PyTorch 2.4 | PyTorch 2.4 TorchDynamo lacks MKLDNN RNN layer decomposition for CPU export. | Switched to `python3` runtime with PyTorch `2.14.0+cpu` + `onnxscript` as specified in Phase 2 Directive 1. All opsets 17, 18, 20 exported cleanly with `max abs diff < 1e-6`! |
+| **H6** | `gpuDevice requires Parallel Computing Toolbox` in MATLAB | MATLAB installed without GPU execution engine by default. | Installed Parallel Computing Toolbox via Add-On Explorer to enable CUDA on local NVIDIA RTX A1000. |
 | **H7** | `readDetectionData.m` non-recursive search returns 0 boxes | `dir(fullfile(annDir, '*.xml'))` only scans root, but IDD Detection nests clips in subfolders. | Identified requirement to use recursive `dir(fullfile(annDir, '**', '*.xml'))` with relative path resolution. |
+| **H8** | `nnet_cnn_onnx:onnx:ExternalData` in MATLAB import | PyTorch 2.14 TorchDynamo saved initializers into `.onnx.data` external files not supported by MATLAB. | Embedded external initializers directly into self-contained `.onnx` files using `onnx.load`/`onnx.save`. |
 
 ---
 
 ## 4. Current Status & Deliverables Summary
 
 ```
-================================================================================
+===============================================================================
 AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
-================================================================================
+===============================================================================
 [x] Frozen Contract Verification (AGENTS.md S2/S3): PASSED
 [x] METEOR Dataset Unpacked & Preprocessed: 1,248 clips, 3.73M sequences
 [x] Partitioning: Clip-based (999 train / 249 val, 0 leakage)
-[x] Model 1 (YieldNet LSTM): AP = 0.3500, loss = 0.3789
-[x] Model 2 (YieldAttentionNet): AP = 0.3691 (+5.5%), loss = 0.2089 (-44.9%), ECE = 0.1502
+[x] Model 1 (YieldNet LSTM): AP = 0.3500, loss = 0.3789, Dangerous Rate = 20.18%
+[x] Model 2 (YieldAttentionNet): AP = 0.3691, loss = 0.2089, Dangerous Rate = 40.76%
 [x] Side-by-Side Evaluation: Step 32 Comparison Table completed
 [x] Production ONNX Export: Opsets 17, 18, 20 bitwise verified (< 1e-6 diff)
-[x] Archive Package: sih26037_trained_models_phase2.zip (367.5 KB)
-[x] Safety Gate Protocol Documented: Valid = false fallback (20.18% > 1.0%)
 [x] Local MATLAB R2024b Setup: Toolboxes, YOLOX add-on, GPU verified, repo path configured
-[x] Model 3 (YOLOX Spotter): IDD Detection downloaded & extracted (46,659 images, 41,857 annotations)
-[ ] Model 3 Training: sih.models.trainSpotter execution on NVIDIA RTX A1000
-================================================================================
+[x] Task 1 (Parity Resolution): testFeatureParity.m fixed on MATLAB side (merged in PR #11)
+[x] Task 2 (Check 04): PASSED in MATLAB R2024b (Opset 18 clean, 0 placeholders, output [20 2])
+[x] Task 3 (Model 2 Eval): MEASURED (Dangerous error rate = 40.76% vs target <= 1.0%)
+[x] Task 4 (Scores Export): scores_lstm.npz extracted (2.92 MB, 783k samples, 77k positives)
+[ ] Task 5 (Branch Sync): Merge origin/main into stream-ml (24 commits behind)
+[-] Task 6 (Model 3 YOLOX): Dataset acquired (22.8 GB); training deferred to post-Sept 7
+===============================================================================
+Workstation Deliverables Status: Tasks 1-4 COMPLETE. Proceeding with Task 5 (Merge main).
+===============================================================================
 ```
 
 ### Applied Decision Rule (Decision 2):
