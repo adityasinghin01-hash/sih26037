@@ -417,6 +417,12 @@
     * S5 boxes: 12,693 cars, 3,617 trucks, 2,702 buses, 4,492 auto-rickshaws, 14,517 motorbikes, 12,309 pedestrians, 3,635 cows, 1,776 static obstacles.
     * Train split: 2,952 images (44,781 annotations) | Val split: 739 images (11,304 annotations).
     * Saved to `/home/jovyan/idd-coco/annotations/instances_{train,val}.json`.
+* **[04:58 IST] Step 80: Megvii YOLOX Installed & Custom S5 Config Verified on A100 COMPLETE**
+  * Cloned Megvii YOLOX to `/home/jovyan/YOLOX`.
+  * Resolved NumPy 2.x ABI incompatibility by pinning `numpy<2` (1.26.4).
+  * Downloaded official COCO pretrained weights `yolox_s.pth` (68.75 MB).
+  * Created `exps/sih_yolox_s.py`: 15 S5 foreground classes, 640x640 resolution, 15 epochs.
+  * Verified: `SUCCESS: Config loaded with num_classes = 15`.
 
 ---
 

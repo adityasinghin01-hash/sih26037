@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **88%** | 65 active milestones addressed across 83 total steps |
-| **Completed Steps** | **64** | `[🟢COMPLETED]` — Steps 77-79 A100 GPU verified, dataset extracted, COCO JSON generated |
+| **Overall Pipeline Progress** | **90%** | 66 active milestones addressed across 83 total steps |
+| **Completed Steps** | **65** | `[🟢COMPLETED]` — Steps 77-80 complete: A100 GPU, dataset, COCO JSON, YOLOX installed & configured |
 | **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
-| **Active Planned Steps** | **4** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 80–83) |
+| **Active Planned Steps** | **3** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 81–83) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -30,7 +30,7 @@
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
-| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 3/7 COMPLETE, 4 TO DO | Steps 77-79 complete (GPU, transfer, COCO conversion); Step 80 YOLOX setup next |
+| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 4/7 COMPLETE, 3 TO DO | Steps 77-80 complete (GPU, data, COCO, YOLOX installed); Step 81 training next |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1271,7 +1271,7 @@ Done when: Both JSON files exist and train image count is ~2,957.
 
 ### Phase C: Install Python YOLOX on A100
 
-#### Step 80 Clone and Install Megvii YOLOX [🔵TO DO] [HIGH]
+#### Step 80 Clone and Install Megvii YOLOX [🟢COMPLETED] [HIGH]
 
 Run in JupyterLab Terminal:
 
