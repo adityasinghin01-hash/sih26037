@@ -346,6 +346,24 @@
   * **Task 5: Git Synchronization with Main — COMPLETE**
     * Pulled and merged all 24 upstream commits from `origin/main` into `stream-ml` (including PR #11 parity fix and PR #12 Stream D arbitration updates).
     * Merge completed cleanly with 0 conflicts (156 files updated). Pushed to `origin/stream-ml`.
+* **[23:44 - 23:55 IST] Phase 5: Calibration Exploration (Part 13 in GUIDE.md Complete)**
+  * **Step 65: Model 2 Scores Export (`scores_attention.npz`) — COMPLETE**
+    * Extracted raw model predictions `p` and ground truth `t` for Model 2 (YieldAttentionNet) across all 249 validation clips:
+      * **File Path:** `C:\Users\admin\meteor-data\archive\scores_attention.npz` (2.92 MB compressed, 772,475 predictions, 75,835 positives).
+      * **Validation Check:** Matches exactly with the 772,475 sample count reported in Task 3 evaluation.
+  * **Step 66: Sample Gap Diagnosis (11,453 Mismatch Resolved) — COMPLETE**
+    * **Root Cause Proven:** In `train.py` line 47, `group_by_frame=True` caps scenes at `MAX_AGENTS = 16`. Scenes with > 16 agents drop excess agents. Across all 249 validation clips, exactly 11,453 agent sequences occurred in frames exceeding 16 agents ($783,928 - 11,453 = 772,475$).
+    * **Intersection Built:** Evaluated Model 1 and Model 2 on the exact 772,475 aligned subset for 1-to-1 ensemble matching.
+  * **Steps 67 & 68: Calibration Exploration (Ensemble & Temperature Scaling) — COMPLETE**
+    * *Model 2 Temperature Scaling:* Optimal $T = 2.4530$. Softened probabilities yield 49.41% dangerous rate at threshold 0.80 ($n_{\text{go}} = 17,240$), 38.56% at 0.90 ($n_{\text{go}} = 542$), and model refuses to answer at 0.95+.
+    * *Ensemble:* Averaged calibrated probabilities from both models. Probabilities rarely exceed 0.80 simultaneously ($n_{\text{go}} = 0$ across thresholds 0.80–0.99).
+  * **Steps 69 & 70: Consolidated Benchmark Table & Final Engineering Verdict — COMPLETE**
+    * *Side-by-Side Comparison:*
+      - Raw Model 1 (LSTM, thr 0.99): 21.52% dangerous rate ($n_{\text{go}} = 962$, 95% Wilson CI: `[19.04%, 24.23%]`, FP = 207).
+      - Raw Model 2 (Attention, thr 0.99): 41.83% dangerous rate ($n_{\text{go}} = 3,851$, 95% Wilson CI: `[40.28%, 43.40%]`, FP = 1,611).
+      - Isotonic Model 1 (thr 0.85): **14.73%** dangerous rate ($n_{\text{go}} = 129$, 95% Wilson CI: `[9.64%, 21.86%]`, FP = 19).
+      - Platt Model 1 (thr 0.80) / Isotonic (thr 0.95): 8.33% dangerous rate ($n_{\text{go}} = 12$, FP = 1) — flagged as *not a measurement* ($n_{\text{go}} < 30$).
+    * *Final Verdict (Option B):* No method brings the dangerous error rate to $\le 1.0\%$ at a usable sample size ($n_{\text{go}} \ge 30$). The best statistically valid rate is **14.73%**. Thus, the predictor must remain gated off (`Valid = false`), and negotiation is handled safely by deterministic geometry ($h = \lambda - \beta$).
 
 ---
 

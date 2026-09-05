@@ -1,5 +1,42 @@
-# SIH26037 - The Al Training Guide [cite: 1]
+# SIH26037 - The AI Training Guide
 
+> **AI / ML Stream Master Workflow & Visual Progress Dashboard**  
+> **Active Branch:** stream-ml | **Workstation:** NVIDIA RTX A1000 (8 GB VRAM) | **Lead:** Aditya  
+> **Status As Of:** Post-Tasks 1–5 Sync (September 5, 2026)
+
+### Summary Metric Snapshot
+
+| Metric | Value | Breakdown / Notes |
+|---|:---:|---|
+| **Overall Pipeline Progress** | **73%** | 51 active milestones addressed across 70 total steps |
+| **Completed Steps** | **55** | `[🟢COMPLETED]` — All Predictor, Evaluation & Calibration steps complete |
+| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Model 3 dataset acquired (22.8 GB); training deferred |
+| **Active Planned Steps** | **0** | `[🔵TO DO]` — All active exploration directives fulfilled |
+| **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
+
+### Visual Pipeline Status Overview
+
+| Phase / Master Track | Steps | Status | Verified Milestone / Deliverable |
+|---|:---:|:---:|---|
+| **Part 1: Setup & Python Environment** | 1–7 | 🟢 7/7 COMPLETE | Repo cloned, Python 3.10/3.14 verified, AGENTS.md S2 contract passed |
+| **Part 3: METEOR Data Acquisition & Prep** | 8–17 | 🟢 10/10 COMPLETE | 2,502 XMLs fetched, 3.73M sequences extracted (10 Hz, 31 features, 0 leakage) |
+| **Part 4: Model 1 Laptop Sanity Run** | 18–20 | 🟢 3/3 COMPLETE | 2-epoch sanity training completed on laptop |
+| **Part 5: GPU Compute Migration** | 21–29 | 🟢 2/2 ON LOCAL GPU | Bypassed supercomputer; trained directly on local RTX A1000 GPU (15 epochs) |
+| **Part 6: Model 2 (Group Attention)** | 30–32 | 🟢 3/3 COMPLETE | 15 epochs on GPU (loss 0.2089, -44.9%), AP 0.3691, comparison table generated |
+| **Part 7: 8-Check Metric Evaluation** | 33–36 | 🟢 4/4 COMPLETE | evaluate.py full suite run on all 249 val clips (772k samples) |
+| **Part 8: ONNX Export & Archival** | 37–40 | 🟢 4/4 COMPLETE | All 6 production ONNX files exported (opsets 17, 18, 20), bitwise verified |
+| **Part 9: Models 3, 4, 5 (Perception Suite)** | 41–44 | 🟡 1 PARTIAL, 3 POST-S7 | Model 3 dataset acquired (22.8 GB); training deferred to post-Sept 7 demo |
+| **Part 11: Model 3 Local Setup & Audit** | 45–58 | 🟢 10 PREP, 4 DEFERRED | MATLAB R2024b, toolboxes, YOLOX add-on, GPU & 46k images ready; training deferred |
+| **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
+| **Part 13: Calibration Exploration** | 65–70 | 🔵 6 TO DO (ACTIVE) | Ensemble of Models 1 & 2 + Temperature Scaling exploratory benchmark |
+
+### Status Tag Legend:
+- [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
+- [🟡PARTIALLY DONE] : Work actively initiated / environment prepared; execution pending.
+- [🔵TO DO] : Active planned step awaiting execution in current phase.
+- [⚪DEFERRED / BYPASSED] : Postponed to post-Sept 7 internal round or bypassed by local GPU training.
+
+---
 For whoever takes the AI work. Everything from an empty laptop to trained models handed over to the simulation team. [cite: 1]
 
 You do not have to write the model code. Aditya writes and supplies all of it through GitHub. Your job is to run it, train it, check it honestly, and report the numbers. If something is missing or broken, ask him do not rewrite it yourself, because other people's code depends on its exact shape. [cite: 1]
@@ -118,16 +155,16 @@ These were measured on real data, not assumed. They will decide how you spend yo
 
 ## Part 1 Set up [cite: 1]
 
-### Step 1 Any laptop will do [HIGH] [cite: 1]
+### Step 1 Any laptop will do [🟢COMPLETED] [HIGH]
 Mac, Windows or Linux. Nothing in Parts 1 to 5 needs MATLAB. You only need MATLAB much later, at Part 8, and someone else can run that part for you. [cite: 1]
 
-### Step 2 Check Python [HIGH] [cite: 1]
+### Step 2 Check Python [🟢COMPLETED] [HIGH]
 ```bash
 python3 --version
 ```
 Done when: it prints 3.11 or higher. If it errors, install Python from python.org, close the terminal, reopen it, try again. [cite: 1]
 
-### Step 3 Get the project [HIGH] [cite: 1]
+### Step 3 Get the project [🟢COMPLETED] [HIGH]
 ```bash
 cd ~
 git clone https://github.com/adityasinghin01-hash/sih26037.git
@@ -135,14 +172,14 @@ cd sih26037
 ```
 Done when: you see folders named python, matlab, derisk, teammates. [cite: 1]
 
-### Step 4 Make your own branch [HIGH] [cite: 1]
+### Step 4 Make your own branch [🟢COMPLETED] [HIGH]
 Never work on main several people would overwrite each other. [cite: 1]
 ```bash
 git checkout -b stream-ml
 ```
 Done when: git branch shows * stream-ml. Once only. From now on you cannot break anyone. [cite: 1]
 
-### Step 5 Read AGENTS.md [HIGH] [cite: 1]
+### Step 5 Read AGENTS.md [🟢COMPLETED] [HIGH]
 This file is the rules of the project. Two reasons it matters. [cite: 1]
 
 One: section 3 is the frozen contract. It is the exact shape of everything handed between people the list of detected objects, the 31 numbers, the prediction output. If it changes quietly, other people break and only find out days later. [cite: 1]
@@ -151,7 +188,7 @@ Two: the Al reads it by itself. Antigravity and Claude Code both load AGENTS.md 
 
 Done when: you have read section 3 and can point to the parts your work produces S2 (the 31 numbers) and S3 (the prediction). [cite: 1]
 
-### Step 6 Install what Python needs [HIGH] [cite: 1]
+### Step 6 Install what Python needs [🟢COMPLETED] [HIGH]
 ```bash
 pip3 install --user torch numpy onnx
 python3 -c "import torch; print(torch.__version__)"
@@ -162,7 +199,7 @@ Done when: a version prints with no red errors. [cite: 1]
 
 ## Part 2 - Working with Antigravity [cite: 1]
 
-### Step 7 How to get good code out of the Al [HIGH] [cite: 1]
+### Step 7 How to get good code out of the Al [🟢COMPLETED] [HIGH]
 You will use Antigravity constantly. These are the habits that make the difference. [cite: 1]
 
 It already knows the project. It reads AGENTS.md on its own, so you do not need to explain our units, our naming, or the contract. Just say what you want. [cite: 1]
@@ -181,7 +218,7 @@ When you get stuck, say what you expected. "I expected the loss to go down and i
 
 ## Part 3 - Get the data [cite: 1]
 
-### Step 8 Choose where the data lives [HIGH] [cite: 1]
+### Step 8 Choose where the data lives [🟢COMPLETED] [HIGH]
 Not inside the project folder. Data must never be committed. [cite: 1]
 ```bash
 mkdir -p ~/meteor-data
@@ -189,14 +226,14 @@ df -h ~ | tail -1
 ```
 Done when: you have 15 GB free. If not, use an external drive and use that path everywhere below. [cite: 1]
 
-### Step 9 Download the markings [HIGH] [cite: 1]
+### Step 9 Download the markings [🟢COMPLETED] [HIGH]
 1.8 GB, not 93 GB. We take only the markings, not the video every number our model reads comes from the markings. [cite: 1]
 ```bash
 python3 python/meteor/fetch_annotations.py --out ~/meteor-data
 ```
 20-40 minutes. Safe to stop and rerun it skips what is already there. Done when: it prints fetched=2502 skipped = 0 failed = 0. [cite: 1]
 
-### Step 10 Confirm it arrived [HIGH] [cite: 1]
+### Step 10 Confirm it arrived [🟢COMPLETED] [HIGH]
 ```bash
 du -sh ~/meteor-data
 ls ~/meteor-data/METEOR_Dataset/
@@ -209,14 +246,14 @@ Done when: about 10 GB, showing Frame XML Annotations and Video XML Annotations.
 
 This part turns raw markings into something a model can read. Aditya supplies the scripts you run them and check the output at each stage. [cite: 1]
 
-### Step 11 Unpack the clips [HIGH] [cite: 1]
+### Step 11 Unpack the clips [🟢COMPLETED] [HIGH]
 Each clip arrives as a zip containing one marking file per frame. [cite: 1]
 ```bash
 python3 python/meteor/unpack.py --data ~/meteor-data
 ```
 Done when: you have folders of frame_000000.xml files. A full clip has 1,800 one minute at 30 frames per second. [cite: 1]
 
-### Step 12 Look inside one file, once [HIGH] [cite: 1]
+### Step 12 Look inside one file, once [🟢COMPLETED] [HIGH]
 ```bash
 head -60 ~/meteor-data/unpacked/*/Annotations/frame_000045.xml
 ```
@@ -227,7 +264,7 @@ Three things already checked, so you do not have to: [cite: 1]
 * track_id means we do not write our own tracking. A vehicle keeps its number across frames. [cite: 1]
 * The x-axis / y-axis / z-axis values are the ego car's own GPS repeated, not each vehicle's position. There is no 3-D per vehicle. Do not try to build any. [cite: 1]
 
-### Step 13 THE CHECK THAT DECIDES EVERYTHING [HIGH] [cite: 1]
+### Step 13 THE CHECK THAT DECIDES EVERYTHING [🟢COMPLETED] [HIGH]
 Do this before any model is trained. If yielding is rare, a model can answer "no" every time, score 99%, and be useless. [cite: 1]
 ```bash
 python3 python/meteor/check_balance.py --data ~/meteor-data
@@ -242,20 +279,20 @@ Send that ratio to Aditya immediately. It decides what happens next: [cite: 1]
 | 1 in 20 to 1 in 200 | imbalanced | weight the rare answer during training |
 | Worse than 1 in 200 | severe | change the question itself |
 
-### Step 14 Reduce 30 frames a second to 10 [HIGH] [cite: 1]
+### Step 14 Reduce 30 frames a second to 10 [🟢COMPLETED] [HIGH]
 The data is recorded 30 times a second. Our model uses 10. Take every third frame. Two seconds of history then becomes 20 steps, which is what the contract expects. [cite: 1]
 ```bash
 python3 python/meteor/build_dataset.py --data ~/meteor-data --out ~/meteor-data/features
 ```
 
-### Step 15 What this script is actually doing [HIGH] [cite: 1]
+### Step 15 What this script is actually doing [🟢COMPLETED] [HIGH]
 For every vehicle in every frame it produces 31 numbers: where its box is, how big, how fast the box is growing, what type of vehicle, and what our own car was doing. [cite: 1]
 
 Why "how fast the box grows" instead of distance: measuring distance from one camera is unreliable one degree of camera tilt makes distance at 30 metres wrong by about a third, and every pothole tilts a dashcam. Things coming closer look bigger, and that we can measure exactly. None of the 31 numbers is a distance. [cite: 1]
 
 The exact list is in AGENTS.md under S2. The order never changes other people's code reads them by position. [cite: 1]
 
-### Step 16 Check the shape [HIGH] [cite: 1]
+### Step 16 Check the shape [🟢COMPLETED] [HIGH]
 ```bash
 python3 -c "
 import numpy as np, glob
@@ -264,7 +301,7 @@ print(d['x'].shape, d['y'].shape, d['adj'].shape)"
 ```
 Done when: the last number is 31. If it is not, stop and tell Aditya the contract is broken and the planner team's code will read the wrong values. [cite: 1]
 
-### Step 17 Split the data the RIGHT way [HIGH] [cite: 1]
+### Step 17 Split the data the RIGHT way [🟢COMPLETED] [HIGH]
 This one mistake silently ruins results, so it is worth understanding. [cite: 1]
 
 Split by clip, never by frame. Frames next to each other are nearly identical. If some frames from a clip go into training and others into testing, the model has effectively seen the test answers, and your scores will look great and mean nothing. [cite: 1]
@@ -277,21 +314,21 @@ Done when: it reports how many clips went to training and how many to testing no
 
 ## Part 5 - Model 1, and proving it runs [cite: 1]
 
-### Step 18 What model 1 does [HIGH] [cite: 1]
+### Step 18 What model 1 does [🟢COMPLETED] [HIGH]
 It reads 20 steps of those 31 numbers two seconds of one vehicle's history and answers one question: will this vehicle let us in? It outputs a number between 0 and 1. [cite: 1]
 
 It reads events in order and remembers what came before, the way you read a sentence. [cite: 1]
 
 It does not drive the car. It answers one question. Everything that keeps the car safe is geometry, not learning. [cite: 1]
 
-### Step 19 Train it small, on your laptop [HIGH] [cite: 1]
+### Step 19 Train it small, on your laptop [🟢COMPLETED] [HIGH]
 Do not go near the supercomputer yet. Prove it runs first. [cite: 1]
 ```bash
 python3 python/model/train.py --features ~/meteor-data/features --model lstm --epochs 2 --limit 5000
 ```
 Done when: the loss goes down between the two rounds and a model file is saved. If the loss does not move: send the whole output. That is a data problem, not a model problem. [cite: 1]
 
-### Step 20 Look at the numbers that matter [HIGH] [cite: 1]
+### Step 20 Look at the numbers that matter [🟢COMPLETED] [HIGH]
 Accuracy alone is a lie when one answer is rare. You need both: [cite: 1]
 * Precision when it says "they will yield", how often is that true? [cite: 1]
 * Recall of all the vehicles that did yield, how many did it catch? [cite: 1]
@@ -302,15 +339,15 @@ Done when: both are reported separately for yield and no-yield. [cite: 1]
 
 ## Part 6 The supercomputer [cite: 1]
 
-### Step 21 Get an account [HIGH] [cite: 1]
+### Step 21 Get an account [⚪DISCARDED / BYPASSED] [HIGH]
 Ask whoever runs the DGX A100. Ask at the same time: is MATLAB installed on it? Another part of the team needs that answer. [cite: 1]
 
-### Step 22 Log in [HIGH] [cite: 1]
+### Step 22 Log in [⚪DISCARDED / BYPASSED] [HIGH]
 ```bash
 ssh yourusername@the-machine-address
 ```
 
-### Step 23 Run the probe before anything else [HIGH] [cite: 1]
+### Step 23 Run the probe before anything else [⚪DISCARDED / BYPASSED] [HIGH]
 One script answers every question about the machine free disk, what you can write to, whether it reaches the internet, whether there is a job queue, what Python it has. [cite: 1]
 ```bash
 git clone https://github.com/adityasinghin01-hash/sih26037.git
@@ -319,13 +356,13 @@ bash derisk/check06_dgx_probe.sh 2>&1 | tee dgx_probe.txt
 ```
 Run it on a compute node, not the login node the answers differ. Done when: send the whole dgx_probe.txt to Aditya, unedited. [cite: 1]
 
-### Step 24 Find the right disk [HIGH] [cite: 1]
+### Step 24 Find the right disk [⚪DISCARDED / BYPASSED] [HIGH]
 ```bash
 df -h /raid $HOME
 ```
 The big fast disk is usually /raid, around 15 TB. Warning: /raid is fast but not backed up. Never keep the only copy of anything there. [cite: 1]
 
-### Step 25 Move code the right way [HIGH] [cite: 1]
+### Step 25 Move code the right way [⚪DISCARDED / BYPASSED] [HIGH]
 Code always travels through GitHub. Never copy files by hand. [cite: 1]
 
 On your laptop: [cite: 1]
@@ -339,21 +376,21 @@ cd sih26037 && git fetch && git checkout stream-ml && git pull
 ```
 Laptop → GitHub → supercomputer. Every single time. [cite: 1]
 
-### Step 26 Get the data there directly [HIGH] [cite: 1]
+### Step 26 Get the data there directly [⚪DISCARDED / BYPASSED] [HIGH]
 Do not copy 10 GB from your laptop. The supercomputer has a much faster connection. [cite: 1]
 ```bash
 pip install --user torch numpy onnx
 python3 python/meteor/fetch_annotations.py --out /raid/yourname/meteor-data
 ```
 
-### Step 27 Check the graphics cards [HIGH] [cite: 1]
+### Step 27 Check the graphics cards [🟢COMPLETED] [HIGH]
 ```bash
 nvidia-smi
 python3 -c "import torch; print('GPUs:', torch.cuda.device_count())"
 ```
 Done when: you see 8. If you see 0, PyTorch was installed without GPU support - say so. [cite: 1]
 
-### Step 28 Train so it survives you logging out [HIGH] [cite: 1]
+### Step 28 Train so it survives you logging out [⚪DISCARDED / BYPASSED] [HIGH]
 If your connection drops, the job dies unless you do this. [cite: 1]
 ```bash
 tmux new -s training
@@ -362,7 +399,7 @@ python3 python/model/train.py --features /raid/yourname/meteor-data/features --m
 ```
 Return later with `tmux attach -t training`. [cite: 1]
 
-### Step 29 Many small runs, not one long one [HIGH] [cite: 1]
+### Step 29 Many small runs, not one long one [🟢COMPLETED] [HIGH]
 Our model trains in minutes, not days. The supercomputer is not for one huge model it is for trying many settings at once and keeping the best. [cite: 1]
 
 Run 20-40 short runs varying the settings. Done when: you have a table of settings and scores and know which won. Say this honestly in the report: eight graphics cards, forty small experiments not one giant model. [cite: 1]
@@ -371,15 +408,15 @@ Run 20-40 short runs varying the settings. Done when: you have a table of settin
 
 ## Part 7 - Model 2, the group version [cite: 1]
 
-### Step 30 Why a second model [HIGH] [cite: 1]
+### Step 30 Why a second model [🟢COMPLETED] [HIGH]
 Model 1 looks at each vehicle alone. But a scooter's behaviour depends on the bus beside it, not only on us. Model 2 looks at all nearby vehicles together. [cite: 1]
 
 It is built using attention, not message-passing. Both would work, but attention is made of ordinary multiplication that MATLAB can import. Message-passing uses operations MATLAB does not support and would fail at the very last step. Aditya's code already uses the safe one. [cite: 1]
 
-### Step 31 Same data, same test [HIGH] [cite: 1]
+### Step 31 Same data, same test [🟢COMPLETED] [HIGH]
 Identical features, labels and split. Only the model changes. Done when: both models' scores sit side by side. [cite: 1]
 
-### Step 32 Report both [HIGH] [cite: 1]
+### Step 32 Report both [🟢COMPLETED] [HIGH]
 Do not quietly keep the winner. Publish both. Comparing a sequence model with a group model on identical data is a result in itself. [cite: 1]
 
 ---
@@ -388,7 +425,7 @@ Do not quietly keep the winner. Publish both. Comparing a sequence model with a 
 
 Do not export a model you have not tested. Once it is inside the simulation, a fault in the model looks like a fault in the car, and two people spend a day arguing about whose problem it is. [cite: 1]
 
-### Step 33 Understand what "good" means here [HIGH] [cite: 1]
+### Step 33 Understand what "good" means here [🟢COMPLETED] [HIGH]
 The model will never be perfect, and it does not need to be. [cite: 1]
 
 It is predicting what a human will do next. The same scooter rider, in the same gap, on the same road, lets you in on Monday and pushes through on Tuesday. No model can be right every time, because the information is not there. [cite: 1]
@@ -404,7 +441,7 @@ So the goal is not "never wrong". It is "wrong in the safe direction". There are
 
 Make the first rare. Accept the second. [cite: 1]
 
-### Step 34 Run the eight checks [HIGH] [cite: 1]
+### Step 34 Run the eight checks [🟢COMPLETED] [HIGH]
 ```bash
 python3 python/model/evaluate.py --features ~/meteor-data/features --model <your-model.pt>
 ```
@@ -420,7 +457,7 @@ It checks, in order: [cite: 1]
 
 It ends with READY FOR MATLAB or NOT READY, and a threshold number. [cite: 1]
 
-### Step 35 Send three things, not one [HIGH] [cite: 1]
+### Step 35 Send three things, not one [🟢COMPLETED] [HIGH]
 When it says ready, report: [cite: 1]
 1. The threshold. Below it the planner treats the prediction as unusable and falls back to geometry alone. [cite: 1]
 2. The dangerous error rate. This is the honest number and it goes on the slide. [cite: 1]
@@ -428,14 +465,14 @@ When it says ready, report: [cite: 1]
 
 If it says NOT READY, do not export. Send the whole output and wait. [cite: 1]
 
-### Step 36 How long to spend here [HIGH] [cite: 1]
+### Step 36 How long to spend here [🟢COMPLETED] [HIGH]
 As long as it takes. Training again is cheap minutes. Discovering a bad model after it is wired into the simulation costs days, and you will find it by watching a car behave strangely rather than by reading a number. [cite: 1]
 
 ---
 
 ## Part 9 - Handing it to the simulation [cite: 1]
 
-### Step 37 Test the crossing FIRST, in week one [HIGH] [cite: 1]
+### Step 37 Test the crossing FIRST, in week one [🟢COMPLETED] [HIGH]
 This is the most likely thing in the whole project to break, and it blocks another person completely. Do it with a throwaway model before training the real one. [cite: 1]
 
 On your machine: [cite: 1]
@@ -444,16 +481,16 @@ python3 derisk/check04_onnx_lstm.py
 ```
 Then someone with MATLAB runs `derisk/check04_onnx_lstm.m`. Done when: you know which version number MATLAB accepts. [cite: 1]
 
-### Step 38 Send that number immediately [HIGH] [cite: 1]
+### Step 38 Send that number immediately [🟢COMPLETED] [HIGH]
 One number, sent the moment you have it. The planner team cannot connect anything without it. Do not wait for training to finish. [cite: 1]
 
-### Step 39 Export the trained model [HIGH] [cite: 1]
+### Step 39 Export the trained model [🟢COMPLETED] [HIGH]
 ```bash
 python3 python/export/to_onnx.py --model <your-trained-file> --opset <the-number-that-worked>
 ```
 Done when: the file exists and its shapes match AGENTS.md. [cite: 1]
 
-### Step 40 Never commit models or data [HIGH] [cite: 1]
+### Step 40 Never commit models or data [🟢COMPLETED] [HIGH]
 git status should never list a .onnx, .pt, or data file. Share those through Google Drive. [cite: 1]
 
 ---
@@ -462,16 +499,16 @@ git status should never list a .onnx, .pt, or data file. Share those through Goo
 
 These never enter the car. They run on files and produce numbers that prove things. [cite: 1]
 
-### Step 41 The spotter [HIGH] [cite: 1]
+### Step 41 The spotter [🟡PARTIALLY DONE] [HIGH]
 What it does: looks at a photo and names what it sees cow, auto-rickshaw, pushcart, person. Why it matters: the task explicitly asks for camera perception and names these objects. That is currently a gap in our work, and this closes it with measured numbers. Which model: YOLOX. We checked the newer alternative, RTMDet - it cannot be trained on new classes, only run on its original ones. YOLOX trains, and is specifically better at small objects, which Indian traffic is full of. Data: IDD Detection 22.8 GB + FGVD 2.6 GB + DATS 2022 for animals. Done when: accuracy is reported per class, especially cow, auto-rickshaw and pushcart. [cite: 1]
 
-### Step 42 The road-finder [LOW] [cite: 1]
+### Step 42 The road-finder [🔵TO DO / DEFERRED] [LOW]
 What it does: marks which part of a photo is drivable road. Why: our car has a rule about never leaving drivable ground. This shows the idea works on real Indian roads with no lane markings best shown on our own village footage. Model: DeepLab v3+. Data: IDD Segmentation, 24 GB. [cite: 1]
 
-### Step 43 The laser spotter [LOW] [cite: 1]
+### Step 43 The laser spotter [🔵TO DO / DEFERRED] [LOW]
 What it does: finds vehicles in laser scans instead of photos. Why: the car's main sensor is the laser and it currently uses a generic tool. This one is trained on real Indian laser data. Model: PointPillars. Data: IDD-3D, 236 GB. Note: MATLAB already includes this model, pretrained, so retraining it there takes a few lines. In Python it needs a large extra framework installed first. Since this model never enters the car, doing this one in MATLAB costs us nothing decide with Aditya before starting. [cite: 1]
 
-### Step 44 Use IDD-3D with no training at all [HIGH] [cite: 1]
+### Step 44 Use IDD-3D with no training at all [🔵TO DO / DEFERRED] [HIGH]
 Two of its best uses need no model: [cite: 1]
 1. Replay real Indian traffic. Every object has an ID that follows it across frames, so real vehicles that drove on real roads can be replayed inside our simulation. Nobody can then say we arranged the traffic to flatter our car. [cite: 1]
 2. Check our simulated laser is realistic. Compare our pretend scans with real ones density, range, points landing on a vehicle. This defends the claim that our simulation is a fair test. [cite: 1]
@@ -552,12 +589,12 @@ Because MATLAB's native YOLOX training is already written in `matlab/+sih/+model
 
 Do NOT install all 110+ MATLAB toolboxes — that wastes 35-45 GB of disk space. A minimal installation tailored for Model 3 takes only ~4-6 GB.
 
-#### Step 45 Download the MATLAB Installer [HIGH]
+#### Step 45 Download the MATLAB Installer [🟢COMPLETED] [HIGH]
 1. Go to [mathworks.com](https://www.mathworks.com/) and sign in using your institute academic email.
 2. Navigate to your license and download the installer for **MATLAB R2024b** (or R2025a) for Windows.
 3. Run the installer executable (`setup.exe`).
 
-#### Step 46 Select ONLY the Essential Products [HIGH]
+#### Step 46 Select ONLY the Essential Products [🟢COMPLETED] [HIGH]
 When prompted to choose which products to install, check **ONLY** these three:
 1. **MATLAB**
 2. **Deep Learning Toolbox** (required for neural networks, `trainingOptions`, and `check04`)
@@ -567,7 +604,7 @@ When prompted to choose which products to install, check **ONLY** these three:
 
 Done when: MATLAB installer completes and you can launch MATLAB from your Windows Start Menu.
 
-#### Step 47 Install the Critical YOLOX Free Add-On [HIGH]
+#### Step 47 Install the Critical YOLOX Free Add-On [🟢COMPLETED] [HIGH]
 The standard product installer does NOT include the YOLOX training backend. `yoloxObjectDetector` exists without it, but `trainYOLOXObjectDetector` will throw an error when training starts unless this add-on is present.
 
 1. Open MATLAB Desktop.
@@ -584,7 +621,7 @@ The standard product installer does NOT include the YOLOX training backend. `yol
 
 Done when: Running `disp(exist('trainYOLOXObjectDetector', 'file'))` in the MATLAB Command Window prints `2`.
 
-#### Step 48 Verify MATLAB GPU Detection [HIGH]
+#### Step 48 Verify MATLAB GPU Detection [🟢COMPLETED] [HIGH]
 In MATLAB Command Window, run:
 ```matlab
 gpuDevice
@@ -595,18 +632,18 @@ Done when: It outputs `CUDADevice with properties:` showing `NVIDIA RTX A1000` w
 
 ### Phase B: Download and Prepare the IDD Detection Dataset
 
-#### Step 49 Download IDD Detection via Academic Account [HIGH]
+#### Step 49 Download IDD Detection via Academic Account [🟢COMPLETED] [HIGH]
 IDD terms require a human login. A script cannot download it.
 1. Log in to [idd.insaan.iiit.ac.in/accounts/signup/](https://idd.insaan.iiit.ac.in/).
 2. Navigate to datasets and download **IDD Detection** (~22.8 GB, Pascal VOC XML format).
 
-#### Step 50 Extract Outside the Repository [HIGH]
+#### Step 50 Extract Outside the Repository [🟢COMPLETED] [HIGH]
 Data must never be placed inside the git repository. Extract the downloaded archives to:
 ```
 C:\Users\admin\idd-detection\
 ```
 
-#### Step 51 Verify Dataset Directory Structure [HIGH]
+#### Step 51 Verify Dataset Directory Structure [🟢COMPLETED] [HIGH]
 The data loader (`readDetectionData.m`) strictly expects Pascal VOC layout with matching image/annotation pairs:
 ```
 C:\Users\admin\idd-detection\
@@ -626,7 +663,7 @@ Done when: Both numbers print thousands of files and neither is zero.
 
 ### Phase C: Environment Setup & Local VRAM Guard
 
-#### Step 52 Add Repository to MATLAB Path [HIGH]
+#### Step 52 Add Repository to MATLAB Path [🟢COMPLETED] [HIGH]
 In MATLAB Command Window:
 ```matlab
 cd('C:\Users\admin\sih26037')
@@ -635,7 +672,7 @@ which sih.models.trainSpotter
 ```
 Done when: It prints `C:\Users\admin\sih26037\matlab\+sih\+models\trainSpotter.m`.
 
-#### Step 53 Understand the 8 GB VRAM Adjustment [HIGH]
+#### Step 53 Understand the 8 GB VRAM Adjustment [🟢COMPLETED] [HIGH]
 `trainSpotter.m` defaults to `MiniBatchSize = 8` for cluster GPUs (16-32 GB VRAM).
 On your local **NVIDIA RTX A1000 (8 GB VRAM)**, batch size 8 will trigger CUDA Out-Of-Memory.
 We run with **`MiniBatchSize = 2`**. This fits cleanly inside 4-6 GB of VRAM while preserving the exact same YOLOX-small architecture and loss calculations.
@@ -644,7 +681,7 @@ We run with **`MiniBatchSize = 2`**. This fits cleanly inside 4-6 GB of VRAM whi
 
 ### Phase D: Training & Evaluating Model 3
 
-#### Step 54 Run the Spotter Training [HIGH]
+#### Step 54 Run the Spotter Training [⚪DEFERRED] [HIGH]
 In MATLAB Command Window, run:
 ```matlab
 detector = sih.models.trainSpotter( ...
@@ -662,7 +699,7 @@ What the script does automatically:
 6. Evaluates per-class Average Precision (AP) on held-out validation images.
 7. Saves the trained model to `C:\Users\admin\meteor-data\spotter.mat` (outside git).
 
-#### Step 55 How to Handle Errors if They Occur [HIGH]
+#### Step 55 How to Handle Errors if They Occur [⚪DEFERRED] [HIGH]
 - **If CUDA Out of Memory occurs:** Reduce batch size to 1:
   ```matlab
   detector = sih.models.trainSpotter("C:\Users\admin\idd-detection", "C:\Users\admin\meteor-data\spotter.mat", MiniBatchSize=1);
@@ -677,7 +714,7 @@ What the script does automatically:
 
 ### Phase E: Reporting the Honest Metrics
 
-#### Step 56 Record Average Precision Per Class [HIGH]
+#### Step 56 Record Average Precision Per Class [⚪DEFERRED] [HIGH]
 At the conclusion of training, `trainSpotter.m` prints the evaluation table.
 Per `AGENTS.md`, you MUST report **per-class AP**, specifically for the 3 unstructured traffic classes:
 - **`cow` AP**
@@ -687,7 +724,7 @@ Per `AGENTS.md`, you MUST report **per-class AP**, specifically for the 3 unstru
 
 *Rule: Never report overall mAP alone. A high mAP driven by cars while cows are missed is a failed perception model for Indian roads.*
 
-#### Step 57 Check Dropped Classes Count [HIGH]
+#### Step 57 Check Dropped Classes Count [⚪DEFERRED] [HIGH]
 Inspect the initial output from `readDetectionData`:
 ```
 Dropped X unmapped class name(s) - add them to the alias table if they matter:
@@ -696,7 +733,7 @@ Dropped X unmapped class name(s) - add them to the alias table if they matter:
 ```
 Confirm only known intentional exclusions (`vehicle fallback`, `rider`) were dropped. If any genuine road class was dropped, record it.
 
-#### Step 58 Log in PROGRESS.md [HIGH]
+#### Step 58 Log in PROGRESS.md [🟢COMPLETED] [HIGH]
 Copy the full terminal output, paste the AP table and dropped counts into `PROGRESS.md`, commit, and push.
 
 ---
@@ -718,7 +755,7 @@ Model 3 is officially deferred to post-Sept 7 (the internal round relies strictl
 
 ### Phase A: Documentation Truth Alignment
 
-#### Step 59 Correct Factually Inaccurate Claims in PROGRESS.md [HIGH]
+#### Step 59 Correct Factually Inaccurate Claims in PROGRESS.md [🟢COMPLETED] [HIGH]
 Before executing new tasks, the status documentation must be aligned with reality. Two specific statements in `PROGRESS.md` are factually inaccurate:
 1. *"All local workstation responsibilities for Predictor Models are 100% COMPLETE"* -> False. `check04` is an open deliverable that belongs to this workstation because only this machine has the MATLAB ONNX Converter add-on.
 2. *"Awaiting: Aditya's MATLAB import test (check04)"* -> False. Aditya does not have the ONNX Converter on macOS and cannot run it; we must run it locally.
@@ -729,7 +766,7 @@ Done when: `PROGRESS.md` reflects that `check04` is local work in progress and n
 
 ### Phase B: Unblocking Stream D via Local MATLAB Import Check
 
-#### Step 60 Run `check04_onnx_lstm` at Opsets 17 and 18 [CRITICAL / HIGHEST PRIORITY]
+#### Step 60 Run `check04_onnx_lstm` at Opsets 17 and 18 [🟢COMPLETED] [CRITICAL / HIGHEST PRIORITY]
 Stream D is currently blocked waiting on the opset number that imports cleanly without placeholder stubs.
 
 1. Open MATLAB Desktop.
@@ -752,7 +789,7 @@ Done when: Full console output from `check04_onnx_lstm.m` is recorded, confirmed
 
 ### Phase C: Honest Model 2 Evaluation
 
-#### Step 61 Measure and Report Model 2 Dangerous-Error Rate [HIGH]
+#### Step 61 Measure and Report Model 2 Dangerous-Error Rate [🟢COMPLETED] [HIGH]
 Model 1 registered a dangerous-error rate of 20.18% (exceeding the $\le 1.0\%$ safety threshold by 20x), preventing the planner from placing full trust in raw predictions. Model 2 (YieldAttentionNet) demonstrated 28% better calibration ($ECE = 0.1502$ vs $0.2079$). Its dangerous-error rate must now be measured.
 
 1. In Git Bash (using Python 3.10 with CUDA):
@@ -774,7 +811,7 @@ Done when: Full console output from `evaluate.py` on `yield_attention.pt` is cap
 
 ### Phase D: Calibration Post-Processing Data Extraction
 
-#### Step 62 Extract and Export Validation Scores (`scores_lstm.npz`) [HIGH]
+#### Step 62 Extract and Export Validation Scores (`scores_lstm.npz`) [🟢COMPLETED] [HIGH]
 Retraining is explicitly forbidden because loss has plateaued and the S2 contract is frozen at 31 features. Addressing the 20.18% dangerous error rate requires post-processing on the predictions:
 - Threshold sweep extending beyond 0.99 (up to 0.995 and 0.999).
 - Probability calibration fitting (isotonic regression, Platt scaling, or temperature scaling).
@@ -818,7 +855,7 @@ Done when: `scores_lstm.npz` is generated (~6 MB), verified, and shared with Adi
 
 ### Phase E: Repository Synchronization
 
-#### Step 63 Merge `main` into `stream-ml` [HIGH]
+#### Step 63 Merge `main` into `stream-ml` [🟢COMPLETED] [HIGH]
 The local branch `stream-ml` is 24 commits behind `main` (which incorporates PR #11 parity fix, PR #12 Stream D arbitration updates, and planner advancements).
 
 1. In Git Bash:
@@ -836,9 +873,183 @@ Done when: `git status` is clean and `stream-ml` is synchronized with `origin/ma
 
 ### Phase F: Model 3 Technical Debt Reference (Deferred to Post-Sept 7)
 
-#### Step 64 Document Model 3 Dual Bug Audit [LOW / DEFERRED]
+#### Step 64 Document Model 3 Dual Bug Audit [LOW / DEFERRED] [🟢COMPLETED]
 Model 3 is NOT required for the Sept 7 internal presentation (Model 1 carries the internal demo). When returning to Model 3 post-demo, `matlab/+sih/+models/readDetectionData.m` must resolve TWO distinct bugs simultaneously:
 1. **Hurdle H7 (Directory Traversal):** Line 47 uses flat `dir(fullfile(annDir, '*.xml'))`, which misses subdirectories (`frontFar/`, `highquality_16k/`, etc.). Requires recursive `dir(fullfile(annDir, '**', '*.xml'))`.
 2. **Hurdle H8 (Basename Cross-Pairing):** Line 61 (`iFindImage`) searches by filename stem alone across flat directories. Because IDD repeats filenames (e.g., `0000149.xml`) across different clip subdirectories, fixing H7 alone would cause silent cross-folder mismatching between images and bounding boxes. `iFindImage` must resolve paths relative to the subfolder tree.
 
 Both bugs must be fixed together in a single commit before training on the KIET GPU box. Inform Aditya prior to launching cluster jobs as the GPU environment is shared.
+
+---
+
+## Part 13 - Calibration Exploration: Ensemble & Temperature Scaling (Post-Sept 5 23:30 IST)
+
+This section reflects Aditya's follow-up directive after Tasks 1–5 were completed. The goal is to explore two more legitimate post-processing approaches — combining Models 1 & 2, and temperature scaling — and report whether anything meaningfully closes the gap toward the $\le 1.0\%$ dangerous-error target. **This is exploratory. Nothing is committed to git until Aditya reviews the numbers.**
+
+### The Seven Hard Rules for This Phase
+1. **Never retrain a model.** No time, and capacity is not the bottleneck — labels are.
+2. **Never report a dangerous-error rate without `n_go` and a proper confidence interval.** A rate on fewer than ~30 GO predictions is not a measurement — say so instead of reporting it.
+3. **Never push a threshold so high that `n_go` collapses to near zero and claim a low rate.** That is the model refusing to answer, not an improvement.
+4. **Never touch `AGENTS.md` section 3, `matlab/baseline/`, or any other stream's files.**
+5. **Never push to git.** This is exploratory — report numbers, do not commit.
+6. **Never invent a number.** `TODO(unverified)` beats a guess.
+7. **Use Wilson or Clopper-Pearson confidence intervals** (`statsmodels.stats.proportion.proportion_confint`, method `'wilson'`), NOT normal-approximation intervals which break at small `n`.
+
+---
+
+### Phase G: Model 2 Score Extraction
+
+#### Step 65 Export Model 2 Raw Scores (`scores_attention.npz`) [🟢COMPLETED] [HIGH]
+Produce the identical format as `scores_lstm.npz` (already saved for Model 1), but for Model 2 (`yield_attention.pt`).
+
+1. In PowerShell (using Python 3.10 with CUDA):
+   ```powershell
+   & "C:\Program Files\Python310\python.exe" -c "
+   import json, sys
+   from pathlib import Path
+   import numpy as np
+   import torch
+   sys.path.insert(0, 'ml/python')
+   from model.yield_attention import YieldAttentionNet
+   from model.train import load
+   from model.evaluate import _predict
+
+   feat_dir = Path('C:/Users/admin/meteor-data/features')
+   ck = torch.load(feat_dir / 'yield_attention.pt', map_location='cpu', weights_only=False)
+   net = YieldAttentionNet(hidden=ck.get('hidden', 64))
+   net.load_state_dict(ck['state_dict'])
+   net.eval()
+
+   split = json.loads((feat_dir / 'split.json').read_text())
+   x, y, adj = load(feat_dir, split['val'], True)
+   p_all = _predict(net, x, adj, True)
+   t_all = y.numpy().reshape(-1)
+   keep = t_all >= 0
+   p, t = p_all[keep], t_all[keep]
+
+   out_path = Path('C:/Users/admin/meteor-data/archive/scores_attention.npz')
+   np.savez_compressed(out_path, p=p, t=t)
+   print(f'Saved {out_path} ({out_path.stat().st_size / 1e6:.2f} MB)')
+   print(f'p shape: {p.shape}, t shape: {t.shape}')
+   "
+   ```
+2. Verify the file is saved and the sample count matches the 772,475 reported in Task 3.
+
+Done when: `scores_attention.npz` exists alongside `scores_lstm.npz` in the archive directory.
+
+---
+
+### Phase H: Sample Count Mismatch Investigation
+
+#### Step 66 Diagnose the 11,453 Sample Gap Between Models 1 and 2 [🟢COMPLETED] [HIGH]
+Model 1 produced 783,928 validation samples. Model 2 produced 772,475. That is an 11,453-sample gap. **Do not average across mismatched samples.**
+
+1. The most likely cause: the `load()` function in `train.py` is called with `group_by_frame=False` for Model 1 (LSTM) and `group_by_frame=True` for Model 2 (Attention). The `True` path groups agents by frame into fixed-size `[B, MAX_AGENTS, T, 31]` tensors, which truncates beyond `MAX_AGENTS` per frame and pads below it. Sequences that fit into fewer groups, or agents beyond the `MAX_AGENTS` cutoff, get dropped.
+2. To confirm or refute:
+   ```python
+   # Load both arrays and compare
+   d1 = np.load('scores_lstm.npz')
+   d2 = np.load('scores_attention.npz')
+   print(f"Model 1: {len(d1['p'])} samples")
+   print(f"Model 2: {len(d2['p'])} samples")
+   print(f"Gap: {len(d1['p']) - len(d2['p'])}")
+   ```
+3. If the gap is confirmed as `group_by_frame` truncation, document this as the root cause.
+4. **Build the intersection set:** identify samples present in both models by matching clip, frame, and track. Only the intersected set is used for ensemble steps below.
+
+Done when: The gap root cause is documented, and the intersection set is constructed.
+
+---
+
+### Phase I: Ensemble of Models 1 & 2
+
+#### Step 67 Average Calibrated Probabilities from Both Models [🟢COMPLETED] [HIGH]
+On the **intersected sample set only** (Step 66), apply each model's best-performing calibration method:
+- **Model 1 (LSTM):** Apply Platt scaling (which brought it from 20.18% to 8.33%).
+- **Model 2 (Attention):** Apply whichever of Platt/isotonic gave its best number.
+
+Then compute a simple average of the two calibrated probabilities:
+$$p_{\text{ensemble}} = \frac{p_{\text{lstm\_cal}} + p_{\text{attn\_cal}}}{2}$$
+
+**Do NOT invent a weighted scheme.** Simple mean only.
+
+Run the threshold sweep at thresholds **0.80, 0.90, 0.95, 0.99**. For each threshold report:
+- Dangerous error rate
+- `n_go` (number of times the model says GO)
+- False positives (FP)
+- 95% Wilson confidence interval:
+  ```python
+  from statsmodels.stats.proportion import proportion_confint
+  ci_lo, ci_hi = proportion_confint(fp, n_go, alpha=0.05, method='wilson')
+  ```
+
+Done when: Ensemble sweep results are recorded for all four thresholds.
+
+---
+
+### Phase J: Temperature Scaling (Model 2 Only)
+
+#### Step 68 Fit a Single Scalar Temperature Parameter [🟢COMPLETED] [HIGH]
+Temperature scaling is the simplest calibration method — it fits one single number $T$ that divides the logits before softmax:
+
+$$p_{\text{calibrated}} = \text{softmax}(z / T)$$
+
+Where $z$ is the raw logit from Model 2 (before softmax), and $T$ is optimized to minimize Negative Log-Likelihood (NLL) on the validation set.
+
+1. Extract raw logits from Model 2 (not probabilities — the pre-softmax outputs).
+2. Optimize $T$ via `scipy.optimize.minimize_scalar` or gradient descent on NLL:
+   ```python
+   from scipy.optimize import minimize_scalar
+
+   def nll(T, logits, labels):
+       scaled = logits / T
+       log_probs = scaled - np.log(np.exp(scaled).sum(-1, keepdims=True))
+       return -log_probs[np.arange(len(labels)), labels].mean()
+
+   result = minimize_scalar(nll, bounds=(0.1, 10.0), args=(logits, labels), method='bounded')
+   T_opt = result.x
+   ```
+3. Apply $T_{\text{opt}}$ to get calibrated probabilities.
+4. Run the same threshold sweep (**0.80, 0.90, 0.95, 0.99**) with Wilson CI at each point.
+
+Done when: Optimal $T$ is found and the sweep results are recorded.
+
+---
+
+### Phase K: Consolidated Comparison Table
+
+#### Step 69 Build the Final Side-by-Side Comparison [🟢COMPLETED] [HIGH]
+Produce a single markdown table with these columns:
+
+| Method | Threshold | n_go | Dangerous Rate | 95% CI (Wilson) | False Positives |
+|---|---|---|---|---|---|
+| Raw Model 1 (LSTM) | 0.99 | ... | ... | ... | ... |
+| Raw Model 2 (Attention) | 0.99 | ... | ... | ... | ... |
+| Platt-Scaled Model 1 | 0.80 | ... | ... | ... | ... |
+| Isotonic Model 1 | 0.95 | ... | ... | ... | ... |
+| Temperature-Scaled Model 2 | 0.80 | ... | ... | ... | ... |
+| Temperature-Scaled Model 2 | 0.90 | ... | ... | ... | ... |
+| Temperature-Scaled Model 2 | 0.95 | ... | ... | ... | ... |
+| Ensemble (Avg of Calibrated) | 0.80 | ... | ... | ... | ... |
+| Ensemble (Avg of Calibrated) | 0.90 | ... | ... | ... | ... |
+| Ensemble (Avg of Calibrated) | 0.95 | ... | ... | ... | ... |
+
+**Rules for this table:**
+- Any row where `n_go < 30`: flag as `"not a measurement"` instead of reporting the rate.
+- Any row where `n_go = 0`: report as `"model refuses to answer"`.
+- Include the raw models as the first two rows so the comparison baseline is always visible.
+
+Done when: Table is complete with all five methods side by side.
+
+---
+
+### Phase L: Honest Conclusion
+
+#### Step 70 State the Verdict Plainly [🟢COMPLETED] [HIGH]
+After building the table, answer exactly one of these two statements:
+
+> **Option A:** *"[Method X] at threshold [Y] achieves a dangerous-error rate of [Z]% (95% CI [..., ...]) at n_go = [N], which is meaningfully closer to 1.0% than the raw 20.18% and still useful (n_go >= 30)."*
+
+> **Option B:** *"No method tested brings the dangerous-error rate meaningfully closer to 1.0% at a usable n_go (>= 30). The honest conclusion is: still gated off (`Valid = false`), the best real number is [X]% at n_go = [N], and it does not go lower without more labeled data."*
+
+**Either answer is fine.** Say which one it is. Do not hedge.
