@@ -1,4 +1,5 @@
 import bpy, os, math
+REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
 sc=bpy.context.scene
 def mat(n,rgb):
     m=bpy.data.materials.new(n); m.use_nodes=True
@@ -25,6 +26,6 @@ bg.node_tree.nodes["Background"].inputs[1].default_value=1.0
 sc.render.engine='BLENDER_EEVEE_NEXT'
 sc.render.resolution_x=1600; sc.render.resolution_y=1600
 sc.view_settings.view_transform='Standard'
-sc.render.filepath="/Users/aditya/Desktop/SIH26037-Reference/renders/map_01_network.png"
+sc.render.filepath=f"{REF}/renders/map_01_network.png"
 bpy.ops.render.render(write_still=True)
 print("rendered plan")

@@ -11,9 +11,9 @@ Everything below was **verified by running MATLAB R2026a**. Where something was 
 
 | | |
 |---|---|
-| **THE MAIN MACHINE IS ADITYA'S MAC** | Decided 4 Sep by running every piece on it: the planner (**212/213 tests**), the Simulink model (**loads, simulates, logs `h`**), OpenTrafficLab (**9/9**) and the baseline all run there. **The demo runs on the Mac.** You still develop on your own machine — see `TEAM.md`, "The main machine". Write nothing Windows-only: no `C:\` paths |
+| **THE MAIN MACHINE IS ADITYA'S MAC** | Decided 4 Sep by running every piece on it: the planner (**304 tests, 303 pass**), the Simulink model (**loads, simulates, logs `h`**), OpenTrafficLab (**9/9**) and the baseline all run there. **The demo runs on the Mac.** You still develop on your own machine — see `TEAM.md`, "The main machine". Write nothing Windows-only: no `C:\` paths |
 | **`runtests` needs the `.m`** | `runtests('matlab/tests/testPlannerGeometry.m')`. Without it MATLAB errors `MATLAB:unittest:TestSuite:UnrecognizedSuite`. It is not a broken test |
-| **Test counts, re-run on R2026a 4 Sep** | The repo has **51 tests in 5 files: 50 pass, 1 fails.** geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** · ClassIDMapping **6** · FeatureParity **2 of 3**. The old "42 passing" line counted only three of the five files — **do not put 42 in a deck** |
+| **Test counts, re-run on R2026a 5 Sep** | `main` = **51 tests in 5 files: 50 pass, 1 fail** (geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** · ClassIDMapping **6** · FeatureParity **2 of 3**). `stream-d-a` = **304 tests in 18 files: 303 pass, 1 fail, 0 incomplete** — D9, D10 and arbitration landed on 5 Sep with seven new test files. **Do not put 42, or 214, in a deck.** **`OpenTrafficLab/` must be cloned into the repo root or 7 tests silently SKIP** — a skip is not a pass |
 | **OpenTrafficLab does NOT run unmodified on R2026a** | Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure. **Never edit `OpenTrafficLab/`** |
 | **`matlab/baseline/` is now FULL** | MathWorks' shipped planner, unmodified and checksummed. **Nobody edits it.** See `matlab/baseline/BASELINE.md` |
 | **THE BASELINE HAS BEEN RUN — AND IT FAILS ON BOTH PLATFORMS** | It dies **19.7 s** into its own shipped scenario at **its own `error()`**, with **0 of 120 candidates collision-free**. Deterministic (`rng(2020)`). Reproduced **three times on two machines** — macOS/Apple Silicon headless and **Windows x86 with a full display — identical to the digit**. **`plan/BASELINE-R2026a.md`. Read it before quoting any comparison number, and do NOT fix it** |
@@ -376,6 +376,42 @@ defensible; they just have to agree. **Work out which is right and say why — d
 to match the other.**
 
 ## Aditya
+
+### NEW 4 Sep 22:0x — the demo has been RUN, and it does not do what the script says
+
+**Read `plan/BACKUP-PROBE-FINDING.md` in full. It is the most important thing on the project
+tonight.** Three headlines, all measured:
+
+1. **Good: the planner DRIVES.** The backup calls this repo's `sih.planner.*` unmodified and
+   completes a 610 m route in 53.0 s. The old "the planner does not drive" headline was about
+   the OpenTrafficLab harness only, and it made the project sound weaker than it is.
+2. **Bad: the probe never fires** — `0` occurrences in 1060 S1 samples and 960 S2 samples. The
+   gate wants a *stationary* binding agent; the binding agent is the smallest-`h` one, which is
+   almost always moving. So the mechanism this whole project is about never executes.
+3. **Worse: the defensive stand-in currently BEATS us.** S1 50.6 s vs our 53.0 s. S2 208.5 m vs
+   our 90.9 m. And S1 contains a real collision — `MC_WRONGSIDE` at **0.735 m** against 1.30 m
+   of body.
+
+**Fix order: probe gate → wrong-side motorcycle → re-run all four → only then put the
+probe-and-commit sentence back in the deck.** That work is the BACKUP chat's folder, not this
+repo's.
+
+### Also new tonight
+
+- **PR #9 is merged.** `origin/main` = `39ff9f3`. **PR #10 is now open** — the two findings, the
+  A/B contract freeze, and the `world/` resync that makes the build scripts portable.
+- **Both planner branches are now 0 behind** (5 Sep): `stream-d-a` 16 ahead, `stream-d-b`
+  20 ahead. The old "stream-d-b is 20 behind and is the head of the queue" is dead — she merged
+  main *and* `stream-d-a`, and nothing waits on her.
+- **The ONNX add-on is NOT demo-blocking.** The six `.onnx` files are already on disk at opsets
+  17/18/20, `check04` asks a weight-independent graph question, and `chooseVelocity`/`assignRoles`
+  contain zero `PYield` references. **You can run `check04` tonight without the ML pair.**
+- **`OpenTrafficLab/` must be cloned into the repo root** or 7 tests silently SKIP — 297, not 304.
+  A skip is not a pass, and this is how the count has been wrong five times.
+- **A drift the BACKUP chat should close:** `SPEC.md` was corrected at 21:55 to give the zebu as
+  2.05 x 0.64 x 1.46 m, but `+backup/scenarioSpec.m:62` still builds `[2.20 0.85 1.43]` and
+  `runScenario.m:50` still sizes `DMIN` from "cow half-width 0.43 m". The doc calls that number
+  load-bearing; the code disagrees with it.
 
 - **`matlab/baseline/` has been run on BOTH machines and fails identically at 19.7 s** —
   `plan/BASELINE-R2026a.md`. Person B's Windows run closed the platform question the same evening.

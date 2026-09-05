@@ -3,8 +3,9 @@
 #   CLOUD_HERO      : real volumetric cumulus, the pipeline from REF-12 s3
 import bpy, math, os, sys, time
 from mathutils import Vector
-BLEND="/Users/aditya/Desktop/SIH26037-Reference/blend/01_LIGHT.blend"
-RND ="/Users/aditya/Desktop/SIH26037-Reference/renders/city"
+REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+BLEND=f"{REF}/blend/01_LIGHT.blend"
+RND =f"{REF}/renders/city"
 bpy.ops.wm.open_mainfile(filepath=BLEND)
 sc=bpy.context.scene
 t0=time.time()
