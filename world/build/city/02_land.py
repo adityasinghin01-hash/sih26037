@@ -68,6 +68,12 @@ for m in ("bl_ext.blender_org.antlandscape","bl_ext.blender_org.sapling_tree_gen
     try: bpy.ops.preferences.addon_enable(module=m)
     except Exception as e: print("addon enable failed:", m, e)
 sc = bpy.context.scene
+# Cycles must be the engine for material.cycles / object.cycles to exist - D2 sets
+# displacement_method='BOTH' and adaptive subdivision, and those live on those property groups.
+try:
+    bpy.ops.preferences.addon_enable(module='cycles')
+except Exception as e: print("cycles addon enable:", e)
+sc.render.engine='CYCLES'
 sc.unit_settings.system='METRIC'; sc.unit_settings.length_unit='METERS'
 sc.view_settings.view_transform='Standard'; sc.view_settings.exposure=-3.06
 COL={}
@@ -348,6 +354,22 @@ _b1[2::4]=SURF['bare'].ravel();   _b1[3::4]=SURF['wet'].ravel()
 _b2[0::4]=SURF['spoil'].ravel();  _b2[1::4]=0.0; _b2[2::4]=0.0; _b2[3::4]=1.0
 _gr.data.foreach_set("color",_b1); _g2.data.foreach_set("color",_b2)
 print(f"  GROUND/GROUND2 attributes baked onto {_nv} terrain vertices")
+
+# CIRCLE: the mask for D2 - the 4K displacement tier lives INSIDE the five scenario circles only
+# (PLAN s9 C2 step 8). 1.0 in the core, a 40 m cosine rim so the tessellation boundary never
+# reads, 0.0 outside - where bump alone is right and cheap. The centres MUST match SCEN_CIRCLES
+# used by the rock scatter below; asserted.
+SCEN_CIRCLES=[(-280.0,450.0,205.0,"S1"),(340.0,-580.0,165.0,"S2"),(-155.0,-476.0,185.0,"S3"),
+              (130.0,-800.0,235.0,"S4"),(-690.0,760.0,205.0,"S5")]
+_cm=np.zeros_like(X)
+for _cx,_cy,_cr,_tg in SCEN_CIRCLES:
+    _d=np.hypot(X-_cx,Y-_cy)
+    _w=np.clip((_cr-_d)/40.0,0.0,1.0)              # 0 at the edge, 1 by 40 m inside
+    _cm=np.maximum(_cm, 0.5-0.5*np.cos(np.pi*_w)) # cosine ease
+_cc=me.color_attributes.new(name="CIRCLE",type='FLOAT_COLOR',domain='POINT')
+_bc=np.empty(_nv*4); _bc[0::4]=_cm.ravel(); _bc[1::4]=_cm.ravel(); _bc[2::4]=_cm.ravel(); _bc[3::4]=1.0
+_cc.data.foreach_set("color",_bc)
+print(f"  CIRCLE attribute baked: {(_cm>0.5).mean()*100:.2f}% of the plain inside the five circles")
 
 # ---------------------------------------------------------------- the hill: A.N.T. + the ERODER
 print("building the hill ...")
@@ -698,6 +720,19 @@ def closed_wedge(wet, ztop, zbot, name, shore=0.05):
     to bound its path length, and an open shell is what let absorption run away."""
     ny,nx = wet.shape
     cell = wet[:-1,:-1] & wet[:-1,1:] & wet[1:,1:] & wet[1:,:-1]     # fully-wet quads
+    # DE-PINCH (audit's standing WATER_PIT_1 warning). Two wet quads meeting only on a diagonal -
+    # the other two diagonals dry - make the rim wrap ONE vertical edge with FOUR faces (each of
+    # the four boundary edges round that node spawns a rim quad, and they all share the a->b
+    # vertical edge). A non-manifold shell lets the Principled Volume's path length run away.
+    # Fix causally: drop one quad of every diagonal-only pair until none remain. The bodies are
+    # 5 cm-tall sub-pixel wedges, so a 1-2 cell loss at a pinch is invisible.
+    for _dp in range(20):
+        NW=cell[:-1,:-1]; NE=cell[:-1,1:]; SE=cell[1:,1:]; SW=cell[1:,:-1]
+        p1 = NW & SE & ~NE & ~SW
+        p2 = NE & SW & ~NW & ~SE
+        if not (p1.any() or p2.any()): break
+        cell[1:,1:][p1]  = False        # clear SE of a NW-SE pinch
+        cell[1:,:-1][p2] = False        # clear SW of a NE-SW pinch
     used=np.zeros_like(wet)
     used[:-1,:-1]|=cell; used[:-1,1:]|=cell; used[1:,1:]|=cell; used[1:,:-1]|=cell
     # a node is SHORE if it touches any quad that is not a water quad
@@ -736,7 +771,9 @@ def closed_wedge(wet, ztop, zbot, name, shore=0.05):
     # otherwise". The rim quads' winding is not guaranteed by the order they were built in.
     bm=bmesh.new(); bm.from_mesh(me)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    nonman=sum(1 for e in bm.edges if not e.is_manifold)
     bm.to_mesh(me); bm.free(); me.update()
+    assert nonman==0, f"{name}: {nonman} non-manifold edges after de-pinch - the shell is not a closed solid"
     return ob, len(vs), len(fs), nrim, used, top_z
 
 wat, _nv, _nf, _nrim, WETN, WTOP = closed_wedge(wet, surf_field, H, "WATER_MALIN")
@@ -1014,6 +1051,22 @@ def soil_material(fields=True, subcell=()):
                   _math(nt,'MULTIPLY',_math(nt,'GREATER_THAN',state,0.80),0.42),hgt)
     nt.links.new(hgt,bump.inputs["Height"])
     nt.links.new(bump.outputs["Normal"],b.inputs["Normal"])
+    if fields:
+        # D2 - THE 4K DISPLACEMENT TIER, INSIDE THE FIVE SCENARIO CIRCLES ONLY (PLAN s9 C2 step 8).
+        # The SAME causally-placed S-scale relief (stones on the bars/apron, clods on the ploughed,
+        # cracked crust on the fallow) that drives the bump also drives REAL micro-displacement
+        # inside the circles - so at street / 2 m range the dirt has a SILHOUETTE, not just a
+        # shaded normal. Gated by the CIRCLE attribute: exactly 0 outside, where bump alone is
+        # right and cheap. The HEIGHT (Scale) and the dicing rate are an RTX judgement - 0.08 m of
+        # relief is invisible at 800x450 - so this ships as scaffold + assertions, tuned there.
+        circ=nt.nodes.new("ShaderNodeAttribute"); circ.attribute_name="CIRCLE"
+        dh=_math(nt,'MULTIPLY',_math(nt,'SUBTRACT',hgt,0.5),circ.outputs["Fac"])
+        disp=nt.nodes.new("ShaderNodeDisplacement")
+        disp.inputs["Scale"].default_value=0.10; disp.inputs["Midlevel"].default_value=0.0
+        nt.links.new(dh,disp.inputs["Height"])
+        _out=nt.nodes.get("Material Output") or next(nd for nd in nt.nodes if nd.type=='OUTPUT_MATERIAL')
+        nt.links.new(disp.outputs["Displacement"],_out.inputs["Displacement"])
+        m.displacement_method='BOTH'      # Blender 4.5: a core Material property, not material.cycles
     rr=nt.nodes.new("ShaderNodeValToRGB"); rr.color_ramp.elements[0].position=0.35
     rr.color_ramp.elements[0].color=(0.78,0.78,0.78,1); rr.color_ramp.elements[1].color=(0.98,0.98,0.98,1)
     nt.links.new(fine.outputs["Fac"], rr.inputs["Fac"])
@@ -1134,6 +1187,17 @@ def hill_material():
     return m
 ROCK=rock_material()
 terr.data.materials.append(SOIL)
+# D2 - Cycles ADAPTIVE SUBDIVISION carries the displacement above. It tessellates ONLY what the
+# camera sees and ONLY at render, so build and preview stay at 720k tris. A Subdivision Surface
+# modifier must be present and last in the stack for Cycles to pick it up; the dicing rate is the
+# RTX knob (lower = finer = more memory) and starts conservative.
+_tsub=terr.modifiers.new("ADAPTIVE_DICE",'SUBSURF')
+_tsub.subdivision_type='SIMPLE'; _tsub.levels=0; _tsub.render_levels=0
+try:
+    terr.cycles.use_adaptive_subdivision=True
+    terr.cycles.dicing_rate=2.0        # px/micropolygon at render; tune on the RTX against a 2 m crop
+except Exception as _e:
+    print("  NOTE adaptive subdivision flags not set headlessly:", _e)
 # 2 · ROCK ON THE UPPER THIRD - assigned per FACE by height and slope, so it appears where
 # soil cannot hold, exactly as REF-13 s6 read it off ref_33.
 # THE THREE-SCALE DEBRIS LAW (S0 s3, PLAN s3b) NEEDS THE SHADER TO KNOW WHERE DEBRIS IS.
@@ -1405,8 +1469,7 @@ print(f"  hill: {len(_hill_cand)} lit-rock-face candidates, {n_hill_sites} slab 
 # the five scenario circles, on the PLAIN - only where gravel bars / the Bhabar apron make a
 # real rock believable (S0 s3, REF-13 s6). Never scattered on farmland, which has none.
 print("scattering rocks on the plain's gravel bars / Bhabar apron, inside the five circles ...")
-CIRCLES=[(-280.0,450.0,205.0,"S1"),(340.0,-580.0,165.0,"S2"),(-155.0,-476.0,185.0,"S3"),
-         (130.0,-800.0,235.0,"S4"),(-690.0,760.0,205.0,"S5")]
+CIRCLES=SCEN_CIRCLES          # ONE source of truth - also drives the D2 CIRCLE displacement mask
 _Hgy,_Hgx=np.gradient(H,2*GEXT/NG,2*GEXT/NG)
 circle_log=[]
 for cx,cy,cr,tag in CIRCLES:
@@ -1829,6 +1892,32 @@ if _sm: flag(f"every SMALL rock's footprint stays under 0.35 m (worst {max(_foot
 
 # --- PHASE 2 STEP 10: 1.70 m reference figure ---
 check("1.70 m reference figure height (m)", float(fig_ob.dimensions.z), 1.70, 0.02)
+
+# --- D2: THE 4K DISPLACEMENT TIER, FIVE SCENARIO CIRCLES ONLY (PLAN s9 C2 step 8) ---
+_cattr=me.color_attributes.get("CIRCLE")
+flag("D2 - CIRCLE mask attribute baked onto the terrain", _cattr is not None)
+flag(f"D2 - CIRCLE mask has real, bounded coverage ({(_cm>0.5).mean()*100:.2f}% inside)",
+     0.0 < (_cm>0.5).mean() < 0.5)
+flag("D2 - the displacement mask uses the SAME five circles as the rock scatter",
+     CIRCLES is SCEN_CIRCLES)
+_dm=getattr(SOIL,'displacement_method','(missing)')
+flag(f"D2 - SOIL displacement method is BOTH (got '{_dm}')", _dm=='BOTH')
+_soil_out=next((nd for nd in SOIL.node_tree.nodes if nd.type=='OUTPUT_MATERIAL'), None)
+flag("D2 - a displacement chain reaches the SOIL Material Output",
+     _soil_out is not None and _soil_out.inputs["Displacement"].is_linked)
+# and it must be GATED: trace back from the Displacement socket and confirm a CIRCLE attribute is
+# in the chain, so nothing outside the circles is tessellated.
+def _feeds(sock, want, depth=0):
+    if depth>24 or not sock.is_linked: return False
+    src=sock.links[0].from_node
+    if src.type=='ATTRIBUTE' and getattr(src,'attribute_name','')==want: return True
+    return any(_feeds(i,want,depth+1) for i in src.inputs)
+flag("D2 - the displacement is GATED by the CIRCLE attribute (0 outside the circles)",
+     _soil_out is not None and _feeds(_soil_out.inputs["Displacement"],"CIRCLE"))
+flag("D2 - terrain carries an adaptive-dice subdivision modifier for the displacement",
+     any(m.type=='SUBSURF' for m in terr.modifiers))
+print("  NOTE  D2 displacement HEIGHT (Scale 0.10 m) and dicing rate (2.0) are RTX-tuned - "
+      "0.08 m of relief cannot be judged at 800x450. Scaffold + assertions ship here.")
 
 print(f"  INFO  grid {NG}x{NG} = {NG*NG*2:,} tris, cell {2*GEXT/NG:.2f} m")
 print(f"  INFO  height range over the plain: {H.min():.1f} .. {H.max():.1f} m")

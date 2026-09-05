@@ -129,6 +129,30 @@ print(f"classified per point and split at tag changes: {len(ROADS)} pieces cover
       f"{len(set(r['way'] for r in ROADS))} of {len(J)} ways, median match error "
       f"{np.median([r['err'] for r in ROADS]):.2f} m")
 
+# ---------------------------------------------------------------- CLIP THE HILL FOOTPRINT
+# S5 puts an INVENTED 170 m hill at (-1050, 900), and the designed switchback climb to the temple
+# is COMPONENT 3 PASS 2 - not an OSM lane. Four residential OSM pieces run straight across the
+# hill's toe; with the hill grown over them in 02_land.py they end up 20-43 m UNDERGROUND (the
+# audit's rule 3 catches it now the hill is folded into the height field). They are map artifacts
+# where the invented hill sits, so they are dropped here. Same ellipse as 02_land.py: centre
+# (-1050, 900), axes 500 x 350, long axis rotated 38 deg NW.
+_HX,_HY,_HA,_HB,_HTH = -1050.0, 900.0, 250.0, 175.0, math.radians(38.0)
+_ct,_st = math.cos(_HTH), math.sin(_HTH)
+def _in_hill(P):
+    dx=P[:,0]-_HX; dy=P[:,1]-_HY
+    u =  _ct*dx + _st*dy
+    v = -_st*dx + _ct*dy
+    e = (u/_HA)**2 + (v/_HB)**2
+    return (e.min()<0.5) or ((e<1.0).mean()>0.30)     # deep under it, or mostly inside it
+_before=len(ROADS)
+_drop=[r for r in ROADS if _in_hill(r['P'])]
+_clipped=[r['rid'] for r in _drop]
+ROADS=[r for r in ROADS if not _in_hill(r['P'])]
+HILL_CLIPPED_WAYS={r['way'] for r in _drop} - {r['way'] for r in ROADS}   # ways with nothing left
+print(f"hill-footprint clip: dropped {_before-len(ROADS)} OSM piece(s) inside the invented hill "
+      f"({', '.join(_clipped) if _clipped else 'none'}), {len(HILL_CLIPPED_WAYS)} way(s) fully "
+      f"removed; the S5 climb road is pass 2")
+
 # ---------------------------------------------------------------- 1 · CONFORM THE TERRAIN
 # Roads are CUT INTO land (REF-07 s1, REF-08 s4). Level each corridor across its width to the
 # road's own longitudinal profile, feathered out over the verge, so the road neither floats nor
@@ -268,9 +292,14 @@ def flag(name,cond):
 
 import collections
 cls_json=collections.Counter(r['class'] or 'residential' for r in J)
+# the hill clip deliberately removed the OSM lanes that ran under the invented S5 hill; discount
+# them from both the way total and the per-class counts, or the assertions fight the design.
+for _w in HILL_CLIPPED_WAYS:
+    cls_json[[r['class'] or 'residential' for r in J if r['id']==_w][0]]-=1
 ways=set(r['way'] for r in ROADS)
-flag(f"every OSM way is represented: {len(ways)} of {len(J)} ways carry at least one segment",
-     len(ways)==len(J))
+_expect_ways=len(J)-len(HILL_CLIPPED_WAYS)
+flag(f"every OSM way is represented, less {len(HILL_CLIPPED_WAYS)} clipped by the hill: "
+     f"{len(ways)} of {_expect_ways} ways carry a segment", len(ways)==_expect_ways)
 cls_built=collections.Counter()
 for w in ways:
     cls_built[[r['class'] or 'residential' for r in J if r['id']==w][0]]+=1
