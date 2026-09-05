@@ -136,8 +136,16 @@ end
 
 function m = iExpected(v)
 %IEXPECTED  jsondecode collapses an N-by-1 array of rows into a vector. Restore the matrix.
+%
+%   THE EMPTY CASE IS 0-BY-31, NOT 0-BY-0.  AGENTS.md section 3, S2: FeatureFrame
+%   .Data is [N x 31 single], so an empty frame still has 31 columns. features.py
+%   already returns np.zeros((0, 31)) and is correct. The fixture is what loses the
+%   column count: JSON serialises an empty array as [] and jsondecode gives back
+%   0-by-0, so this helper was comparing 0-by-31 against 0-by-0 and failing a frame
+%   that was right on both sides. Fixed on the MATLAB side because Python matches
+%   the contract and MATLAB did not.
 if isempty(v)
-    m = [];
+    m = zeros(0, 31);
 elseif iscell(v)
     m = cell2mat(cellfun(@(r) r(:).', v, 'UniformOutput', false));
 elseif isvector(v)
