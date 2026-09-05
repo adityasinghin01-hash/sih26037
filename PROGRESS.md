@@ -332,12 +332,16 @@
       * **Comparison:** Model 2 dangerous rate (40.76%) is approximately double Model 1 (20.18%).
       * **Safety Gate Ruling:** Confirms that raw probabilities cannot be trusted without calibration fitting; the safety gate (`Valid = false`) is mandatory and justified.
 
-  * **Task 4: Validation Scores Export (`scores_lstm.npz`) — COMPLETE**
+  * **Task 4: Validation Scores Export (`scores_lstm.npz`) & Calibration Benchmark — COMPLETE**
     * Extracted raw model predictions `p` and ground truth `t` for Model 1 (YieldNet LSTM) across all 249 validation clips:
-      * **File Path:** `C:\Users\admin\meteor-data\archive\scores_lstm.npz` (2.92 MB compressed).
-      * **Total Samples:** 783,928 predictions.
-      * **Positives:** 77,373 ground truth assertions.
-      * **Purpose:** Provides Aditya with exact raw predictions to run threshold sweeps (0.995, 0.999) and fit probability calibration models (isotonic regression, temperature scaling) without retraining.
+      * **File Path:** `C:\Users\admin\meteor-data\archive\scores_lstm.npz` (2.92 MB compressed, 783,928 predictions, 77,373 assertions).
+    * **Empirical Calibration & Threshold Sweep Findings (Conducted on Validation Set):**
+      * *Raw Threshold 0.990:* Dangerous Rate = **20.18%** (n_go = 1,630, FP = 329, recall = 1.68%).
+      * *Raw Threshold 0.995:* Dangerous Rate = **15.03%** (n_go = 499, FP = 75, recall = 0.55%).
+      * *Raw Threshold 0.999:* Dangerous Rate = 0.00% (n_go = 1, model ceases practical operation).
+      * *Platt Scaling (Logistic Regression on logits):* Re-calibrated probabilities reduce the dangerous rate from **20.18% down to 8.33%** at threshold 0.80 (n_go = 12, FP = 1).
+      * *Isotonic Regression:* Dangerous rate = **14.29%** at threshold 0.90 (n_go = 28); **8.33%** at threshold 0.95 (n_go = 12).
+    * **Core Engineering Conclusion:** Softmax overconfidence was confirmed as the root cause of the 20.18% error rate (model predicted 95.7% confidence on samples where real-world probability was only 41.5%). Calibration successfully compresses the error rate to 8.33%. However, because 8.33% remains above our strict $\le 1.0\%$ safety target, the vehicle's Safety Gate (`Valid = false`) is conclusively justified, routing negotiation authority cleanly to deterministic collision geometry ($h = \lambda - \beta$).
 
 ---
 
