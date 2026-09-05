@@ -184,6 +184,24 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     dp.inputs["Density Max"].default_value=dens_max
     dp.inputs["Seed"].default_value=seed
     L.new(gi.outputs[0], dp.inputs["Mesh"])
+    # PLAN s10 Phase 3 item 12: DISC, NOT SQUARE. The field mesh is a flat square, so a Poisson
+    # scatter across it wastes ~21% of its points in the corners - past FIELD_RADIUS, which is
+    # already past the visibility fade anyway (~21% free is the plan's own estimate). Delete at
+    # the POINT stage so real geometry never gets born there, not just hidden by the shader fade
+    # further down - that fade changes the PICTURE, not the memory.
+    pos=n.new("GeometryNodeInputPosition")
+    sxyz=n.new("ShaderNodeSeparateXYZ"); L.new(pos.outputs["Position"], sxyz.inputs["Vector"])
+    cxy=n.new("ShaderNodeCombineXYZ")
+    L.new(sxyz.outputs["X"], cxy.inputs["X"]); L.new(sxyz.outputs["Y"], cxy.inputs["Y"])
+    plen=n.new("ShaderNodeVectorMath"); plen.operation='LENGTH'
+    L.new(cxy.outputs["Vector"], plen.inputs[0])
+    beyond=n.new("ShaderNodeMath"); beyond.operation='GREATER_THAN'
+    beyond.inputs[1].default_value=CLOUD_FIELD/2.0
+    L.new(plen.outputs["Value"], beyond.inputs[0])
+    ddel=n.new("GeometryNodeDeleteGeometry"); ddel.domain='POINT'
+    L.new(dp.outputs["Points"], ddel.inputs["Geometry"])
+    L.new(beyond.outputs["Value"], ddel.inputs["Selection"])
+    dp_pts=ddel.outputs["Geometry"]
     # the envelope this population's lobes live inside
     env=n.new("GeometryNodeMeshUVSphere"); env.inputs["Segments"].default_value=10
     env.inputs["Rings"].default_value=6; env.inputs["Radius"].default_value=1.0
@@ -206,9 +224,10 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     L.new(lb.outputs["Points"], i2.inputs["Points"]); L.new(ico.outputs["Mesh"], i2.inputs["Instance"])
     L.new(rv.outputs["Value"], i2.inputs["Scale"])
     r2=n.new("GeometryNodeRealizeInstances"); L.new(i2.outputs["Instances"], r2.inputs["Geometry"])
-    # place a cluster at every point of this population
+    # place a cluster at every point of this population - dp_pts, the DISC-culled points, not
+    # dp.outputs["Points"] directly.
     iop=n.new("GeometryNodeInstanceOnPoints")
-    L.new(dp.outputs["Points"], iop.inputs["Points"]); L.new(r2.outputs["Geometry"], iop.inputs["Instance"])
+    L.new(dp_pts, iop.inputs["Points"]); L.new(r2.outputs["Geometry"], iop.inputs["Instance"])
     rs=n.new("FunctionNodeRandomValue"); rs.data_type='FLOAT_VECTOR'
     rs.inputs[0].default_value=(smin,smin,smin*0.85)
     rs.inputs[1].default_value=(smax,smax,smax*1.25)   # Z varies MORE: some tower, some stay flat
