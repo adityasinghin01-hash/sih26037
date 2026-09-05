@@ -399,6 +399,10 @@
     * Model 3 Spotter pipeline is fully functional and saved to disk.
     * Warm-start resumption implemented in `trainSpotter.m` (`InitialDetector` argument) allowing seamless resumption of further training epochs.
     * **Active Overnight Run:** Resumed training for 5 more epochs from `net_checkpoint__1476__2026_09_06__02_07_52.mat` (total 6 epochs tonight), finishing at ~4:55 AM with a 1-hour safety margin before the 6:00 AM lab shutdown. Remaining 9 epochs can be run post-demo.
+* **[04:38 IST] Step 79 Pre-requisite: VOC to COCO Conversion Script (`ml/python/idd/voc2coco.py`) COMPLETE**
+  * Created `ml/python/idd/voc2coco.py` to bridge IDD Pascal-VOC XML annotations to Python YOLOX COCO JSON format.
+  * Preserves frozen S5 class schema (IDs 1–15) and identical class alias mappings from `readDetectionData.m`.
+  * Verified end-to-end on local curated dataset (`C:\Users\admin\idd-curated`): parsed 3,691 valid images (44,781 train annotations, 11,304 val annotations; 3,635 cows, 4,492 auto-rickshaws, 0 pushcarts). Split matches 80/20 train/val. Committed and pushed to `stream-ml`.
 
 ---
 
@@ -439,6 +443,7 @@ AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
 [x] Task 4 (Scores Export): scores_lstm.npz extracted (2.92 MB, 783k samples, 77k positives)
 [x] Task 5 (Branch Sync): Merged origin/main into stream-ml (clean merge, pushed to origin)
 [x] Task 6 (Model 3 YOLOX): Curated dataset (3,691 frames), H7/H9 fixed, Spotter trained, AP evaluated & saved to spotter_yolox.mat (33.5 MB)
+[x] Part 15 Pre-requisite: voc2coco.py verified on 3,691 images (56k boxes) & pushed to stream-ml
 ===============================================================================
 Workstation Deliverables Status: ALL 6 TASKS 100% COMPLETE AND SAVED TO DISK.
 ===============================================================================
