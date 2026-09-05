@@ -171,3 +171,44 @@ verifyNotEqual(tc, bad.Role, good.Role, ...
     ['mixing an ego-frame TrackList with a world ego pose must NOT silently agree - ' ...
      'if it does, this test is no longer protecting anything']);
 end
+
+% ------------------------------------------- assignRoles' second output, added 4 Sep 2026
+
+function testAssignRolesAlsoReturnsTheGeometryItUsedToThrowAway(tc)
+% It always built a full velocityObstacle result per agent and kept three fields of
+% it. Now it hands the rest back, so sih.planner.arbitrate can pick an agent without
+% ever being shown a position - and therefore without a frame to get wrong.
+tracks = [iTrack(1, [20 0], [-8 0]); iTrack(2, [10 10], [0 -5])];
+[roles, vos] = sih.planner.assignRoles([0 0], [8 0], 0, tracks);
+
+verifyNumElements(tc, vos, 2);
+verifyEqual(tc, [roles.Beta],   [vos.beta],   'AbsTol', 1e-12);
+verifyEqual(tc, [roles.Lambda], [vos.lambda], 'AbsTol', 1e-12);
+verifyEqual(tc, [roles.TCPA],   [vos.tcpa],   'AbsTol', 1e-12);
+end
+
+function testTheSecondOutputIsTheSameThingVelocityObstacleReturns(tc)
+% Not a lookalike. chooseVelocity reads .h off it, so it has to BE one.
+tracks = iTrack(1, [20 0], [-8 0]);
+[~, vos] = sih.planner.assignRoles([0 0], [8 0], 0, tracks);
+direct = sih.planner.velocityObstacle([0 0], [8 0], [20 0], [-8 0], 2.5);
+
+verifyEqual(tc, fieldnames(vos), fieldnames(direct));
+verifyEqual(tc, vos.h, direct.h, 'AbsTol', 1e-12);
+end
+
+function testAnEmptyTrackListStillGivesTwoUsableOutputs(tc)
+% S1 guarantee 3. Both outputs must come back empty rather than missing, or a caller
+% that always asks for two errors on an empty road.
+proto = iTrack(1, [20 0], [-8 0]);
+[roles, vos] = sih.planner.assignRoles([0 0], [8 0], 0, proto([]));
+verifyEmpty(tc, roles);
+verifyEmpty(tc, vos);
+end
+
+function testAskingForOneOutputStillWorks(tc)
+% Backward compatibility, stated as a test: every existing caller asks for one thing.
+tracks = iTrack(1, [20 0], [-8 0]);
+roles  = sih.planner.assignRoles([0 0], [8 0], 0, tracks);
+verifyEqual(tc, roles.TrackID, uint32(1));
+end
