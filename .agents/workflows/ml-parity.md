@@ -57,7 +57,7 @@ pairs — records what Python produces, and writes `ml/python/tests/parity_fixtu
 In MATLAB, from the repository root:
 
 ```matlab
-runtests('matlab/tests/testFeatureParity')
+runtests('matlab/tests/testFeatureParity.m')
 ```
 
 **Validation:** all tests pass. Agreement is required to `1e-6`.

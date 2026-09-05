@@ -67,8 +67,14 @@ elseif exist('yoloxObjectDetector','file') == 2
     fprintf('              Home -> Add-Ons -> Get Add-Ons -> "Automated Visual Inspection\n');
     fprintf('              Library for Computer Vision Toolbox". Free.\n');
     fprintf('              Only blocks model 3. Everything else runs without it.\n');
+elseif isempty(ver('vision'))
+    fprintf('  [ MISSING ] Computer Vision Toolbox itself is not installed.\n');
 else
-    fprintf('  [ absent ]  no YOLOX at all - Computer Vision Toolbox is missing\n');
+    % CVT is present - so the gap is the free add-on, NOT the toolbox.
+    fprintf('  [ absent ]  the YOLOX add-on is not installed (the toolbox IS).\n');
+    fprintf('              Home -> Add-Ons -> Get Add-Ons -> "Automated Visual Inspection\n');
+    fprintf('              Library for Computer Vision Toolbox". Free.\n');
+    fprintf('              Only blocks model 3. Do NOT reinstall Computer Vision Toolbox.\n');
 end
 
 %% --- ONNX support package ------------------------------------------
@@ -90,7 +96,7 @@ ver
 
 fprintf('\n===== VERDICT =====\n');
 if allOK
-    fprintf('All seven required products present. Proceed to check02_lidar_cow.m\n');
+    fprintf('All required products present. Proceed to check02_lidar_cow.m\n');
 else
     fprintf('BLOCKED. Email the licence admin with the MISSING lines above.\n');
 end

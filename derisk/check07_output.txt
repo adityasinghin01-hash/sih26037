@@ -1,0 +1,92 @@
+
+===== CHECK 7 : NEGATIVE OBSTACLE / DRIVABLE CORRIDOR =====
+Release : 2026a
+
+[1] Road with elevation created. RoadCenters z range: 0.00 to 12.00 m
+[2] roadBoundaries returned 1 boundary set(s).
+    first set: 203 points, z range 0.00 to 12.00
+    >> QUESTION: is the road a SURFACE with an edge, or just a centreline+width?
+
+[3] lidarPointCloudGenerator created. HasRoadsInputPort = 1
+    >> THE DECIDING QUESTION: with HasRoadsInputPort true, do we get
+       ground returns ON the road and NO returns beside it?
+       If yes, a drop-off is detectable as ABSENCE and the ghat scenario works.
+       If the road produces no returns at all, the cuboid world has no ground,
+       and the drop-off must be modelled another way (see NEXT below).
+
+***** ERROR *****
+MATLAB:TooManyOutputs
+Too many output arguments.
+  at check07_negative_obstacle (line 44)
+
+===== NEXT =====
+If the cuboid world has NO ground beside the road, the fallbacks are:
+  a) mark off-road as occupied in vehicleCostmap — corridor works, lidar demo does not
+  b) place thin static actors along the drop edge as a stand-in wall
+  c) do the ghat scenario in an Unreal scene instead, where terrain is real
+Report which of these is needed. Do not summarise the error.
+
+===== CHECK 7 : NEGATIVE OBSTACLE / DRIVABLE CORRIDOR =====
+Release : 2026a
+
+[1] Road with elevation created. RoadCenters z range: 0.00 to 12.00 m
+[2] roadBoundaries returned 1 boundary set(s).
+    first set: 203 points, z range 0.00 to 12.00
+    >> QUESTION: is the road a SURFACE with an edge, or just a centreline+width?
+
+[3] lidarPointCloudGenerator created. HasRoadsInputPort = 1
+    >> THE DECIDING QUESTION: with HasRoadsInputPort true, do we get
+       ground returns ON the road and NO returns beside it?
+       If yes, a drop-off is detectable as ABSENCE and the ghat scenario works.
+       If the road produces no returns at all, the cuboid world has no ground,
+       and the drop-off must be modelled another way (see NEXT below).
+
+[4] Point cloud returned: 72000 points
+    finite points: 21408
+    x -1.0..59.2   y -2.0..2.0   z 0.7..3.5
+    >> If |y| stops near the 4 m road width, the road edge IS visible.
+
+[5] vehicleCostmap created: vehicleCostmap
+    CollisionChecker: driving.costmap.InflationCollisionChecker
+    >> Can we mark everything outside roadBoundaries as occupied?
+       If yes, the corridor barrier h_road wraps a SHIPPED object — no new struct.
+
+===== NEXT =====
+If the cuboid world has NO ground beside the road, the fallbacks are:
+  a) mark off-road as occupied in vehicleCostmap — corridor works, lidar demo does not
+  b) place thin static actors along the drop edge as a stand-in wall
+  c) do the ghat scenario in an Unreal scene instead, where terrain is real
+Report which of these is needed. Do not summarise the error.
+
+===== CHECK 7 : NEGATIVE OBSTACLE / DRIVABLE CORRIDOR =====
+Release : 2026a
+
+[1] Road with elevation created. RoadCenters z range: 0.00 to 12.00 m
+[2] roadBoundaries returned 1 boundary set(s).
+    first set: 203 points, z range 0.00 to 12.00
+    >> QUESTION: is the road a SURFACE with an edge, or just a centreline+width?
+
+[3] lidarPointCloudGenerator created. HasRoadsInputPort = 1
+    >> THE DECIDING QUESTION: with HasRoadsInputPort true, do we get
+       ground returns ON the road and NO returns beside it?
+       If yes, a drop-off is detectable as ABSENCE and the ghat scenario works.
+       If the road produces no returns at all, the cuboid world has no ground,
+       and the drop-off must be modelled another way (see NEXT below).
+
+[4] Point cloud returned: 72000 points
+    finite points: 21408
+    x -1.0..59.2   y -2.0..2.0   z 0.7..3.5
+    >> If |y| stops near the 4 m road width, the road edge IS visible.
+    Figure saved: check07_pointcloud.png
+
+[5] vehicleCostmap created: vehicleCostmap
+    CollisionChecker: driving.costmap.InflationCollisionChecker
+    >> Can we mark everything outside roadBoundaries as occupied?
+       If yes, the corridor barrier h_road wraps a SHIPPED object — no new struct.
+
+===== NEXT =====
+If the cuboid world has NO ground beside the road, the fallbacks are:
+  a) mark off-road as occupied in vehicleCostmap — corridor works, lidar demo does not
+  b) place thin static actors along the drop edge as a stand-in wall
+  c) do the ghat scenario in an Unreal scene instead, where terrain is real
+Report which of these is needed. Do not summarise the error.

@@ -8,14 +8,19 @@
 >
 > ### Your first task needs nobody, and it is blocking everyone
 >
-> **`matlab/baseline/` is EMPTY.** It is supposed to hold MathWorks' shipped planner,
-> completely unmodified — the thing we compare ourselves against.
+> **E1 IS DONE — `matlab/baseline/` is filled** (4 Sep 2026), unmodified and checksummed.
+> **Your task is now to RUN it once, unmodified, and record exactly what happens.**
+> `checkcode` passes on all 7 files, but that is not a run — so there is still no comparison.
+> Read `matlab/baseline/BASELINE.md` first. If it errors on R2026a the way OpenTrafficLab did,
+> **that is a finding: write it down, do not fix it.**
 >
 > ```bash
 > # from the repo root, and then CHANGE NOTHING inside it
 > ```
-> Find the shipped example named in [`AGENTS.md`](../AGENTS.md) section 2, copy it in unmodified,
-> and record the exact example name and MATLAB version alongside it.
+> The example is named in **task E1 below** — *Motion Planning in Urban Environments Using
+> Dynamic Occupancy Grid Map*. **`AGENTS.md` section 2 does NOT name it** — it names the three
+> baseline *types*. Do not go looking there and copy in the Frenet highway example by mistake.
+> Copy it in unmodified and record the exact example name and MATLAB version alongside it.
 >
 > **Until that exists, no number this project produces is comparable to anything**, and the
 > claim the whole project rests on has nothing behind it. It is a clone-and-don't-touch job,
@@ -30,7 +35,9 @@
 A working planner with no numbers loses to a worse planner that has a graph. Every claim we make
 in the final presentation comes from your work.
 
-**Your machine:** Windows
+**Your machine:** Windows — that is where you develop.
+**The demo machine is Aditya's Mac** (`TEAM.md`, "The main machine"). Every result that goes in the
+report must be reproducible there, so no `C:\` paths anywhere near `runExperiment`.
 **Your branch:** `stream-e-evidence`
 
 ---
@@ -75,10 +82,11 @@ to open the right folder.
 
 Go to **mathworks.com**, sign in with your **college email**, and associate licence **41087767**.
 
-When the installer asks which products to install, tick **all seven**:
+When the installer asks which products to install, tick **all nine**:
 
 > MATLAB · Simulink · Automated Driving Toolbox · Computer Vision Toolbox ·
-> Image Processing Toolbox · Deep Learning Toolbox · Stateflow
+> Image Processing Toolbox · Deep Learning Toolbox · Stateflow ·
+> **Sensor Fusion and Tracking Toolbox · Navigation Toolbox**
 
 Then, inside MATLAB: **Home → Add-Ons → Get Add-Ons**, search for
 **"Deep Learning Toolbox Converter for ONNX Model Format"** and install it. It is free.
@@ -90,8 +98,10 @@ cd <where-you-cloned>/sih26037/derisk
 check01_environment
 ```
 
-You should see seven lines saying `[ OK ]`.
-**If any line says `MISSING`, stop and tell Aditya.** Nothing else will work until it is fixed.
+You should see nine lines saying `[ OK ]` under REQUIRED PRODUCTS.
+**If any line says `MISSING`, stop and tell Aditya** — with one exception:
+`[ MISSING ] no ONNX import` blocks only the yield predictor (Stream C, and D's wiring of
+it). D1-D5 and E1 do not need it. Carry on, and say which one you saw.
 
 ---
 
@@ -99,7 +109,8 @@ You should see seven lines saying `[ OK ]`.
 
 Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
 name and signature was checked against the MathWorks documentation, but **checked is not run**.
-Four real defects were already found that way and there are probably more.
+Defects have already been found exactly that way, and **seven more on 4 September 2026** —
+two of which stopped the simulation from running at all.
 
 The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
 everything that has never been executed, in the right order, and says what to look for.
@@ -179,7 +190,7 @@ not *"it says something about a null value"*. The complete message.
 
 **Two things to refuse if your agent suggests them:**
 
-1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — four other people build against it
+1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — five other people build against it
 2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
 
 **And never let it write a number you have not produced.** If the agent puts a figure in a comment
@@ -276,24 +287,53 @@ One baseline is attackable as strawman-by-selection. Three is not.
 evidence that ours discriminates — that is the scientific contribution, and it costs nothing extra
 because we are building all three anyway.
 
-### E9 — Prove it, then break it  *(NEW — we have the whole licence)*
+### ~~E9 — Prove it, then break it~~  **CANCELLED 4 September 2026 — WE DO NOT HAVE THE LICENCE**
 
-**Simulink Design Verifier** does automatic theorem proving on Stateflow. **Prove `h >= 0` holds
-inside our own chart** instead of borrowing a CBF from a paper.
-*Caveat: the literature reports Stateflow has limited formal-analysis support and incomplete
-coverage. Test it on a toy chart in week one before anyone promises it on a slide.*
+> **Do not attempt any part of this task. Every toolbox it depends on is absent.**
+> The heading used to read *"we have the whole licence"*. That was never checked, and it is wrong.
 
-**Simulink Fault Analyzer** injects faults **without modifying the design**, with sensitivity
-sweeps and FMEA linked to requirements. **M3 becomes a standards-form safety analysis** instead of
-hand-rolled noise — and weather (rain, fog, dust) becomes a *physically meaningful* x-axis rather
-than abstract noise. Report the severity at which we stop working; do not pretend there isn't one.
+**Verified by running `ver` on the Mac, R2026a Update 5, 4 September 2026:**
 
-**Requirements Toolbox + Simulink Test + Simulink Coverage** — link every PS requirement to a test
-case to a result, auto-generate the traceability report. **This is what makes "the missing ADAS
-test suite for India" a literal artefact rather than a framing.** Highest-value item on this list.
+| Toolbox E9 needs | Installed? |
+|---|---|
+| Simulink Design Verifier | **NO** |
+| Simulink Fault Analyzer | **NO** |
+| Requirements Toolbox | **NO** |
+| Simulink Test | **NO** |
+| Simulink Coverage | **NO** |
+| Embedded Coder | **NO** |
+| MATLAB Coder | **NO** |
+| Simulink Coder | **NO** |
 
-**Embedded Coder + PIL** — generate C, run it on a real chip, report **measured** replanning latency
-per layer. Everyone else will report simulation time.
+**All eight. Not some of it — all of it.** The complete list of the 11 products we actually have:
+MATLAB, Simulink, Stateflow, Automated Driving, Computer Vision, Deep Learning, Image Processing,
+Lidar, Mapping, Navigation, Sensor Fusion and Tracking.
+
+### What was lost, and what replaces it
+
+| E9 promised | Reality |
+|---|---|
+| Formal proof that `h >= 0` inside the chart | **Not available.** We show `h` **measured** every step across a run, and report `min(h)` and the count of `h < 0`. That is evidence, not proof, and we call it evidence |
+| Fault injection / FMEA as a standards artefact | **Not available.** Any robustness sweep we do is hand-rolled, and must be described that way |
+| Requirement→test→result traceability report | **Not available.** `runtests('matlab/tests')` and the per-function contract headers are what we have |
+| **Measured** C latency on a chip (PIL) | **Not available.** We may report MATLAB timings and must label them **simulation timings**, never "latency on hardware" |
+
+### Two consequences that reach other people
+
+- **Person B: the `.Reason` string concern is void.** It was raised because Embedded Coder restricts
+  strings inside buses, and E9 needed that for the PIL numbers. There is no Embedded Coder, so the
+  constraint does not exist. `.Reason` stays a MATLAB `string` exactly as S4 specifies, and nothing
+  in `AGENTS.md` section 3 needs revisiting.
+- **`%#codegen` directives in the Stateflow charts are inert.** Harmless, but they do not mean the
+  model can generate code — nothing here can.
+
+### The honest sentence, if a judge asks
+
+> We did not do formal verification or hardware-in-the-loop timing. Those need toolboxes outside our
+> licence. What we have instead is the barrier value logged every step of every run, and the runs are
+> reproducible.
+
+**That is a fine answer. Claiming a formal proof we did not run is not.**
 
 ### E10 — Two metrics changed  *(NEW)*
 

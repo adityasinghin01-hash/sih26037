@@ -10,6 +10,7 @@ unstructured Indian roads.
 > An Indian junction has no controller. We built the planner that negotiates instead of waiting -
 > in MATLAB, against a cow that behaves like a cow.
 
+**Latest state and per-person next steps: `HANDOFF.md`.**
 PRD: a PDF, ask Aditya. Your tasks: your stream folder, `ml/` or `plan/`.
 Who does what: `TEAM.md`. **The World is Aditya's, not a folder here** - `S1` and `S9` come
 from him.
@@ -38,7 +39,8 @@ control arm. A tuned baseline is a strawman and kills the result.
   import (no `Gather`/`Scatter`) - written as an adjacency **matmul + softmax** it imports fine.
   `Adjacency` exists for exactly this. **The LSTM ships first and is never blocked by the GNN.**
 - **Do not import YOLO.** Use MATLAB's built-in YOLOX
-- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete `TrafficController`
+- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete `TrafficController`.
+  **Needs 2 fixes on R2026a** - see `plan/OPENTRAFFICLAB-R2026a.md`. Never edit its folder
 - **Dataset is METEOR**, not IDD-X
 - **Project the simulation down to the image plane. Never lift METEOR up to 3-D**
 

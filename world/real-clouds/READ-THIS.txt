@@ -1,0 +1,29 @@
+REAL CLOUDS — reference photographs
+===================================
+Drop cloud and sky photos in here. Yours, or found. Any format.
+
+WHAT IS MOST USEFUL, in order:
+  1. YOUR OWN PHOTOS of the sky you actually want. Afternoon, sun high, real cumulus.
+     These beat anything downloaded, because I can measure them and match the numbers
+     instead of guessing - the same way the dawn sky was matched off the dashcam frames.
+  2. Shot from the ground, looking up and out - not aerial, not from a plane.
+  3. A range: fair-weather puffs, towering build-ups, thin high veil, broken cloud.
+     Real skies mix types; a single cloud shape reads as CG.
+  4. Wide shots that include the horizon, so the haze band and the cloud base line
+     can both be read.
+
+NAMING - helps but is not required:
+  afternoon_01.jpg   morning_02.jpg   evening_03.jpg   night_01.jpg
+
+WHAT I DO WITH THEM:
+  - Measure RGB, saturation and brightness at several heights, as was done for the
+    dashcam frames (result: R191 G188 B183, 4.6% saturation, warm grey - which
+    overturned what the script had assumed).
+  - Read the cloud TYPE and base height, and match the volumetric shapes to it.
+  - If a photo is good enough it can also become the sky plane directly - see
+    REF-12 section 2. If used that way its sun must be on the same side as ours,
+    or it gets mirrored.
+
+ONE RULE: photos you took yourself can be used directly in the film.
+Anything downloaded is LOOK-ONLY - model from the shapes, never ship the pixels.
+That is why trees/ and real-india/ are gitignored.
