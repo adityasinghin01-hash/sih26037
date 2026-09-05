@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **90%** | 66 active milestones addressed across 83 total steps |
-| **Completed Steps** | **65** | `[🟢COMPLETED]` — Steps 77-80 complete: A100 GPU, dataset, COCO JSON, YOLOX installed & configured |
+| **Overall Pipeline Progress** | **92%** | 67 active milestones addressed across 83 total steps |
+| **Completed Steps** | **66** | `[🟢COMPLETED]` — Steps 77-81 complete: A100 training complete (mAP 29.09%, cow 16.3%, auto 38.2%) |
 | **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
-| **Active Planned Steps** | **3** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 81–83) |
+| **Active Planned Steps** | **2** | `[🔵TO DO]` — Part 15: ONNX export & MATLAB import (Steps 82–83) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -30,7 +30,7 @@
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
-| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 4/7 COMPLETE, 3 TO DO | Steps 77-80 complete (GPU, data, COCO, YOLOX installed); Step 81 training next |
+| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 5/7 COMPLETE, 2 TO DO | Steps 77-81 complete (15 epochs on A100 done); Step 82 ONNX export next |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1318,7 +1318,7 @@ Done when: `exps/sih_yolox_s.py` is saved with the above settings and imports wi
 
 ### Phase D: Train YOLOX-S on A100
 
-#### Step 81 Launch Training on A100 [🔵TO DO] [HIGH]
+#### Step 81 Launch Training on A100 [🟢COMPLETED] [HIGH]
 
 Run in JupyterLab Terminal from the `/home/jovyan/YOLOX/` directory:
 

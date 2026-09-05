@@ -428,6 +428,24 @@
   * Downloaded official COCO pretrained weights `yolox_s.pth` (68.75 MB).
   * Created `exps/sih_yolox_s.py`: 15 S5 foreground classes, 640x640 resolution, 15 epochs.
   * Verified: `SUCCESS: Config loaded with num_classes = 15`.
+* **[05:18 IST] Step 81: 15-Epoch YOLOX-S Training on DGX A100 COMPLETE**
+  * Executed full 15-epoch training in `/home/jovyan/YOLOX` on NVIDIA A100-SXM4-40GB GPU:
+    * Batch size: 32 (FP16 mixed precision), total training time: ~18 minutes (~1.2 min/epoch!).
+    * Checkpoint saved to: `YOLOX_outputs/sih_yolox_s/best_ckpt.pth`.
+    * Inference speed on A100: **1.54 ms/frame** (~650 FPS).
+  * **Verified Validation AP Metrics (IoU 0.50:0.95):**
+    - `car`: AP = **42.83%** (AR = 48.84%)
+    - `bus`: AP = **39.70%** (AR = 46.64%)
+    - `auto-rickshaw`: AP = **38.18%** (AR = 44.71%) — massive convergence!
+    - `truck`: AP = **36.07%** (AR = 46.75%)
+    - `motorbike`: AP = **33.01%** (AR = 40.43%)
+    - `pedestrian`: AP = **22.47%** (AR = 31.04%)
+    - `static obstacle`: AP = **18.00%** (AR = 28.49%)
+    - `cow`: AP = **16.33%** (AR = 24.40%) — up from 2.43% on local 6-epoch run!
+    - `bicycle`: AP = **15.18%** (AR = 22.25%)
+    - `pushcart`: NaN (0 instances in IDD — confirmed documented finding)
+    - **Overall Dataset mAP (IoU 0.50:0.95): 29.09%**
+    - **Overall Dataset AP50 (IoU 0.50): 48.30%**
 
 ---
 
