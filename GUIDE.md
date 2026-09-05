@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **82%** | 62 active milestones addressed across 76 total steps |
+| **Overall Pipeline Progress** | **85%** | 62 active milestones addressed across 83 total steps |
 | **Completed Steps** | **61** | `[🟢COMPLETED]` — Predictor, Evaluation, Calibration & Model 3 Spotter pipeline complete |
 | **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
-| **Active Planned Steps** | **0** | `[🔵TO DO]` — All master roadmap tasks completed |
+| **Active Planned Steps** | **7** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 77–83) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -30,6 +30,7 @@
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
+| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 7/7 TO DO | Transfer dataset & checkpoint → Python YOLOX → train on A100 → ONNX export |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1149,3 +1150,303 @@ Done when: AP numbers are computed and recorded.
 Log all final numbers, loss curve, per-class AP, and resolution of Hurdles H7/H8 into `PROGRESS.md`.
 
 Done when: `PROGRESS.md` is updated with Model 3 deliverables.
+
+---
+
+## Part 15: A100 YOLOX Continuation Training (DGX Supercomputer)
+
+> **Why this part exists:** The local RTX A1000 (8 GB VRAM) limits YOLOX-S to batch size 2
+> and ~28.5 min/epoch. The DGX A100 (40 GB VRAM) can run batch 32 at ~2–3 min/epoch —
+> roughly 10× faster per epoch. This part trains YOLOX-S further using the **Python YOLOX
+> framework** (Megvii open-source), because MATLAB `trainYOLOXObjectDetector` does not run
+> on Linux. The output is a `.pt` checkpoint that is ONNX-exported back on the Windows
+> machine and verified in MATLAB R2024b.
+>
+> **AGENTS.md rule "Do not import YOLO"** means: do not use Ultralytics YOLO *inside MATLAB*.
+> It does NOT prohibit using Python YOLOX for training. Megvii YOLOX is a different codebase.
+>
+> **Cluster details:** Kubeflow Notebook Server, namespace `f-csai-1009`, pod name `sih-a100`.
+> Image: `pytorch:2.3.0-kubeflow`. JupyterLab is accessible at the cluster URL.
+> All commands below are run in the **JupyterLab Terminal** unless stated otherwise.
+
+---
+
+### Phase A: Verify A100 GPU Access
+
+#### Step 77 Confirm GPU Is Visible and Working [🔵TO DO] [HIGH]
+
+Open a Terminal in JupyterLab (`File → New → Terminal`) and run:
+
+```bash
+python3 -c "
+import torch
+print('CUDA available:', torch.cuda.is_available())
+print('GPU name:', torch.cuda.get_device_name(0))
+print('VRAM (GB):', torch.cuda.get_device_properties(0).total_memory / 1e9)
+print('PyTorch:', torch.__version__)
+"
+```
+
+What to look for in the output:
+- `CUDA available: True`
+- `GPU name: NVIDIA A100-SXM4-40GB` (or similar A100 variant)
+- `VRAM (GB): 40.xxx` (or 80 if an 80 GB pod)
+- PyTorch version: `2.3.0` (pre-installed in the `pytorch:2.3.0-kubeflow` image)
+
+If `CUDA available: False`, the pod did not schedule on a GPU node. Delete and recreate the
+notebook server from Kubeflow with GPU resource explicitly requested (1× A100). Send the full
+output to Aditya — do not try to diagnose it yourself.
+
+Done when: All four lines print correctly and VRAM ≥ 20 GB.
+
+---
+
+### Phase B: Transfer Dataset and Checkpoint to A100
+
+#### Step 78 Zip and Upload the Curated IDD Dataset [🔵TO DO] [HIGH]
+
+The curated dataset lives at `C:\Users\admin\idd-curated\` on the Windows machine.
+It contains 3,697 image/annotation pairs (~3 GB total).
+
+**Step 78a — Zip on Windows** (run in PowerShell on the local machine):
+```powershell
+Compress-Archive -Path "C:\Users\admin\idd-curated" `
+                 -DestinationPath "C:\Users\admin\idd-curated.zip"
+```
+Expected: ~3 GB zip file. Takes ~2–3 minutes.
+
+**Step 78b — Upload to A100 via JupyterLab:**
+1. In JupyterLab, click the **Upload Files** button (upward-arrow icon) in the file browser panel.
+2. Select `C:\Users\admin\idd-curated.zip`.
+3. Wait for the upload progress bar to complete. At campus speeds, 3 GB takes ~5–15 minutes.
+
+**Step 78c — Extract on A100** (in JupyterLab Terminal):
+```bash
+cd /home/jovyan   # or /workspace — whichever is your home dir
+unzip idd-curated.zip -d .
+ls idd-curated/   # should show: images/  annotations/
+```
+
+What to look for: `idd-curated/images/` and `idd-curated/annotations/` directories,
+each with 3,697 files. If the count differs, re-upload — do not proceed with a partial dataset.
+
+Done when: `ls idd-curated/images/ | wc -l` prints `3697` (or close — hardlinks may vary by OS).
+
+---
+
+#### Step 79 Convert Curated Dataset to COCO JSON Format [🔵TO DO] [HIGH]
+
+Python YOLOX expects annotations in COCO JSON, not Pascal VOC XML. A conversion script is
+needed. Run in JupyterLab Terminal:
+
+```bash
+# Install lxml if not present (it usually is in the pytorch image)
+pip install lxml --quiet
+
+# Run the conversion script (upload this from the Windows repo first — see note below)
+python3 /home/jovyan/voc2coco.py \
+    --ann_dir /home/jovyan/idd-curated/annotations \
+    --img_dir /home/jovyan/idd-curated/images \
+    --output   /home/jovyan/idd-coco \
+    --train_ratio 0.8
+```
+
+> **Note:** The `voc2coco.py` script lives at `ml/python/idd/voc2coco.py` in the repo.
+> Upload it to JupyterLab the same way as the dataset (drag-and-drop or Upload Files button).
+> **This script does not exist yet — it must be written before this step can run.**
+> Create it locally first, commit to `stream-ml`, then upload to A100.
+
+The script must:
+1. Parse all Pascal VOC XMLs in `ann_dir`.
+2. Map class names using S5 order (see AGENTS.md Section 3 S5 — never hardcode class IDs).
+3. Output a COCO-format `instances_train.json` and `instances_val.json` in `idd-coco/`.
+4. Perform the split **by image** (not by frame — there are no video sequences here, so image-level split is correct for this static detection dataset).
+
+What to look for: `instances_train.json` with ~2,957 images (~80%) and `instances_val.json`
+with ~740 images (~20%). Verify: `python3 -c "import json; d=json.load(open('idd-coco/instances_train.json')); print(len(d['images']), 'train images,', len(d['annotations']), 'annotations')"`.
+
+Done when: Both JSON files exist and train image count is ~2,957.
+
+---
+
+### Phase C: Install Python YOLOX on A100
+
+#### Step 80 Clone and Install Megvii YOLOX [🔵TO DO] [HIGH]
+
+Run in JupyterLab Terminal:
+
+```bash
+cd /home/jovyan
+git clone https://github.com/Megvii-BaseDetection/YOLOX.git
+cd YOLOX
+pip install -v -e .
+# Verify install
+python3 -c "import yolox; print('YOLOX version:', yolox.__version__)"
+```
+
+What to look for: `YOLOX version: 0.3.0` (or similar — any version is acceptable as long as
+the import succeeds and `yolox/exp/yolox_s.py` exists).
+
+Then create the dataset config. Copy `YOLOX/exps/default/yolox_s.py` to a custom exp file:
+
+```bash
+cp exps/default/yolox_s.py exps/sih_yolox_s.py
+```
+
+Edit `exps/sih_yolox_s.py` in JupyterLab to set:
+```python
+self.num_classes = 15        # S5 has 16 classes (0-15); background=0, so 15 foreground
+self.data_dir   = "/home/jovyan/idd-coco"
+self.train_ann  = "instances_train.json"
+self.val_ann    = "instances_val.json"
+self.max_epoch  = 15         # 15 epochs total on A100
+self.warmup_epochs = 1
+self.no_aug_epochs = 2
+self.input_size    = (640, 640)
+self.test_size     = (640, 640)
+self.data_num_workers = 4
+```
+
+> **num_classes note:** YOLOX uses 0-indexed foreground classes. AGENTS.md S5 has class 0
+> as `unknown`. In COCO JSON, class IDs start at 1. Set `num_classes=15` and map S5 IDs 1–15
+> into COCO category IDs 1–15. Class 0 (unknown) is background and is never annotated.
+
+Done when: `exps/sih_yolox_s.py` is saved with the above settings and imports without error:
+`python3 -c "from exps.sih_yolox_s import Exp; print('OK')"`.
+
+---
+
+### Phase D: Train YOLOX-S on A100
+
+#### Step 81 Launch Training on A100 [🔵TO DO] [HIGH]
+
+Run in JupyterLab Terminal from the `/home/jovyan/YOLOX/` directory:
+
+```bash
+python3 tools/train.py \
+    -f exps/sih_yolox_s.py \
+    -d 1 \
+    -b 32 \
+    --fp16 \
+    -o \
+    -c /home/jovyan/yolox_s.pth
+```
+
+Flag meanings:
+- `-d 1` — 1 GPU
+- `-b 32` — batch size 32 (safe on A100 40 GB; increase to 64 if VRAM headroom allows)
+- `--fp16` — mixed precision for speed
+- `-o` — occupy GPU memory at start to prevent fragmentation
+- `-c /home/jovyan/yolox_s.pth` — pretrained COCO checkpoint for warm start
+
+> **Pretrained checkpoint:** Download YOLOX-S COCO pretrained weights before training:
+> ```bash
+> wget https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.pth \
+>      -O /home/jovyan/yolox_s.pth
+> ```
+
+What to look for every epoch:
+- `AP50: 0.xxx` and `AP50:95: 0.xxx` — these should climb each epoch.
+- `ETA: HH:MM:SS` — each epoch should be ~2–4 minutes at batch 32.
+- Checkpoint saved to `YOLOX_outputs/sih_yolox_s/` after every epoch.
+
+Total expected time: 15 epochs × ~3 min/epoch = **~45 minutes** on A100.
+If training dies partway, resume from the last checkpoint:
+```bash
+python3 tools/train.py -f exps/sih_yolox_s.py -d 1 -b 32 --fp16 \
+    --resume   # automatically picks up last checkpoint in YOLOX_outputs/
+```
+
+Done when: Training reaches epoch 15 and prints final AP50 score.
+
+---
+
+### Phase E: Export ONNX from A100
+
+#### Step 82 Export YOLOX-S to ONNX (Opset 18) [🔵TO DO] [HIGH]
+
+Run in JupyterLab Terminal from `/home/jovyan/YOLOX/`:
+
+```bash
+python3 tools/export_onnx.py \
+    -f exps/sih_yolox_s.py \
+    -c YOLOX_outputs/sih_yolox_s/best_ckpt.pth \
+    --output-name /home/jovyan/spotter_yolox_s_opset18.onnx \
+    --opset 18 \
+    --no-onnxsim \
+    --input h w 640 640
+```
+
+> **CRITICAL — opset verification (from AGENTS.md + ml-pipeline.md rule):**
+> `torch` lies about the opset: requesting 9, 11, or 13 often writes a file stamped 18.
+> **Always read the opset back out of the file before reporting it.**
+> Run immediately after export:
+> ```bash
+> python3 -c "
+> import onnx
+> m = onnx.load('/home/jovyan/spotter_yolox_s_opset18.onnx')
+> print('Actual opset in file:', m.opset_import[0].version)
+> print('Inputs:', [i.name for i in m.graph.input])
+> print('Outputs:', [o.name for o in m.graph.output])
+> "
+> ```
+> The file must read back opset ≤ 18. If it reads 19 or 20, the MATLAB import on R2024b will
+> fail. Re-export with `--opset 17` if needed.
+
+> **External data sidecar:** If the model is >2 GB, ONNX may split it into a `.onnx` + `.onnx.data`
+> sidecar file. MATLAB cannot import split models. Inline it before downloading:
+> ```bash
+> python3 -c "
+> import onnx
+> m = onnx.load('/home/jovyan/spotter_yolox_s_opset18.onnx')
+> onnx.save(m, '/home/jovyan/spotter_yolox_s_opset18_inlined.onnx',
+>           save_as_external_data=False)
+> "
+> ```
+
+Done when: ONNX file exists, opset reads back as 17 or 18, no external sidecar file, inputs/outputs printed.
+
+---
+
+### Phase F: Download and Verify in MATLAB
+
+#### Step 83 Download ONNX to Windows and Verify in MATLAB R2024b [🔵TO DO] [HIGH]
+
+**Step 83a — Download from A100:**
+In JupyterLab file browser, right-click `spotter_yolox_s_opset18.onnx` (or the inlined version)
+and choose **Download**. Save to `C:\Users\admin\meteor-data\` on the local Windows machine.
+
+**Step 83b — Verify ONNX imports cleanly in MATLAB R2024b:**
+
+Open MATLAB R2024b on the Windows machine and run:
+
+```matlab
+net = importNetworkFromONNX( ...
+    'C:\Users\admin\meteor-data\spotter_yolox_s_opset18.onnx', ...
+    'InputDataFormats', 'BCSS', ...
+    'OutputDataFormats', 'BC');
+disp(net)
+```
+
+What to look for:
+- No error — clean import.
+- `net` is a `dlnetwork` object with valid layer graph.
+- Input size matches `[1 × 3 × 640 × 640]`.
+- Number of output nodes: 1 (bounding box + class logits tensor).
+
+If import fails with `Unsupported operator` or opset error, send the **full error** to Aditya —
+do not attempt to work around it without guidance.
+
+**Step 83c — Copy ONNX to repo and commit:**
+```powershell
+# Do NOT commit ONNX to git — AGENTS.md section 6 forbids it
+# Save path only; the file stays at C:\Users\admin\meteor-data\
+```
+
+**Step 83d — Update PROGRESS.md with final AP50 score from Step 81.**
+
+Done when: `importNetworkFromONNX` completes without error and `disp(net)` prints a valid
+`dlnetwork`. Record the final AP50 number (from A100 training output) and the ONNX file path
+in `PROGRESS.md`.
+
+---
