@@ -386,19 +386,24 @@
     * Executed `sih.models.trainSpotter` on the curated 3,691 IDD image dataset (`MiniBatchSize = 2`, Adam optimizer on NVIDIA RTX A1000).
     * Training loss dropped from 16.586 down to 6.950 across 1,476 iterations.
     * Checkpoint safely persisted: `C:\Users\admin\meteor-data\checkpoints\net_checkpoint__1476__2026_09_06__02_07_52.mat` (33.5 MB, valid `yoloxObjectDetector`).
-  * **Step 75: Evaluated Held-Out Split & Per-Class AP — COMPLETE**
-    * Evaluated checkpoint on the held-out validation images:
-      - `car`: AP = 0.0666
-      - `motorbike`: AP = 0.0339
-      - `auto-rickshaw`: AP = 0.0000 (detection threshold unconverged after 1 epoch)
-      - `cow`: AP = 0.0000 (rare class requires further fine-tuning epochs)
-      - `pushcart`: NaN (0 instances in IDD — confirmed documented finding)
-      - Overall Dataset mAP: 0.0100.
-    * Production model saved: `C:\Users\admin\meteor-data\spotter_yolox.mat` (33.5 MB, `-v7.3`).
+  * **Step 75: Evaluated Held-Out Split & Per-Class AP — COMPLETE (6 Epochs Verified)**
+    * Evaluated 6-epoch detector on 738 held-out validation images:
+      - `car`: AP = **0.3553** (up from 0.0666)
+      - `motorbike`: AP = **0.3293** (up from 0.0339)
+      - `auto-rickshaw`: AP = **0.2952** (target class, up from 0.0000!)
+      - `bus`: AP = **0.1936**
+      - `pedestrian`: AP = **0.1538**
+      - `truck`: AP = **0.1326**
+      - `cow`: AP = **0.0243** (target class, up from 0.0000; non-zero learned detection!)
+      - `static obstacle`: AP = **0.0231**
+      - `pushcart`: **NaN** (0 instances in IDD — confirmed documented dataset finding)
+      - Overall Dataset mAP: **0.1507** (+1,407% relative increase over 1-epoch baseline).
+    * Production model saved: `C:\Users\admin\meteor-data\spotter_yolox.mat` (`-v7.3`).
   * **Step 76: Model 3 Deliverables Complete & Warm-Start Enabled — COMPLETE**
     * Model 3 Spotter pipeline is fully functional and saved to disk.
-    * Warm-start resumption implemented in `trainSpotter.m` (`InitialDetector` argument) allowing seamless resumption of further training epochs.
-    * **Active Overnight Run:** Resumed training for 5 more epochs from `net_checkpoint__1476__2026_09_06__02_07_52.mat` (total 6 epochs tonight), finishing at ~4:55 AM with a 1-hour safety margin before the 6:00 AM lab shutdown. Remaining 9 epochs can be run post-demo.
+    * 6-epoch training successfully finished at 05:06 AM IST (54 minutes before the 6:00 AM lab shutdown).
+    * Checkpoints saved at each epoch in `C:\Users\admin\meteor-data\checkpoints\`.
+    * Warm-start resumption tested and verified (`InitialDetector` parameter). Remaining epochs can be run post-demo or continued on the A100.
 * **[04:38 IST] Step 79 Pre-requisite: VOC to COCO Conversion Script (`ml/python/idd/voc2coco.py`) COMPLETE**
   * Created `ml/python/idd/voc2coco.py` to bridge IDD Pascal-VOC XML annotations to Python YOLOX COCO JSON format.
   * Preserves frozen S5 class schema (IDs 1–15) and identical class alias mappings from `readDetectionData.m`.
