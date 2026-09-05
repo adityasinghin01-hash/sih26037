@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **85%** | 62 active milestones addressed across 83 total steps |
-| **Completed Steps** | **61** | `[🟢COMPLETED]` — Predictor, Evaluation, Calibration & Model 3 Spotter pipeline complete |
+| **Overall Pipeline Progress** | **86%** | 63 active milestones addressed across 83 total steps |
+| **Completed Steps** | **62** | `[🟢COMPLETED]` — Step 77 A100 GPU verified; Predictor, Eval, Calibration & Model 3 complete |
 | **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
-| **Active Planned Steps** | **7** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 77–83) |
+| **Active Planned Steps** | **6** | `[🔵TO DO]` — Part 15: A100 YOLOX continuation training (Steps 78–83) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -30,7 +30,7 @@
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
-| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 7/7 TO DO | Transfer dataset & checkpoint → Python YOLOX → train on A100 → ONNX export |
+| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 1/7 COMPLETE, 6 TO DO | Step 77 A100 GPU verified; transfer dataset & checkpoint → train → export |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1173,7 +1173,7 @@ Done when: `PROGRESS.md` is updated with Model 3 deliverables.
 
 ### Phase A: Verify A100 GPU Access
 
-#### Step 77 Confirm GPU Is Visible and Working [🔵TO DO] [HIGH]
+#### Step 77 Confirm GPU Is Visible and Working [🟢COMPLETED] [HIGH]
 
 Open a Terminal in JupyterLab (`File → New → Terminal`) and run:
 

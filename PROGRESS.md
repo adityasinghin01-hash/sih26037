@@ -403,6 +403,12 @@
   * Created `ml/python/idd/voc2coco.py` to bridge IDD Pascal-VOC XML annotations to Python YOLOX COCO JSON format.
   * Preserves frozen S5 class schema (IDs 1–15) and identical class alias mappings from `readDetectionData.m`.
   * Verified end-to-end on local curated dataset (`C:\Users\admin\idd-curated`): parsed 3,691 valid images (44,781 train annotations, 11,304 val annotations; 3,635 cows, 4,492 auto-rickshaws, 0 pushcarts). Split matches 80/20 train/val. Committed and pushed to `stream-ml`.
+* **[04:43 IST] Step 77: Confirm A100 GPU Visible on Supercomputer COMPLETE**
+  * Verified in JupyterLab terminal on pod `sih26037-0` (`/home/jovyan`):
+    * `CUDA available: True`
+    * `GPU name: NVIDIA A100-SXM4-40GB`
+    * `VRAM (GB): 42.51 GB`
+    * `PyTorch version: 2.3.0a0+40ec155e58.nv24.03`
 
 ---
 
