@@ -74,6 +74,14 @@ COL={}
 for n in ("TERRAIN","WATER","HILL","DISTANT"):
     c=bpy.data.collections.new(n); sc.collection.children.link(c); COL[n]=c
 
+# RULE 7: the render split is decided HERE, at build time - never discovered later by
+# pass_render.py. Every top-level collection this script produces is one separately renderable
+# pass; write that down so nothing downstream ever hardcodes a collection name.
+def write_pass_manifest():
+    names=sorted(c.name for c in sc.collection.children if c.objects)
+    json.dump(names, open(os.path.splitext(OUT)[0]+".passes.json","w"), indent=1)
+    print(f"  INFO  {len(names)} separately renderable collections: {names}")
+
 # ---------------------------------------------------------------- the Malin centreline
 mp=json.load(open(f"{REF}/map/najibabad_metres.json"))
 riv=np.array(mp['water'][0]['pts'], dtype=np.float64)
@@ -811,7 +819,7 @@ def _math(nt,op,a,b=None,c=None):
         else: n.inputs[k].default_value=v
     return n.outputs[0]
 
-def soil_material(fields=True):
+def soil_material(fields=True, subcell=()):
     """S0 s3 'THE GROUND MATERIAL', 5 Sep. The bund grid is REAL GEOMETRY - 75 x 120 m parcels,
     each with its own id and its own level - and it was INVISIBLE, because all 4 km2 wore one
     material keyed only to height. That, not the terrain, is why the plain read featureless.
@@ -942,11 +950,36 @@ def soil_material(fields=True):
         wet_,_      = two_freq(0.34, 11.0,(0.058,0.052,0.040,1),(0.140,0.126,0.098,1))
         # S0 s3 items 7,12: raw excavated spoil - unvegetated, and the bank IS the tell
         spo,_       = two_freq(0.70, 16.0,(0.128,0.104,0.074,1),(0.262,0.222,0.162,1))
+        # --- SURFACES SMALLER THAN THE GRID (S0 s3, amended 5 Sep). A threshing floor is 11 m
+        # across on a 6.67 m grid and lands on 1-2 vertices, so a colour attribute cannot carry
+        # it at ANY size the spec allows. It is evaluated PER PIXEL from its own centre instead.
+        # REF-04 s9: hard swept BARE earth - no crop, no furrow, and it overrides the plot tone.
+        sub=None
+        if subcell:
+            pxy=nt.nodes.new("ShaderNodeCombineXYZ")           # kill z: these are ground discs
+            nt.links.new(pos.outputs["X"],pxy.inputs["X"]); nt.links.new(pos.outputs["Y"],pxy.inputs["Y"])
+            for _cx,_cy,_r in subcell:
+                dn=nt.nodes.new("ShaderNodeVectorMath"); dn.operation='DISTANCE'
+                nt.links.new(pxy.outputs["Vector"],dn.inputs[0])
+                dn.inputs[1].default_value=(_cx,_cy,0.0)
+                # a swept floor has a HARD edge with a scuffed metre at its rim, not a fade
+                mr=nt.nodes.new("ShaderNodeMapRange")
+                mr.inputs["From Min"].default_value=_r; mr.inputs["From Max"].default_value=_r*0.82
+                mr.inputs["To Min"].default_value=0.0;  mr.inputs["To Max"].default_value=1.0
+                mr.clamp=True; nt.links.new(dn.outputs["Value"],mr.inputs["Value"])
+                sub = mr.outputs["Result"] if sub is None else \
+                      _math(nt,'MAXIMUM',sub,mr.outputs["Result"])
         col=_mix(nt,gs.outputs["Blue"],  col, bare)    # bare first: it OVERRIDES the plot tone
+        if sub is not None: col=_mix(nt,sub, col, bare)
         col=_mix(nt,gs.outputs["Green"], col, peb)
         col=_mix(nt,gs.outputs["Red"],   col, grav)
-        col=_mix(nt,gs.outputs["Alpha"] if False else ga.outputs["Alpha"], col, wet_)
-        col=_mix(nt,g2.outputs["Color"], col, spo)
+        col=_mix(nt,ga.outputs["Alpha"], col, wet_)
+        # GROUND2 is baked R=spoil, G=B=0. Feeding the COLOR into a float Factor socket makes
+        # Blender average the three channels, so the spoil mask was landing at a THIRD of its
+        # value and the excavated banks - "the bank IS the tell" - were nearly invisible.
+        # Separate it like every other channel and take Red. Found by reading, asserted below.
+        g2s=nt.nodes.new("ShaderNodeSeparateColor"); nt.links.new(g2.outputs["Color"],g2s.inputs["Color"])
+        col=_mix(nt,g2s.outputs["Red"], col, spo)
     nt.links.new(col,b.inputs["Base Color"])
 
     # micro grain everywhere, and roughness must vary or it reads as plastic
@@ -1039,7 +1072,8 @@ def rock_material():
     nt.links.new(nz.outputs["Fac"], rr.inputs["Fac"])
     nt.links.new(rr.outputs["Color"], b.inputs["Roughness"])
     return m
-SOIL=soil_material(fields=True)
+# the threshing floors go in as SHADER instances, not through the attribute - S0 s3, 5 Sep
+SOIL=soil_material(fields=True, subcell=[(cx,cy,THRESH_R) for cx,cy,_ in thresh_xy])
 def hill_material():
     """ONE material for the hill: earth and rock in a single shader, mixed by a NOISE-MASKED
     HEIGHT GRADIENT. Two materials on two sets of faces can only ever meet along a face
@@ -1333,26 +1367,122 @@ flag("no hillpad layer exists - nothing flattens the Malin (S0 s3, 5 Sep)",
      'hillpad' not in LAYER)
 flag(f"bhabar apron at the hill foot (max {LAYER['apron'].max():.2f} m)", LAYER['apron'].max()>1.5)
 
-# --- PLAN.md s10 Phase 1 gate: "the terrain uses more than one surface, and every one of
-# the 14 features is visible as itself." Bounds are sanity ranges around the measured coverage
-# (gravel 5.20% / pebble 5.99% / bare 0.07% / wet 19.95% / spoil 0.02% of the 4 km2), not the
-# exact numbers themselves - the mask is procedural and a re-run will not hit them to the digit.
+# ================== THE GROUND SURFACES - S0 s3, PLAN s10 Phase 1 ==================
+# THE GATE: "the terrain uses more than one surface, and every one of the 14 features is
+# VISIBLE AS ITSELF." A surface is a CHAIN and it is only as strong as its weakest link, so
+# all three links are asserted separately:
+#   A  the mask has real coverage      - an empty mask surfaces nothing
+#   B  the attribute is ON THE MESH    - and reads back the values that were written
+#   C  the MATERIAL ACTUALLY READS IT  - a baked mask nothing reads is NOT a surface
+# C is the link that would otherwise pass in silence, and that is REF-05 s13's lesson exactly:
+# the audit's volume check tested a node type that does not exist and reported a confident OK.
+# A FALSE OK IS WORSE THAN A MISSING CHECK.
+print("\n  --- A - surface coverage (mask > 0.25, as a share of the 4 km2) ---")
+# Bounds are sanity ranges around the measured coverage (gravel 5.20% / pebble 5.99% /
+# bare 0.07% / wet 19.95% / spoil 0.02%), not the exact numbers - the masks are procedural and
+# a re-run will not hit them to the digit. The band is TWO-SIDED on purpose: a mask at 0%
+# surfaces nothing, and a mask at 60% has escaped its cause and is painting the whole plain.
 _cov={k:(v>0.25).mean()*100 for k,v in SURF.items()}
-flag(f"gravel/bar surface reads, bars+banks ({_cov['gravel']:.2f}% of 4 km2)",
+flag(f"A - gravel/bar surface reads, bars+banks ({_cov['gravel']:.2f}% of 4 km2)",
      0.5 < _cov['gravel'] < 20.0)
-flag(f"Bhabar pebble apron surface reads ({_cov['pebble']:.2f}%)",
+flag(f"A - Bhabar pebble apron surface reads ({_cov['pebble']:.2f}%)",
      0.5 < _cov['pebble'] < 20.0)
-flag(f"bare-earth surface reads, threshing floors + kiln pit floors ({_cov['bare']:.3f}%)",
+flag(f"A - bare-earth surface reads, threshing floors + kiln pit floors ({_cov['bare']:.3f}%)",
      0.0 < _cov['bare'] < 5.0)
-flag(f"wet/sediment surface reads, nala+irrig+paleo+terrace ({_cov['wet']:.2f}%)",
+flag(f"A - wet/sediment surface reads, nala+irrig+paleo+terrace ({_cov['wet']:.2f}%)",
      2.0 < _cov['wet'] < 35.0)
-flag(f"spoil-earth surface reads, pond/pit banks ({_cov['spoil']:.3f}%)",
+flag(f"A - spoil-earth surface reads, pond/pit banks ({_cov['spoil']:.3f}%)",
      0.0 < _cov['spoil'] < 3.0)
 _union=np.zeros_like(X)
 for _v in SURF.values(): _union=np.maximum(_union,_v)
 _union_cov=(_union>0.25).mean()*100
-flag(f"the ground is NOT one material any more: {_union_cov:.1f}% of the 4 km2 carries a keyed "
+flag(f"A - the ground is NOT one material any more: {_union_cov:.1f}% of the 4 km2 carries a keyed "
      f"surface, the rest stays farmland", 5.0 < _union_cov < 60.0)
+
+# --- A2 - EVERY FEATURE VISIBLE AS ITSELF, measured PER INSTANCE, never in aggregate.
+# An aggregate percentage HIDES A DEAD FEATURE behind a live one sharing its channel. `bare`
+# carries BOTH threshing floors and kiln pit floors, and three big pits satisfy any total on
+# their own while all seven floors are missing. This is REF-05 s10h - a feature smaller than
+# the grid can carry SIMPLY DOES NOT EXIST - so each instance is counted on its own.
+# EVERY INSTANCE IS COUNTED WITH ITS OWN PROFILE. The first version of this check used one
+# curve for all three and reported two of the three ponds as failures - they were fine, and the
+# ASSERTION was measuring the wrong quantity. A probe that measures the wrong thing manufactures
+# defects, which is worse than not measuring: it sends the next hour to the wrong place.
+def _nodes_where(mask,thresh=0.25): return int((mask>thresh).sum())
+_tn=sorted(_nodes_where(np.clip(1.0-np.hypot(X-cx,Y-cy)/THRESH_R,0,1)**0.6)
+           for cx,cy,_ in thresh_xy)                      # floors: clip(1-d/r)**0.6
+_pn=sorted(_nodes_where(1.0-np.clip(np.hypot(X-cx,Y-cy)/r,0,1)**2.0)
+           for cx,cy,r in pond_xy)                        # ponds: 1-(d/r)**2, a PARABOLOID
+_kn=sorted(_nodes_where(1.0-np.clip(np.hypot(X-cx,Y-cy)/r,0,1))
+           for cx,cy,r in kiln_xy)                        # pits: 1-(d/r), a cone
+flag(f"A2 - every POND spans >=12 grid nodes: {_pn}", bool(_pn) and all(n>=12 for n in _pn))
+flag(f"A2 - every CLAY PIT spans >=12 grid nodes: {_kn}", bool(_kn) and all(n>=12 for n in _kn))
+# THRESHING FLOORS ARE SUB-CELL AND CANNOT BE CARRIED BY THE GRID - measured, not assumed:
+# 1-2 nodes each at r=5.5 m, and still only ~3 at S0's own 14 m maximum diameter. So S0 s3 was
+# amended (5 Sep, "SURFACES SMALLER THAN THE GRID") and they are placed IN THE SHADER instead.
+# The assertion moved with the method: the count that matters is now in section C.
+flag(f"A2 - threshing floors are known sub-cell on the terrain grid: {_tn} nodes each - "
+     f"so they are SHADER-placed, asserted in C below", True)
+
+print("  --- B - the attributes are on the mesh, and read back what was written ---")
+_names={a.name for a in me.color_attributes}
+flag(f"B - GROUND and GROUND2 exist on TERRAIN ({sorted(_names)})", {'GROUND','GROUND2'} <= _names)
+check("B - GROUND: one value per terrain vertex", float(len(me.vertices)), float((NG+1)**2), 0.0)
+_rb=np.empty(len(me.vertices)*4); me.color_attributes['GROUND'].data.foreach_get("color",_rb)
+for _ci,_k in enumerate(('gravel','pebble','bare','wet')):
+    check(f"B - GROUND channel '{_k}' reads back its peak", float(_rb[_ci::4].max()),
+          float(SURF[_k].max()), 1e-4)
+_rb2=np.empty(len(me.vertices)*4); me.color_attributes['GROUND2'].data.foreach_get("color",_rb2)
+check("B - GROUND2 channel 'spoil' reads back its peak", float(_rb2[0::4].max()),
+      float(SURF['spoil'].max()), 1e-4)
+
+print("  --- C - the SOIL material actually READS them ---")
+# Walk the node graph FORWARD from each Attribute node and prove it REACHES Base Color.
+# Asserting that the node merely EXISTS is what a false OK looks like: an unlinked Attribute
+# node, or one feeding a branch that goes nowhere, is indistinguishable from a working one
+# until it renders - and by then a whole shading pass has been spent (REF-05 s7 trap 5).
+def _reaches(nt, node, dst_node, dst_id, budget=20000):
+    seen=set(); stack=[node]
+    while stack and budget:
+        budget-=1; n=stack.pop()
+        if n.name in seen: continue
+        seen.add(n.name)
+        for o in n.outputs:
+            for l in o.links:
+                if l.to_node==dst_node and l.to_socket.identifier==dst_id: return True
+                stack.append(l.to_node)
+    return False
+_snt=SOIL.node_tree; _bsdf=_snt.nodes["Principled BSDF"]
+_attr={n.attribute_name:n for n in _snt.nodes if n.type=='ATTRIBUTE'}
+for _an in ('GROUND','GROUND2'):
+    _n=_attr.get(_an)
+    flag(f"C - SOIL has an Attribute node named '{_an}'", _n is not None)
+    if _n is not None:
+        flag(f"C - '{_an}' REACHES Base Color - it is READ, not merely baked",
+             _reaches(_snt,_n,_bsdf,'Base Color'))
+# PLAN s3b: the S scale is placed BY CAUSE - stones on the apron and the bars - so the surface
+# masks must reach the NORMAL input through the Bump as well, not only the colour.
+# THE SUB-CELL SURFACES (S0 s3, 5 Sep): one shader instance per threshing floor, and the chain
+# must reach Base Color. Counting grid nodes tests nothing once a feature is not on the grid.
+_dist=[n for n in _snt.nodes if n.type=='VECT_MATH' and n.operation=='DISTANCE']
+check("C - one shader instance per THRESHING FLOOR", float(len(_dist)), float(len(thresh_xy)), 0.0)
+flag(f"C - the shader-placed floors REACH Base Color ({len(_dist)} instances)",
+     bool(_dist) and all(_reaches(_snt,_d,_bsdf,'Base Color') for _d in _dist))
+# and each one must sit where the build put it - a floor painted 40 m from its own levelled
+# ground is the Eroder's translation bug all over again (REF-05 s12), so compare the constants.
+_want={(round(cx,2),round(cy,2)) for cx,cy,_ in thresh_xy}
+_got={(round(d.inputs[1].default_value[0],2),round(d.inputs[1].default_value[1],2)) for d in _dist}
+flag(f"C - every shader floor sits on its own levelled ground ({len(_want & _got)}/{len(_want)} match)",
+     _want == _got)
+flag("C - the surface masks also drive the BUMP (S placed by cause, not scattered)",
+     _attr.get('GROUND') is not None and _reaches(_snt,_attr['GROUND'],_bsdf,'Normal'))
+# Blender AVERAGES RGB when a colour is plugged into a float Factor socket. That silently
+# weakened the spoil mask to a third of its value, and "the excavated bank IS the tell".
+# Every mask must arrive at a Factor as a SINGLE CHANNEL.
+_badfac=[l.from_node.name for _n in _snt.nodes if _n.type=='MIX'
+         for l in _n.inputs[0].links if l.from_socket.type=='RGBA']
+flag(f"C - no mask reaches a Factor socket as a COLOUR ({len(_badfac)} do"
+     + (f": {_badfac[:4]}" if _badfac else "") + ")", not _badfac)
 # the hill's own features
 _hz=_np.array([v.co.z for v in hill.data.vertices])
 flag(f"quarry benches cut into the SW face (hill z range {_hz.min():.1f}..{_hz.max():.1f} m)",
@@ -1400,6 +1530,7 @@ print(f"  INFO  layers stacked: {', '.join(LAYER.keys())}")
 print(f"  INFO  build time {time.time()-t_start:.0f}s")
 if fails:
     print("\n  ASSERTIONS FAILED:", fails)
+    write_pass_manifest()
     bpy.ops.wm.save_as_mainfile(filepath=OUT); sys.exit(1)
 print("  ALL ASSERTIONS PASSED")
 print("==================================================================\n")
@@ -1409,5 +1540,6 @@ for scr in bpy.data.screens:
     for ar in scr.areas:
         if ar.type=='VIEW_3D':
             ar.spaces[0].clip_start=0.10; ar.spaces[0].clip_end=60000.0
+write_pass_manifest()
 bpy.ops.wm.save_as_mainfile(filepath=OUT)
 print("saved:", OUT)

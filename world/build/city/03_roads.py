@@ -182,6 +182,14 @@ print("building the ribbons ...")
 COL={}
 for nm in ("ROADS","ROADS_KACCHA"):
     c=bpy.data.collections.new(nm); bpy.context.scene.collection.children.link(c); COL[nm]=c
+
+# RULE 7: same manifest LAND wrote, re-derived from THIS file's own collections - this file now
+# carries LAND's passes plus its own, and pass_render.py reads it fresh, never a stale copy.
+def write_pass_manifest():
+    sc=bpy.context.scene
+    names=sorted(c.name for c in sc.collection.children if c.objects)
+    json.dump(names, open(os.path.splitext(OUT)[0]+".passes.json","w"), indent=1)
+    print(f"  INFO  {len(names)} separately renderable collections: {names}")
 def ribbon(r):
     P=r['P']; z=r['z']; half=WIDTH[r['cls']]*0.5
     tang=np.zeros_like(P)
@@ -324,6 +332,7 @@ print(f"  INFO  {len(built)} road objects, {sum(len(o.data.polygons) for o in bu
 print(f"  INFO  build time {time.time()-T0:.0f}s")
 print("\n  " + ("ALL ASSERTIONS PASSED" if not fails else f"ASSERTIONS FAILED: {fails}"))
 print("="*66)
+write_pass_manifest()
 bpy.ops.wm.save_mainfile(filepath=OUT)
 print(f"\nsaved: {OUT}")
 if fails: sys.exit(1)
