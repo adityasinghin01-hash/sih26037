@@ -52,17 +52,25 @@ NEXT MOST USEFUL  : one thing
 ## The blockers as of 1 Sep 2026 — verify each, do not just repeat them
 
 - **RoadRunner licence 41087767** — the only problem-statement requirement we cannot meet
-- **`matlab/baseline/` has never been RUN** — filled and checksummed 4 Sep, but `checkcode`
-  is not a run, so no result is comparable yet
+- **The baseline does not COMPLETE** — run 4 Sep on both platforms, it dies 19.7 s into its own
+  scenario with 0 of 120 candidates collision-free (`plan/BASELINE-R2026a.md`). E2 is blocked,
+  not unstarted, and there is still no head-to-head number
 - **The opset number** — Stream D cannot wire the predictor until Stream C runs `check04`
-- **MATLAB is not installed everywhere** — Aditya's Mac has R2026a (9/9 required products,
-  see `derisk/check01_output.txt`); the ONNX converter add-on is still MISSING there
+- **The ONNX converter add-on** — missing on the Mac, and it is what blocks `check04`.
+  Home -> Add-Ons -> Get Add-Ons. MATLAB itself is confirmed on the Mac and both Windows
+  machines; only the ML person's machine is unconfirmed
 
 **Closed since then — do not report these as open:**
 - **Does OpenTrafficLab run on our release?** Answered 4 Sep: **not unmodified.** Two fixes,
   both applied, both outside their folder — `plan/OPENTRAFFICLAB-R2026a.md`
 - **D2 `chooseVelocity`** — merged 3 Sep (PR #3), 19 tests
-- **The planner suites** — 14 + 19 + 9 = 42 tests passing on R2026a, 4 Sep
+- **The planner suites** — do NOT quote 42. On `main` it is **51 tests, 50 passing, 1 failing**
+  (Stream C's `testFeatureParity`). On `stream-d-a` with D6 and D8 it is **213 tests, 212
+  passing**. Re-run before quoting either
+- **Which machine gives the demo?** Answered 4 Sep: **Aditya's Mac**, verified by running the
+  planner, the Simulink model, OpenTrafficLab and the baseline on it — `TEAM.md`
+- **E9 (formal proof / fault injection / traceability / PIL)** — **CANCELLED.** All eight
+  toolboxes it needs are absent from the licence. Do not report it as pending work
 
 ## Deadline
 **Idea submission 20 September 2026.** Say how many days are left.

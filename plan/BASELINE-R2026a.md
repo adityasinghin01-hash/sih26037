@@ -3,6 +3,12 @@
 **This is E2's blocking result. Read it before you quote any comparison number, and before anyone
 "fixes" anything in `matlab/baseline/`.**
 
+> ### CONFIRMED ON WINDOWS, 4 September 2026 (evening)
+> Person B re-ran it on the Windows machine, with a full display, and got the **identical
+> failure to the digit**: `t = 19.7000 s`, `collision-free: 0 of 120`, same line 193.
+> **Apple Silicon and headless execution are both ruled out.** See "Reproduced on a second
+> platform" below for what this does and does not settle.
+
 MathWorks' shipped planner — *Motion Planning in Urban Environments Using Dynamic Occupancy Grid
 Map*, the one in `matlab/baseline/`, byte-for-byte unmodified — **was run for the first time on
 4 September 2026 and it failed.** It dies **19.7 simulated seconds** into its own shipped scenario,
@@ -36,14 +42,77 @@ evalin('caller', strcat(scriptStem, ';'));
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
-Run twice. Identical error, identical line, both times.
+Run three times on two platforms. Identical error, identical line, every time.
 
-| | Run 1 | Run 2 |
+| | Run 1 (Mac) | Run 2 (Mac) | Run 3 (Windows) |
+|---|---|---|---|
+| Result | `ERRORED` | `ERRORED` | `ERRORED` |
+| Line | 193 | 193 | 193 |
+| Message | `Unable to compute optimal trajectory` | same | same |
+| Platform | `MACA64` | `MACA64` | **`PCWIN64`** |
+| Display | headless (`-batch`) | headless (`-batch`) | **full GUI** |
+| MATLAB | 26.1.0.3346908 (R2026a) Update 5 | same | **same** |
+
+---
+
+## Reproduced on a second platform — and this is the part that matters
+
+Person B ran the same seven files on the Windows machine, in the MATLAB desktop with the
+figures rendering normally, from `C:\Users\...\AppData\Local\Temp\baseline-run` so the repo
+folder was never the working directory.
+
+```
+MATLAB 26.1.0.3346908 (R2026a) Update 5 on PCWIN64
+>>> ERRORED <<<
+Error using MotionPlanningUsingDynamicMapExample (line 193)
+Unable to compute optimal trajectory
+
+Error in run (line 100)
+evalin('caller', strcat(scriptStem, ';'));
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+reached t = 19.7000 s
+collision-free: 0 of 120
+```
+
+**Not merely "it also failed" — it failed to the digit.**
+
+| | Mac (`MACA64`, headless) | Windows (`PCWIN64`, GUI) |
 |---|---|---|
-| Result | `ERRORED` | `ERRORED` |
-| Line | 193 | 193 |
-| Message | `Unable to compute optimal trajectory` | `Unable to compute optimal trajectory` |
-| Wall clock | 130.0 s | 265.2 s |
+| Failure time | `19.7000 s` | **`19.7000 s`** |
+| Collision-free candidates | `0 of 120` | **`0 of 120`** |
+| Ego state at failure | `[57.5349 -71.3738 ...]` | **`[57.5349, -71...]`** |
+| Line | 193 | **193** |
+
+Identical results across two different CPU architectures means **this is not floating-point
+divergence** through the seeded particle filter. It is a structural property of the example.
+
+### What this rules out, and what it does NOT
+
+| Candidate explanation | Status |
+|---|---|
+| Apple Silicon / macOS numerics | **RULED OUT** — Windows x86 gives the identical number |
+| Headless execution (`-batch`, no display) | **RULED OUT** — the Windows run had figures rendering |
+| **R2026a itself** | **NOT ruled out.** Both machines are R2026a Update 5 |
+
+**Be precise about that third row.** We have varied the platform and the display and held the
+MATLAB version constant, so we have not tested whether an earlier release behaves differently.
+Testing that needs R2024b or R2025a, which nobody on this team has installed.
+
+**So the defensible sentence is:** *"On MATLAB R2026a Update 5 it fails identically on macOS/Apple
+Silicon and on Windows x86, headless and with a display."* Not *"it fails on every MATLAB."*
+
+### What the display showed at the failing step
+
+The Windows run rendered the figure MathWorks intends, so we can see the state it died in: the
+ground-truth view shows the ego on a straight divided road with **two vehicles abreast directly
+ahead of it** and a third further up, and the predicted cost maps at ΔT = 0.1, 0.7, 1.3 and 2.0 s
+show those obstacles' guaranteed-collision regions sweeping forward across the whole horizon.
+
+That is consistent with what the numbers say — the space ahead is occupied under every prediction
+step, the sampler has no stop-in-place or hard-brake behaviour in its candidate set, and so all 120
+candidates die. **Stated as an observation from one rendered frame, not as a claim we have
+instrumented.**
 
 ---
 
@@ -135,19 +204,16 @@ run at all. There is no fallback, no emergency-brake candidate, no stop-in-place
 > at t = 19.7 s in its own shipped urban-intersection scenario, with 0 of 120 candidates
 > collision-free.**
 
-### Claim C — DO NOT MAKE IT
+### Claim C — still DO NOT MAKE IT
 
 > ~~"MathWorks' planner crashes / is broken."~~
 
-**We do not know whether this reproduces on Windows x86.** It has been run on exactly one machine.
-The candidates are: a genuine R2026a regression (the example ships *with* the release it fails on),
-an Apple-Silicon floating-point divergence accumulating through a seeded particle filter, or
-something about headless execution. **We have not distinguished them, so we do not assert one.**
+Two platforms is not every platform, and both were **R2026a Update 5**. A regression introduced in
+R2026a remains a live explanation and we have not tested an earlier release. Say what we measured.
 
-**This is the cheapest high-value experiment left on the project:** Person B has the Windows main
-machine. Same seven files, same command, one run. If it fails there too, Claim B becomes
-platform-independent and much stronger. If it passes there, that is *also* a real result and the
-comparison can be run on Windows.
+**The Windows experiment is done and it came back positive** — that was the cheapest high-value
+test left and it is now spent. The remaining unknown (older MATLAB releases) is not worth buying
+before the 7th.
 
 ---
 
@@ -190,12 +256,29 @@ untrue.
 
 **Three routes out, in order of preference. This is Aditya's call, not a stream's.**
 
-1. **Run it on Windows** (Person B). Cheapest, and may dissolve the problem entirely.
-2. **Report the baseline's failure as the result**, and compare on the ≤19.7 s window where it *did*
-   plan. Legitimate and honest, and requires no edit to their folder. `config.json` must record
-   that the window was truncated by their error and why.
+1. ~~**Run it on Windows** (Person B).~~ **DONE 4 Sep evening. It fails there too, identically.**
+   This route is closed — the problem did not dissolve.
+2. **Report the baseline's failure as the result.** ***This is now the route.*** It requires no edit
+   to their folder and it is the honest description of what we measured. `config.json` must record
+   the example ID, both MATLAB versions and platforms, and that the run was truncated by their own
+   error at 19.7 s.
 3. **Change the baseline so it survives.** ***No.*** This is the strawman that kills every number we
    have. Not available at any price.
+
+### The consequence nobody should discover on stage
+
+Route 2 gives us a **finding about the competitor**. It does **not** give us a head-to-head number,
+because the two planners do not run the same scenario: the baseline runs MathWorks' six-lidar urban
+intersection, ours runs the OpenTrafficLab T-junction. Putting both on one scenario is E2's real
+content and it is not happening before the 7th.
+
+**So the honest position for the internal round is:**
+
+> We ran the shipped state of the art, unmodified, on two machines. It fails, and we can show
+> exactly why from their own source. Here is our planner running with `h` logged every step. We do
+> **not** yet have both planners on a common scenario — that is the next piece of work.
+
+Say the last sentence out loud before a judge says it for us.
 
 ---
 
@@ -230,7 +313,10 @@ Takes 2–5 minutes and spawns figure windows even under `-batch`.
 
 Run and recorded by Claude at Aditya's instruction, 4 September 2026, on
 MATLAB `26.1.0.3346908 (R2026a) Update 5`, `MACA64`, headless.
-`matlab/baseline/` was not modified — checksums verified `OK` before and after.
+Independently reproduced by Person B the same evening on `PCWIN64` with a full display, same
+MATLAB version, identical result.
+`matlab/baseline/` was not modified — checksums verified `OK` before and after, and both runs used
+copies outside the repository.
 
 **`matlab/baseline/BASELINE.md` still says "Actually executed: NO. Never run." That is now false.
 It was deliberately left untouched, because the rule on that folder is absolute and does not get

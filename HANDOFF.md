@@ -11,11 +11,12 @@ Everything below was **verified by running MATLAB R2026a**. Where something was 
 
 | | |
 |---|---|
+| **THE MAIN MACHINE IS ADITYA'S MAC** | Decided 4 Sep by running every piece on it: the planner (**212/213 tests**), the Simulink model (**loads, simulates, logs `h`**), OpenTrafficLab (**9/9**) and the baseline all run there. **The demo runs on the Mac.** You still develop on your own machine — see `TEAM.md`, "The main machine". Write nothing Windows-only: no `C:\` paths |
 | **`runtests` needs the `.m`** | `runtests('matlab/tests/testPlannerGeometry.m')`. Without it MATLAB errors `MATLAB:unittest:TestSuite:UnrecognizedSuite`. It is not a broken test |
 | **Test counts, re-run on R2026a 4 Sep** | The repo has **51 tests in 5 files: 50 pass, 1 fails.** geometry **14** · chooseVelocity **19** · NegotiatingStrategy **9** · ClassIDMapping **6** · FeatureParity **2 of 3**. The old "42 passing" line counted only three of the five files — **do not put 42 in a deck** |
 | **OpenTrafficLab does NOT run unmodified on R2026a** | Read `plan/OPENTRAFFICLAB-R2026a.md` before debugging any harness failure. **Never edit `OpenTrafficLab/`** |
 | **`matlab/baseline/` is now FULL** | MathWorks' shipped planner, unmodified and checksummed. **Nobody edits it.** See `matlab/baseline/BASELINE.md` |
-| **THE BASELINE HAS BEEN RUN — AND IT FAILS** | It dies **19.7 s** into its own shipped scenario at **its own `error()`**, with **0 of 120 candidates collision-free**. Deterministic (`rng(2020)`), reproduced twice. **`plan/BASELINE-R2026a.md`. Read it before quoting any comparison number, and do NOT fix it** |
+| **THE BASELINE HAS BEEN RUN — AND IT FAILS ON BOTH PLATFORMS** | It dies **19.7 s** into its own shipped scenario at **its own `error()`**, with **0 of 120 candidates collision-free**. Deterministic (`rng(2020)`). Reproduced **three times on two machines** — macOS/Apple Silicon headless and **Windows x86 with a full display — identical to the digit**. **`plan/BASELINE-R2026a.md`. Read it before quoting any comparison number, and do NOT fix it** |
 | **ONNX import is confirmed absent** | Verified live on the Mac: `importNetworkFromONNX`, `importONNXNetwork`, `importONNXLayers` and `exportONNXNetwork` **all four NOT FOUND**. 9/9 required products ARE present. Only the free converter add-on is missing |
 | **The one failing test is Stream C's** | `testFeatureParity/testEveryCaseMatchesPython`. Everything else passes |
 | **Two rulings landed 4 Sep** | `plan/D6-TRUNK-RULING.md` (what the trunk is) and `plan/S3-PYIELD-RULING.md` (what `PYield` means). Read the one for your stream |
@@ -64,6 +65,33 @@ futures, not merely the longest collision-free stretch. Ship **(a)** first to cl
 but **`Committed` stays false until the terminal check lands** — (a) plus `Committed` lets the
 planner commit irrevocably to a trajectory that has already lost. The cheap route to (b) is one
 extra braking-to-stop check per candidate, not a second generation pass. Read the file.
+
+### Arbitration is ruled, and it was never written down — `plan/ARBITRATION-RULING.md`
+
+You asked whether `arbitrate` should take the role list plus positions (your Option 1) or the ego
+and tracks (Option 2). **Neither. It takes the role list and nothing else.**
+
+`assignRoles` already builds a full `vo` for every track at line 64 and throws it away. Return it:
+
+```matlab
+[roles, vos] = sih.planner.assignRoles(egoPos, egoVel, egoYaw, tracks);   % vos is NEW
+[winner, k]  = sih.planner.arbitrate(roles);
+cmd          = sih.planner.chooseVelocity(winner, vos(k), egoState);
+```
+
+**No positions in, so no frame to get wrong** — Option 1's silent-wrong-answer trap is not guarded
+against, it is made unrepresentable. Nothing recomputed, so Option 2's duplication is gone too.
+Adding an output is backward compatible; existing callers are untouched.
+
+Winner is the **smallest `h = Lambda - Beta`** — tightest, not nearest. Ties: lowest `TrackID`.
+Empty tracks: no winner, `h = NaN`. It must **not** read `PYield` and must **not** choose between
+`h_agent` and `h_road`. Reasons in the file.
+
+**You have already written the hard part**: `minBarrierFromRoles()` at line 141 is exactly this,
+minus the index.
+
+**And you were right that it was nowhere.** The word "arbitration" appeared in no file in this repo.
+That is fixed.
 
 ### Next: D6, the contingency planner
 
@@ -180,6 +208,33 @@ take — the three options are in `plan/BASELINE-R2026a.md`.
 **Do NOT make it survive.** Tuning the baseline until it completes is the strawman that destroys
 every number this project produces. The failure IS the result.
 
+### CONFIRMED ON WINDOWS the same evening — Apple Silicon and headless are ruled out
+
+Person B re-ran the identical seven files on the Windows machine, in the MATLAB desktop with
+figures rendering, and got the same failure **to the digit**:
+
+```
+MATLAB 26.1.0.3346908 (R2026a) Update 5 on PCWIN64
+reached t = 19.7000 s
+collision-free: 0 of 120
+```
+
+Same `t = 19.7000 s`, same `0 of 120`, same ego state `[57.5349 -71...]`, same line 193. Identical
+numbers across two CPU architectures means this is **not** floating-point divergence — it is
+structural.
+
+**Still NOT ruled out: R2026a itself.** Both machines are R2026a Update 5, so we varied the platform
+and the display but held the version constant. The defensible sentence is *"it fails identically on
+macOS/Apple Silicon and Windows x86 under R2026a Update 5"* — **not** *"it fails on every MATLAB."*
+
+### What this means for the comparison, said plainly
+
+Route 2 is now the route: **report the baseline's failure as the result.** But that gives a finding
+about the competitor, **not a head-to-head number** — the two planners do not run the same scenario
+(theirs: MathWorks' six-lidar urban intersection; ours: the OpenTrafficLab T-junction). Putting both
+on one scenario is E2's real content and it is not happening before the 7th. **Say that before a
+judge says it for us.**
+
 Then E2 (`runExperiment`), then E3. **Do not edit anything in `matlab/baseline/`, ever** — verify it
 instead:
 
@@ -262,7 +317,35 @@ installer does not include it. **Home -> Add-Ons -> Get Add-Ons.**
 **Do you have MATLAB installed at all?** Nothing in PROGRESS.md says so. You need MATLAB *plus* that
 add-on before `check04` can run — and the opset number it produces is the one thing blocking Stream D.
 
-### 5. For the claim ledger, before a judge asks
+### 5. Models 3, 4 and 5 — TRAIN THEM NOW. Deployment is what waits, not training.
+
+**Recorded 4 Sep 2026. Aditya's decision.**
+
+**Training and deployment are decoupled, and that is the whole point:**
+
+- **Training data is IDD — real Indian road footage.** It has nothing to do with our rendered
+  world. Nothing about training these models depends on the city existing.
+- **The city is where they get deployed**, and the city is **committed**. It will not be finished by
+  the 7th, and that is fine — Aditya is completing it because it is the main goal of the project.
+- The cuboid **backup** is a fallback for the *demo*, not a change of direction. It does not cancel
+  anything.
+
+| Model | Trains on | Deploys in |
+|---|---|---|
+| **3 — Spotter (YOLOX)** | IDD, real footage | the city (needs camera pixels — `AGENTS.md` line 36) |
+| **4 — Road-Finder (DeepLab v3+)** | IDD, real footage | the city, same reason |
+| **5 — Laser Spotter (PointPillars)** | lidar data | either — lidar already works in the cuboid world (`check02`: 429 points on a cow mesh) |
+
+**So, for Stream C:**
+
+- **Start the IDD signup and the 25 GB download now.** `idd.insaan.iiit.ac.in` needs a human to
+  accept the terms. The download is long and training takes days on the KIET cluster, so starting
+  early is pure gain. **It is not wasted under any outcome — these models have to be trained.**
+- **None of 3, 4, 5 is needed for the 7th.** Model 1 alone carries the internal round.
+- **The one hard rule: never let them delay Model 1's opset number.** Two other people are blocked
+  on it. Everything else, do as much as you can.
+
+### 6. For the claim ledger, before a judge asks
 
 Your dead-feature finding is correct and it is a real limitation. Features `[23,24,25,27]` map to
 S5 ClassID 11, 12, 13, 15 via `feature = 12 + ClassID` — **dog, pushcart, animal-drawn cart, static
@@ -272,7 +355,7 @@ obstacle**. METEOR contains none of them.
 Cows and tractors *are* present. Get the honest sentence ready now rather than discovering it on
 stage.
 
-### 6. Fixed for you in the repo
+### 7. Fixed for you in the repo
 
 - `.gitignore` had **no `*.npz` rule** — your own rule 2 says feature arrays never get committed and
   nothing enforced it. Added.
@@ -280,7 +363,7 @@ stage.
   **without the `.m`**, which errors with `MATLAB:unittest:TestSuite:UnrecognizedSuite`. Fixed.
 - `ml/C-prediction.md` said "four real defects" and "four other people". Corrected.
 
-### 7. Still yours to resolve
+### 8. Still yours to resolve
 
 `testFeatureParity/testEveryCaseMatchesPython` fails on `main`:
 
@@ -294,10 +377,11 @@ to match the other.**
 
 ## Aditya
 
-- **`matlab/baseline/` HAS now been run, and it fails at 19.7 s** — `plan/BASELINE-R2026a.md`. E1 is
-  done; **E2 is blocked, not merely unstarted**, and there is still no comparison and no graph.
-  Three routes out are written up; picking one is yours. The cheapest by far is **one run on
-  Person B's Windows machine** to find out whether this is R2026a, Apple Silicon, or headless.
+- **`matlab/baseline/` has been run on BOTH machines and fails identically at 19.7 s** —
+  `plan/BASELINE-R2026a.md`. Person B's Windows run closed the platform question the same evening.
+  E1 is done; **E2 is blocked, not merely unstarted.** Route 2 (report the failure as the result) is
+  now the only honest route, and it yields a finding about the competitor rather than a head-to-head
+  number — the two planners do not share a scenario.
 - **Nobody on your roster is Stream E.** `TEAM.md`'s by-name table gives the baseline to Planner B;
   its blocker table gives it to "Stream E"; `plan/ReadThis.md` §2 lists `matlab/baseline/` as
   **not** Planner B's; and `plan/E-evidence.md` describes Stream E as a separate person with their
