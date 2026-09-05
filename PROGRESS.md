@@ -317,7 +317,9 @@
 | **H4** | `[SSL: CERTIFICATE_VERIFY_FAILED]` on file download | Network firewall / captive portal proxy issued self-signed certificates, breaking urllib SSL validation. | Switched network interface to mobile hotspot, establishing a direct, untampered HTTPS connection. |
 | **H5** | `OnnxExporterError: aten.mkldnn_rnn_layer.default` on PyTorch 2.4 | PyTorch 2.4 TorchDynamo lacks MKLDNN RNN layer decomposition for CPU export. | Switched to `python3` runtime with PyTorch `2.14.0+cpu` + `onnxscript` as specified in Phase 2 Directive 1. All opsets 17, 18, 20 exported cleanly with `max abs diff < 1e-6`! |
 | **H6** | `gpuDevice requires Parallel Computing Toolbox` in MATLAB | MATLAB installed without GPU execution engine by default. | Installed Parallel Computing Toolbox via Add-On Explorer to enable CUDA on local NVIDIA RTX A1000. |
-* **[20:05 - 20:25 IST] Phase 4: Execution of Aditya's Directives (Tasks 2 & 3 Complete)**
+* **[20:05 - 23:05 IST] Phase 4: Execution of Aditya's Directives (Tasks 1-5 Complete)**
+  * **Task 1: Parity Resolution (`testFeatureParity.m`) — VERIFIED (Merged PR #11)**
+    * Fix authored and merged on `main` by Aditya. Full test suite is now 304/304 green.
   * **Task 2: MATLAB Import Check (`check04_onnx_lstm.m`) — PASSED [OPSET 18]**
     * **Hurdle H8 Resolved:** PyTorch 2.14 TorchDynamo exported weights to external `.onnx.data` files, which triggered `nnet_cnn_onnx:onnx:ExternalData` in MATLAB. Embedded all tensor weights directly into the self-contained `.onnx` files and deleted external `.data` files.
     * **Execution Output (MATLAB R2024b):**
@@ -331,7 +333,6 @@
       * **Worst Calibration Gap:** In bin 0.9–1.0, model predicted 95.7% but empirical reality was only 41.5% (gap = 61.4 points).
       * **Comparison:** Model 2 dangerous rate (40.76%) is approximately double Model 1 (20.18%).
       * **Safety Gate Ruling:** Confirms that raw probabilities cannot be trusted without calibration fitting; the safety gate (`Valid = false`) is mandatory and justified.
-
   * **Task 4: Validation Scores Export (`scores_lstm.npz`) & Calibration Benchmark — COMPLETE**
     * Extracted raw model predictions `p` and ground truth `t` for Model 1 (YieldNet LSTM) across all 249 validation clips:
       * **File Path:** `C:\Users\admin\meteor-data\archive\scores_lstm.npz` (2.92 MB compressed, 783,928 predictions, 77,373 assertions).
@@ -342,6 +343,9 @@
       * *Platt Scaling (Logistic Regression on logits):* Re-calibrated probabilities reduce the dangerous rate from **20.18% down to 8.33%** at threshold 0.80 (n_go = 12, FP = 1).
       * *Isotonic Regression:* Dangerous rate = **14.29%** at threshold 0.90 (n_go = 28); **8.33%** at threshold 0.95 (n_go = 12).
     * **Core Engineering Conclusion:** Softmax overconfidence was confirmed as the root cause of the 20.18% error rate (model predicted 95.7% confidence on samples where real-world probability was only 41.5%). Calibration successfully compresses the error rate to 8.33%. However, because 8.33% remains above our strict $\le 1.0\%$ safety target, the vehicle's Safety Gate (`Valid = false`) is conclusively justified, routing negotiation authority cleanly to deterministic collision geometry ($h = \lambda - \beta$).
+  * **Task 5: Git Synchronization with Main — COMPLETE**
+    * Pulled and merged all 24 upstream commits from `origin/main` into `stream-ml` (including PR #11 parity fix and PR #12 Stream D arbitration updates).
+    * Merge completed cleanly with 0 conflicts (156 files updated). Pushed to `origin/stream-ml`.
 
 ---
 
