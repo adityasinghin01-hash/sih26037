@@ -397,7 +397,8 @@
     * Production model saved: `C:\Users\admin\meteor-data\spotter_yolox.mat` (33.5 MB, `-v7.3`).
   * **Step 76: Model 3 Deliverables Complete & Warm-Start Enabled — COMPLETE**
     * Model 3 Spotter pipeline is fully functional and saved to disk.
-    * Warm-start resumption implemented in `trainSpotter.m` (`InitialDetector` argument) allowing seamless resumption of further training epochs post-demo.
+    * Warm-start resumption implemented in `trainSpotter.m` (`InitialDetector` argument) allowing seamless resumption of further training epochs.
+    * **Active Overnight Run:** Resumed training for 5 more epochs from `net_checkpoint__1476__2026_09_06__02_07_52.mat` (total 6 epochs tonight), finishing at ~4:55 AM with a 1-hour safety margin before the 6:00 AM lab shutdown. Remaining 9 epochs can be run post-demo.
 
 ---
 

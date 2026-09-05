@@ -141,7 +141,10 @@ for k = 1:numel(names)
     if iscell(v); v = v{1}; end
     fprintf('  %-18s AP %.4f\n', names(k), mean(v, 'omitnan'));
 end
-fprintf('  overall mAP %.4f\n', mean(metrics.DatasetMetrics.mAP, 'omitnan'));
+mAP_val = metrics.DatasetMetrics.mAP;
+if istable(mAP_val); mAP_val = mAP_val{1,1}; end
+if iscell(mAP_val); mAP_val = mAP_val{1}; end
+fprintf('  overall mAP %.4f\n', double(mAP_val));
 
 save(outFile, 'detector', 'names', 'metrics', '-v7.3');
 fprintf('\nSaved %s\n', outFile);
