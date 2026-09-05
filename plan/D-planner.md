@@ -38,8 +38,12 @@
 
 Good news: the hardest maths is already written and tested for you.
 
-**Your machine:** Windows
-**Your branch:** `stream-d-planner`
+**Your machine:** Windows — that is where you develop.
+**The demo machine is Aditya's Mac**, and everything in this repo has been verified to run there
+(`TEAM.md`, "The main machine"). So write nothing that only works on Windows: no `C:\` paths, no
+backslashes in code, no Windows-only shell commands.
+**Your branch:** `stream-d-a` if you are Person A, `stream-d-b` if you are Person B.
+**You do NOT share a branch** — see `plan/CONTRACT-AB.md`.
 
 ---
 
@@ -83,10 +87,11 @@ to open the right folder.
 
 Go to **mathworks.com**, sign in with your **college email**, and associate licence **41087767**.
 
-When the installer asks which products to install, tick **all seven**:
+When the installer asks which products to install, tick **all nine**:
 
 > MATLAB · Simulink · Automated Driving Toolbox · Computer Vision Toolbox ·
-> Image Processing Toolbox · Deep Learning Toolbox · Stateflow
+> Image Processing Toolbox · Deep Learning Toolbox · Stateflow ·
+> **Sensor Fusion and Tracking Toolbox · Navigation Toolbox**
 
 Then, inside MATLAB: **Home → Add-Ons → Get Add-Ons**, search for
 **"Deep Learning Toolbox Converter for ONNX Model Format"** and install it. It is free.
@@ -98,8 +103,10 @@ cd <where-you-cloned>/sih26037/derisk
 check01_environment
 ```
 
-You should see seven lines saying `[ OK ]`.
-**If any line says `MISSING`, stop and tell Aditya.** Nothing else will work until it is fixed.
+You should see nine lines saying `[ OK ]` under REQUIRED PRODUCTS.
+**If any line says `MISSING`, stop and tell Aditya** — with one exception:
+`[ MISSING ] no ONNX import` blocks only the yield predictor (Stream C, and D's wiring of
+it). D1-D5 and E1 do not need it. Carry on, and say which one you saw.
 
 ---
 
@@ -107,7 +114,8 @@ You should see seven lines saying `[ OK ]`.
 
 Most of the MATLAB here was written on a machine with **no MATLAB installed**. Every function
 name and signature was checked against the MathWorks documentation, but **checked is not run**.
-Four real defects were already found that way and there are probably more.
+Defects have already been found exactly that way, and **seven more on 4 September 2026** —
+two of which stopped the simulation from running at all.
 
 The first time you have MATLAB working, tell your AI assistant: **`/first-run`**. It runs
 everything that has never been executed, in the right order, and says what to look for.
@@ -124,7 +132,7 @@ Send the whole error, every line.
 overwrite each other. You get your own branch:
 
 ```bash
-git checkout -b stream-d-planner
+git checkout -b stream-d-a        # Person B: stream-d-b
 ```
 
 Do that once. From then on you are on your own branch and cannot break anyone.
@@ -136,7 +144,7 @@ Do this **several times a day**, not once a week:
 ```bash
 git add -A
 git commit -m "D2: OSM import working, 14 roads found"
-git push -u origin stream-d-planner
+git push -u origin stream-d-a     # Person B: stream-d-b
 ```
 
 The message format is **`<task number>: <what you did>`**. That is it. It tells everyone which
@@ -187,7 +195,7 @@ not *"it says something about a null value"*. The complete message.
 
 **Two things to refuse if your agent suggests them:**
 
-1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — four other people build against it
+1. **Editing section 3 of `AGENTS.md`** (the frozen contract) — five other people build against it
 2. **Editing anything in `matlab/baseline/`** — that is our control arm and it must stay untouched
 
 **And never let it write a number you have not produced.** If the agent puts a figure in a comment
@@ -241,7 +249,7 @@ Full rules in [`plan/CONTRACT-AB.md`](CONTRACT-AB.md).
 
 ### D1 — Prove the maths works  *(five minutes, do it first)*
 
-Two files are already written: the collision geometry and the role assignment. Thirteen tests
+Two files are already written: the collision geometry and the role assignment. Fourteen tests
 check them. Run this the moment MATLAB is installed:
 
 ```matlab
@@ -250,7 +258,7 @@ results = runtests('matlab/tests/testPlannerGeometry.m');
 disp(results)
 ```
 
-**All thirteen must pass.** Send the full output either way. This needs no simulation and no extra
+**All fourteen must pass.** Send the full output either way. This needs no simulation and no extra
 toolboxes — it checks the planner's maths on its own.
 
 ### D2 — Turn a role into an actual command
@@ -307,7 +315,10 @@ Every cycle:
 2. Roll each forward under **two futures per agent — they yield, they assert** — weighted by
    `P(yield)` from Stream C
 3. Collision-check with `dynamicCapsuleList`
-4. **Commit only the shared trunk** — the first piece safe under *both* futures
+4. **Commit only the shared trunk** — the longest prefix after which a safe continuation still
+   exists under *both* futures. **NOT merely the longest collision-free stretch:** a stretch can
+   be collision-free and still end where every continuation crashes, and committing to that is
+   the crash. **Ruling 4 Sep 2026: `plan/D6-TRUNK-RULING.md`.**
 5. Throw it away and redo it
 
 **The trunk IS the probe.** Creeping forward is not a special behaviour; it is the committed part
@@ -413,7 +424,7 @@ prediction as "50/50". That is a real bug waiting to happen.
 
 | Task | Done means |
 |---|---|
-| D1 | **13 tests passed**, full output sent |
+| D1 | **14 tests passed**, full output sent |
 | D2 | Give-way makes one clear move; stand-on makes **no** change at all |
 | D3 | Stateflow chart runs in the scenario with the central controller removed |
 | D4 | Planner switches mode when lane markings are present |
@@ -436,7 +447,7 @@ pipeline that does not complete.
 - Stream B (H2) for the TrackList
 - Stream C (H3) for the format number, then (H4) the trained model
 
-**But D1 needs nothing.** Run the thirteen tests the day MATLAB exists — that is real, verifiable
+**But D1 needs nothing.** Run the fourteen tests the day MATLAB exists — that is real, verifiable
 progress on day one.
 
 ---

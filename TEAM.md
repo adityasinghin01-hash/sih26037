@@ -24,14 +24,44 @@ That is why the two halves cannot break each other.
 
 | Who | Role | Owns | Machine | Reads first |
 |---|---|---|---|---|
-| **Aditya** | 1 + F | **WORLD and Perception in MATLAB.** Plus integration, the demo and the pitch | Mac for WORLD, Windows main for integration | — |
+| **Aditya** | 1 + F | **WORLD and Perception in MATLAB.** Plus integration, the demo and the pitch | **Mac — THE MAIN MACHINE. The demo runs here** | — |
 | **World teammate** | 1 | Meerut footage, OSM exports, PPT, docs, the claim ledger, judging whether a scene looks Indian | any | **nothing here — Aditya briefs them on a call** |
 | **ML person** | C | METEOR, both yield models, ONNX export, the three MATLAB models | roomiest machine — datasets are tens of GB | **`ml/ReadThis.md`** |
-| **Planner A** | 2 | `matlab/+sih/+planner/*.m` — pure functions | Windows | **`plan/ReadThis.md`** then `/plan-work` |
-| **Planner B** | 2 | The Simulink model and Stateflow chart, **and the baseline** | **Windows — the MAIN machine** | **`plan/ReadThis.md`** then `/plan-harness` |
+| **Planner A** | 2 | `matlab/+sih/+planner/*.m` — pure functions | Windows — develops here | **`plan/ReadThis.md`** then `/plan-work` |
+| **Planner B** | 2 | The Simulink model and Stateflow chart, **and the baseline** | Windows — develops here, and our **second platform** | **`plan/ReadThis.md`** then `/plan-harness` |
 
 **Planner A uses Claude Code. Planner B uses Antigravity.** Every command exists for both tools,
 so it does not matter which one you are holding.
+
+---
+
+## The main machine is Aditya's Mac
+
+**Decided 4 September 2026 — and decided by running every piece on it, not by assuming.**
+
+Aditya is the integrator and Aditya presents, so the machine in the room has to be the one that is
+proven. It now is. **The demo runs on the Mac.**
+
+| Piece | On the Mac | Evidence |
+|---|---|---|
+| Stream D planner — D6, D8, D9, D10, arbitration | **304 tests in 18 files: 303 pass, 1 fail, 0 incomplete** | `stream-d-a` re-run on the Mac 5 Sep. The 1 failure is Stream C's `testFeatureParity`. **Requires `OpenTrafficLab/` cloned in the repo root** — without it 7 tests silently SKIP and the total reads 297 |
+| Simulink model + Stateflow chart | **loads with 0 unresolved refs; simulates in 47 s; logs `h`** | `sih_planner.slx` from `stream-d-b`, loaded and simulated on the Mac |
+| OpenTrafficLab subclass | **9/9** | `testNegotiatingStrategy.m` |
+| `matlab/baseline/` | **runs, and fails at 19.7 s — identically to Windows** | `plan/BASELINE-R2026a.md` |
+| Required toolboxes | **9/9 present** | `ver` |
+| **ONNX converter add-on** | **MISSING — the only real gap left** | all four import/export functions absent |
+
+### Three rules that come with it
+
+1. **Nothing changes about where you work.** Everyone keeps developing on their own machine. This
+   is only about where the demo runs and where integration happens.
+2. **The `.slx` still has exactly ONE editor — Planner B.** It is a binary file and git cannot merge
+   it, so two people editing it silently loses one person's day. Aditya **pulls and runs** it; he
+   never edits it. If B changes it, Aditya's copy is stale until he pulls again — **tell him when
+   you push.**
+3. **The Windows machines stay valuable as our second platform.** Running the baseline on both is
+   exactly what settled whether its failure was real or a Mac artefact. That could not have been
+   done on one machine, and it will be true again.
 
 ---
 
@@ -78,8 +108,8 @@ and your AI assistant works blind — it invents function names and breaks other
 
 | # | What | Who | Notes |
 |---|---|---|---|
-| 1 | **MATLAB installed on three machines** | Aditya, Planner B, ML person | **The single biggest blocker.** Almost everything downstream needs it |
-| 2 | **Fill `matlab/baseline/`** | Planner B | Empty today. Until it exists, **no number this project produces is comparable to anything** |
+| 1 | **The ONNX converter add-on** | Aditya | **Mostly closed.** MATLAB R2026a with 9/9 required products is confirmed on Aditya's Mac AND on both Windows machines — Planner A ran the test suite, Planner B ran the baseline. **The ML person's machine is still unconfirmed.** What remains is the free **Deep Learning Toolbox Converter for ONNX Model Format** add-on, missing on the Mac: Home -> Add-Ons -> Get Add-Ons. It blocks `check04`, which blocks the opset number, which blocks the planner |
+| 2 | ~~**RUN `matlab/baseline/`**~~ **DONE — and it fails** | Aditya | **Run 4 Sep on both platforms. It does not complete** — it dies 19.7 s into its own scenario with 0 of 120 candidates collision-free. `plan/BASELINE-R2026a.md`. **E2 is now blocked rather than unstarted**, and there is still no head-to-head number because the two planners do not share a scenario. **Never edit that folder to make it survive** |
 | 3 | **RoadRunner licence 41087767** | Aditya | The one problem-statement requirement we cannot currently meet |
 | 4 | Which label to train on | ML person applies the rule in `ml/ReadThis.md` | Only escalates if BOTH labels come out worse than 1 in 200 |
 
@@ -112,7 +142,8 @@ teammate's footage and OSM exports; the RoadRunner email.
 
 **Most of the MATLAB in this repository has never been executed.** It was written on a machine
 with no MATLAB installed. Every function name was checked against the MathWorks documentation,
-but checked is not run — and **six real defects have already been found that way.**
+but checked is not run — and **defects have been found exactly that way, including seven on
+4 September 2026** — two of which stopped the simulation running at all.
 
 `/first-run` executes it in the right order and tells you what to look for. **Expect something to
 break. That is the process working, not the repository being broken.** Send the whole error.

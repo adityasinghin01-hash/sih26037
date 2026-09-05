@@ -1,4 +1,4 @@
-function roles = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
+function [roles, vos] = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
 %ASSIGNROLES  COLREGs-style role assignment from geometry alone.
 %
 %   No radio. No infrastructure. No shared map. Only relative geometry - which is what a
@@ -8,16 +8,43 @@ function roles = assignRoles(egoPos, egoVel, egoYaw, tracks, opts)
 %   Sector boundaries 22.5 / 90 / 112.5 deg; the sign of tCPA separates a closing encounter
 %   from an opening one. Verified in research section 12.
 %
+%   FRAME - THE ONE WAY TO GET THIS WRONG
+%   This function computes r = trkPos - egoPos and relBearing = bearing - egoYaw, so
+%   THE TRACKS AND THE EGO POSE MUST BE IN THE SAME FRAME. It does not care which frame
+%   that is, and it cannot detect a mismatch.
+%
+%     ego frame (AGENTS.md S1, what Stream B delivers) -> pass egoPos = [0 0], egoYaw = 0
+%     scenario/world frame (what NegotiatingStrategy uses today) -> pass the real ego pose
+%
+%   Passing an S1 ego-frame TrackList together with the real world ego pose is the obvious
+%   mistake and it NEVER ERRORS - every bearing, and therefore every role, is silently
+%   wrong. Pinned by testWorldFrameAndEgoFrameGiveTheSameRole and
+%   testEgoFrameTracksWithAWorldEgoPoseAreWrong in matlab/tests/testPlannerGeometry.m.
+%
 %   INPUTS
-%     egoPos 1x2 double  ego position, m
-%     egoVel 1x2 double  ego velocity, m/s
-%     egoYaw double      ego heading, rad
-%     tracks struct array  TrackList  (AGENTS.md section 3 S1)
+%     egoPos 1x2 double  ego position, m      - same frame as tracks (see above)
+%     egoVel 1x2 double  ego velocity, m/s    - same frame as tracks
+%     egoYaw double      ego heading, rad     - same frame as tracks
+%     tracks struct array  TrackList  (AGENTS.md section 3 S1). May be empty; must NOT
+%                        contain the ego - a self-track sits at d = 0, takes the
+%                        d <= dMin branch of velocityObstacle, and pins h at -pi/2
 %     opts.dMin_m      minimum separation, default 2.5 m
 %     opts.maxRange_m  ignore agents beyond this, default 50 m
 %
-%   OUTPUT
+%   OUTPUTS
 %     roles  struct array  Role (AGENTS.md section 3 S4), same order as tracks
+%     vos    struct array  the full sih.planner.velocityObstacle result for each track,
+%                        same order as tracks. Added 4 September 2026.
+%
+%   WHY THE SECOND OUTPUT EXISTS
+%   This function always built a complete vo per agent and then kept only three fields
+%   of it. sih.planner.chooseVelocity needs a vo, and sih.planner.arbitrate picks WHICH
+%   agent's vo that should be, so the discarded results were being recomputed downstream
+%   for no reason. Returning them means arbitrate never has to take a position, which is
+%   what makes it impossible to hand it two things measured in different frames - the
+%   silent failure this file's FRAME note above is entirely about.
+%
+%   Asking for one output is unchanged and every existing caller is unaffected.
 
 arguments
     egoPos (1,2) double
@@ -36,11 +63,19 @@ SAFE=uint8(0); GIVE_WAY=uint8(1); STAND_ON=uint8(2); HEAD_ON=uint8(3); OVERTAKIN
 
 n = numel(tracks);
 proto = struct('TrackID',uint32(0),'Role',SAFE,'Beta',NaN,'Lambda',NaN,'TCPA',NaN);
+
+% Field order must match sih.planner.velocityObstacle's own output exactly, or the
+% two cannot be assigned into the same array.
+voProto = struct('d',NaN,'beta',NaN,'lambda',NaN,'h',NaN, ...
+                 'colliding',false,'tcpa',NaN,'dcpa',NaN,'bearing',NaN);
+
 if n == 0
     roles = proto([]);          % honour the empty-TrackList guarantee, S1 rule 3
+    vos   = voProto([]);
     return
 end
 roles = repmat(proto, n, 1);
+vos   = repmat(voProto, n, 1);
 
 for k = 1:n
     t = tracks(k);
@@ -48,6 +83,8 @@ for k = 1:n
 
     vo = sih.planner.velocityObstacle(egoPos, egoVel, ...
             t.Position(1:2), t.Velocity(1:2), opts.dMin_m);
+
+    vos(k) = vo;
 
     roles(k).Beta   = vo.beta;
     roles(k).Lambda = vo.lambda;

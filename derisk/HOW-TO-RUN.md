@@ -9,14 +9,18 @@ Do them in order. Stop and report if one fails.
 
 ## Step 0 + 1 — Environment (2 minutes)
 1. Open MATLAB.
-2. In the box at the top that shows the folder path, navigate to `sih2026/derisk`.
+2. In the box at the top that shows the folder path, navigate to the `derisk` folder inside the
+   repository you cloned. `git clone` creates a folder called **`sih26037`**, so the path ends
+   `.../sih26037/derisk`.
 3. Type in the Command Window:
    ```
    check01_environment
    ```
 4. Send back: `check01_output.txt`
 
-**This decides everything.** If a product says MISSING, nothing else can run.
+**This decides everything.** You should see **nine** `[ OK ]` lines under REQUIRED PRODUCTS.
+If a required product says MISSING, nothing else can run — except `no ONNX import`, which
+blocks only step 4 and the yield predictor.
 
 ---
 
@@ -82,15 +86,21 @@ convert does not throw; it arrives as a custom layer with a function a human mus
 ## Step 5 — Does our foundation run? (10 minutes)
 In a **terminal**:
 ```
-cd ~/dev/sih2026
+cd <the repository folder you cloned, e.g. .../sih26037>
 git clone https://github.com/mathworks/OpenTrafficLab.git
 ```
 Then in MATLAB:
 ```
 check05_opentrafficlab
 ```
-It prints a list of example scripts. **Open one and run it without changing anything.**
-Send back: `check05_output.txt`, whether the example ran, and any figure it produced.
+**ALREADY ANSWERED, 4 September 2026 — the planner is not blocked on this.**
+Stock OpenTrafficLab does **not** run on R2026a; it dies on the first `advance()` with
+`MATLAB:noSuchMethodOrField ... 'ReferencePoint'`. Two fixes, both outside their folder, both
+applied. Evidence and reproduction: [`plan/OPENTRAFFICLAB-R2026a.md`](../plan/OPENTRAFFICLAB-R2026a.md).
+
+Note the script cannot answer its own question: its example search misses
+`OpenTrafficLab/Testing/*.m` and the `.mlx`, so it prints an empty list and then says "open one
+of the above". Worth fixing if anyone re-runs it.
 
 ---
 

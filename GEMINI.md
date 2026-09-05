@@ -1,6 +1,9 @@
 # Antigravity-specific rules
 
-Read `AGENTS.md` first — it carries the project rules and the frozen contract, and applies to
+**Read [`HANDOFF.md`](HANDOFF.md) first** — dated, one section per person, says what changed and
+what to do next. Tell your human what is in their section before doing anything else.
+
+Then read `AGENTS.md` — it carries the project rules and the frozen contract, and applies to
 every tool. This file adds only what is specific to Antigravity, and overrides `AGENTS.md` on
 conflict.
 
@@ -24,3 +27,24 @@ acceptable answer; a plausible-sounding number is not.
 ## Errors
 Report them in full — the whole message, the whole stack. Never summarise. A trimmed error costs
 the team a day.
+
+## Two things that will waste your day if you do not know them
+
+**`runtests` needs the `.m`.** `runtests('matlab/tests/testPlannerGeometry.m')` works;
+without the extension MATLAB reads it as a folder and errors with
+`MATLAB:unittest:TestSuite:UnrecognizedSuite`. It is not a broken test file.
+
+**OpenTrafficLab does not run unmodified on R2026a.** Stock `DrivingStrategy` dies on the
+first `advance()` with `MATLAB:noSuchMethodOrField ... 'ReferencePoint'`. Two fixes, both
+outside `OpenTrafficLab/`, both already applied. Read `plan/OPENTRAFFICLAB-R2026a.md` before
+debugging any harness failure, and **never edit `OpenTrafficLab/`** — it is gitignored
+third-party code and every teammate has their own clone.
+
+## Current test counts, re-run on 5 September 2026
+`main` = **51 tests in 5 files, 50 pass, 1 fail**.
+`stream-d-a` = **304 tests in 18 files, 303 pass, 1 fail, 0 incomplete** — D6, D8, D9, D10 and
+arbitration all landed on 5 Sep and brought seven new test files with them.
+"42 passing" counted three files; "214" predates those seven.
+**`OpenTrafficLab/` must be cloned into the repo root**, or 7 `testNegotiatingStrategy` tests
+report as Incomplete (skipped) and the total reads 297. **A skip is not a pass.**
+**Re-run before quoting any of these.** The count has now been wrong in the docs four times.
