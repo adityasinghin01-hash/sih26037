@@ -18,9 +18,12 @@ function trunk = findSharedTrunk(candidates, prefixSteps, opts)
 %   Reading B needs a second round of generation from the end of the trunk, one
 %   branch per future, which piece 2 can already do from any ego state.
 %
-%   ASKED OF ADITYA, 4 SEP 2026, NOT YET ANSWERED. Reading A ships first so the
-%   planner runs end to end; Reading B bolts on top and reads the same input.
-%   .Rule names which one produced the answer, so no log is ever ambiguous.
+%   ANSWERED, 4 SEP 2026: plan/D6-TRUNK-RULING.md rules READING B, and
+%   sih.planner.planContingency's opts.trunkMode defaults to "B" accordingly. This
+%   header said "not yet answered" for a day after the ruling landed and contradicted
+%   the code two files away - corrected 5 September 2026. Reading A remains reachable
+%   for comparison, and .Rule names which one produced the answer, so no log is ever
+%   ambiguous.
 %
 %   THE TIE-BREAK, AND WHY IT IS THIS ORDER
 %   Ties are the normal case, not the exception - every candidate that is safe

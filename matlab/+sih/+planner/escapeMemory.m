@@ -49,12 +49,21 @@ function out = escapeMemory(memory, egoState, space, opts)
 %   for a centred car and an UNDERESTIMATE otherwise - the safe direction, because it
 %   drops fewer breadcrumbs and never phantom ones.
 %
-%   TODO(unverified): this is the one place Aditya's ruling and the repository do not
-%   line up, and it is not resolved by guessing. Either S9 carries two edge distances
-%   and roadBarrier.m's header understates it, or it carries one and the left-plus-
-%   right derivation is not available. Ask him which; do not read AGENTS.md section 3
-%   to settle it. Either way .LocalWidth_m reports what was assumed, so a log always
-%   shows the number that was actually used.
+%   Aditya checked AGENTS.md section 3 on 5 September 2026 and corrected himself:
+%   .EdgeDistance and .EdgeSide are both SCALAR - one distance to the nearest edge
+%   and one side - exactly as roadBarrier.m documents. Left-plus-right was never
+%   available. Section 3 does not change for this, two days out, so the doubling
+%   above STANDS for the demo, and .LocalWidth_m keeps reporting what was assumed.
+%
+%   THE REAL WIDTH IS ALREADY REACHABLE, AND IT IS NOT EdgeDistance
+%   S9 also carries a vehicleCostmap, and Aditya verified by running on R2026a that
+%   checkFree(costmap, [x y]) works. Stepping laterally from the ego until checkFree
+%   goes false on each side gives a true local width with no contract change and no
+%   centred assumption at all.
+%   TODO(unverified): DO NOT BUILD THAT BEFORE THE 7th. matlab/+sih/+perception/ is
+%   empty, so there is no S9 to query, and the doubling is already safe in the
+%   conservative direction. It is the post-7th fix and it is recorded here so it is
+%   not rediscovered from scratch.
 %
 %   AN INVALID S9 RECORDS NOTHING, AND THAT IS NOT THE SAME AS A NARROW ROAD
 %   With S9 invalid there is no measured edge, so no breadcrumb is dropped and

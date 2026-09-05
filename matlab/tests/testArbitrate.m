@@ -141,6 +141,48 @@ verifyEqual(tc, info.NumConsidered, 2);       % 2, not 0 - that is the differenc
 verifySubstring(tc, char(info.Reason), 'NaN');
 end
 
+% ------------------------------------------- telling the two no-winner cases apart
+
+function testAnEmptyRoadAndAnUnKNOWABLERoadAreDistinguishableWithoutStrings(tc)
+% Both return winner = SAFE, and they mean opposite things. Person B wires a chart
+% transition, not a string parser, so the difference has to be readable as numbers.
+empty   = iNoRoles();
+unknown = [iRole(1, 1, NaN, NaN); iRole(2, 2, NaN, NaN)];
+
+[~, ~, e] = sih.planner.arbitrate(empty);
+[~, ~, u] = sih.planner.arbitrate(unknown);
+
+verifyEqual(tc, e.NumConsidered, 0);
+verifyEqual(tc, u.NumConsidered, 2);          % agents WERE there
+verifyEqual(tc, e.NumUsable, 0);
+verifyEqual(tc, u.NumUsable, 0);
+verifyFalse(tc, e.AllUnknown);                % nobody there is not "unknown"
+verifyTrue(tc,  u.AllUnknown);
+end
+
+function testWinnerAloneCannotTellThemApartWhichIsWHYTheFlagsExist(tc)
+% Pin the hazard itself. If this ever stops being true the header is out of date.
+[w1, k1] = sih.planner.arbitrate(iNoRoles());
+[w2, k2] = sih.planner.arbitrate([iRole(1,1,NaN,NaN); iRole(2,2,NaN,NaN)]);
+verifyEqual(tc, w1, w2);                      % identical - that is the problem
+verifyEmpty(tc, k1);
+verifyEmpty(tc, k2);
+end
+
+function testNumUsableCountsOnlyTheAgentsWeCanActuallyMeasure(tc)
+roles = [iRole(1, 1, NaN, NaN); iRole(2, 2, 0.9, 0.1); iRole(3, 1, 0.5, 0.2)];
+[~, ~, info] = sih.planner.arbitrate(roles);
+verifyEqual(tc, info.NumConsidered, 3);
+verifyEqual(tc, info.NumUsable, 2);
+verifyFalse(tc, info.AllUnknown);
+end
+
+function testAllUnknownIsFalseWheneverAnyoneIsMeasurable(tc)
+roles = [iRole(1, 1, NaN, NaN); iRole(2, 2, 0.9, 0.1)];
+[~, ~, info] = sih.planner.arbitrate(roles);
+verifyFalse(tc, info.AllUnknown);
+end
+
 % ---------------------------------------------------------------- guards
 
 function testAMissingFieldIsRefusedByName(tc)

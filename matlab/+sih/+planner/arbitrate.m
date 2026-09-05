@@ -34,16 +34,39 @@ function [winner, k, info] = arbitrate(roles)
 %   scene produce the same decision on every run. A demo that flickers between two equally
 %   valid answers looks broken even when it is right.
 %
+%   READING winner ALONE IS A BUG. READ info.
+%   winner comes back SAFE (0) for BOTH of the two no-winner cases - an empty road,
+%   and a road where every agent's geometry is unusable. Those are opposite
+%   situations: one means there is nobody there, the other means WE KNOW NOTHING
+%   ABOUT ANYBODY. A caller that switches on winner alone cannot tell them apart and
+%   will free-run through the second, which is exactly the plausible wrong answer
+%   this project's failure mode is made of.
+%
+%   There is no third role code to return: S7 fixes the set and inventing one would
+%   break the contract six people build against. So the distinction is carried in
+%   info, and a chart or a caller MUST read it:
+%
+%     info.NumConsidered  0 means the road really was empty
+%     info.NumUsable      how many had a usable barrier. 0 with NumConsidered > 0
+%                         means agents were there and none could be measured
+%     info.AllUnknown     that same case as one boolean, for wiring straight into a
+%                         chart transition without arithmetic
+%
+%   Raised by Aditya on 5 September 2026 as a seam risk while Person B was wiring
+%   this. The code was already right; what was missing was a flag she could read.
+%
 %   WHAT AN EMPTY ROAD RETURNS
 %   No agents means nobody to negotiate with, so there is no winner: k comes back EMPTY
 %   and info.H is NaN. AGENTS.md S1 guarantee 3 says an empty TrackList must not cause an
 %   error, and this honours it. THE CALLER MUST CHECK isempty(k) BEFORE INDEXING vos(k) -
 %   there is nothing sensible to hand chooseVelocity when there is nothing there.
 %
-%   THIS FUNCTION IS NOT IN plan/ OR AGENTS.md
-%   The multi-agent split was settled verbally by Aditya and relayed, and the interface
-%   above was chosen by Person A on 4 September 2026 rather than read out of a document.
-%   TODO(unverified): show Aditya this signature.
+%   RULED, AND WRITTEN DOWN
+%   Arbitration existed only as a spoken decision until 4 September 2026. It is now
+%   plan/ARBITRATION-RULING.md, which rules exactly this shape - roles only, smallest
+%   h, lowest TrackID on a tie, no winner on an empty list - and the all-unknown case
+%   this file added on top was adopted into plan/CONTRACT-AB.md as the frozen rule.
+%   The ruling was written by Claude at Aditya's instruction and he can overturn it.
 %
 %   INPUT
 %     roles  struct array  Role (AGENTS.md section 3 S4) as returned by
@@ -58,6 +81,9 @@ function [winner, k, info] = arbitrate(roles)
 %     info    (1,1) struct  .TrackID  the winner's ID, uint32(0) when there is none
 %                           .H        the winning (smallest) h, NaN when there is none
 %                           .NumConsidered  how many agents were weighed
+%                           .NumUsable      how many had a barrier that is not NaN
+%                           .AllUnknown     agents were present and NONE was usable.
+%                                           NEVER means the road is clear
 %                           .Reason   string, why this one - for D5's log
 
 arguments
@@ -67,7 +93,7 @@ end
 SAFE = uint8(0);
 
 info = struct('TrackID', uint32(0), 'H', NaN, 'NumConsidered', numel(roles), ...
-              'Reason', "");
+              'NumUsable', 0, 'AllUnknown', false, 'Reason', "");
 
 if isempty(roles)
     winner = SAFE;
@@ -82,9 +108,12 @@ h = [roles.Lambda] - [roles.Beta];
 
 % min() ignores NaN, so an agent whose geometry could not be computed never wins by
 % accident. All-NaN means we know nothing about anybody, which is not the same as safe.
+info.NumUsable = nnz(~isnan(h));
+
 if all(isnan(h))
     winner = SAFE;
     k      = [];
+    info.AllUnknown = true;
     info.Reason = "every agent's barrier is NaN - no usable geometry";
     return
 end

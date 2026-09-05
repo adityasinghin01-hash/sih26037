@@ -39,7 +39,19 @@ function out = planTurn(route, egoState, opts)
 %   maritime sectors: COLREGs Rule 15 and RRR reg. 9 BOTH give way to traffic on the
 %   right, so the two conventions agree there and disagree only head-on.
 %
-%   The frame is x forward, y left, z up, so a POSITIVE heading change is LEFT.
+%   The frame is x forward, y left, z up, so a POSITIVE heading change is LEFT. The
+%   side is taken from the SIGN OF THAT HEADING CHANGE IN THE EGO FRAME and never
+%   from a compass bearing, which is the same convention SteerAngle already uses -
+%   one sign rule for the whole planner rather than two that could drift apart.
+%
+%   THE KNOWN EXCEPTION, NOT SPECIAL-CASED
+%   A right turn OUT OF A ONE-WAY STREET crosses nothing, so calling it a cut is
+%   conservative rather than correct. S10 carries no one-way data - GoalHeading,
+%   GoalPoint, BlockedEdges, EscapePoints and nothing else - so there is no honest
+%   way to detect it, and inventing one would be the classification D10 forbids. The
+%   conservative reading stands, and the cost is a refuge point nobody needed.
+%   Confirmed as a ruling by Aditya, 5 September 2026: note the exception, do not
+%   special-case it.
 %
 %   THE SHARP ROW IS ASKED FOR, NOT RECOMPUTED
 %   The sharp-at-speed row binds on lateral grip, and sqrt(aLat*R) already exists as
@@ -122,13 +134,11 @@ function out = planTurn(route, egoState, opts)
 %   WHICH OF THESE NUMBERS ARE MEASURED, AND WHICH ARE CHOSEN
 %   The distinction is the whole point, so it is written out rather than assumed.
 %
-%   roadWidth_m is MEASURED, per Aditya's ruling of 5 September 2026: it is S0
-%   section 4 and the backup demo asserts it to 1 mm. It must never be described as
-%   a design choice.
-%   TODO(unverified): the citation cannot be checked from this repository - there is
-%   no S0 file in plan/ and the figure 7.0 appears nowhere outside this file. The
-%   ruling is followed on Aditya's word; ask him to land S0 so the number has a
-%   source here rather than in a message.
+%   roadWidth_m is MEASURED and the citation is now checkable in the repository:
+%   world/scenarios/S0-THE-WORLD.md section 4, whose carriageway table gives
+%   tertiary = 7.0 m, and the backup demo asserts it to 1 mm. It must never be
+%   described as a design choice. (S0 landed 5 September 2026, commit c3b5df7; it
+%   reaches main with PR #10.)
 %
 %   TODO(unverified): cutMinAngle, uturnAngle, streamWidth and refugeMargin are
 %   DESIGN CHOICES traceable to plan/D-planner.md D10, not measured figures. By the
