@@ -107,6 +107,16 @@ cmd = sih.planner.chooseVelocity(role, vo, egoState);                        % d
 cmd = sih.planner.chooseVelocity(role, vo, egoState, 'gradient_rad', 0.1);   % tuned
 ```
 So a three-argument call is **not** a bug — it just takes every default.
+### `.Reason` is not carried inside the Simulink signal bus — 5 September 2026
+
+Section 3 declares `.Reason` as a MATLAB `string`. Stateflow and Simulink signal buses
+cannot carry dynamic MATLAB `string` objects without code-generation errors — they require
+fixed-size, statically typed signals. The chart carries the seven numeric and boolean
+contract outputs (`Accel`, `SteerAngle`, `Mode`, `Gear`, `Signal`, `Committed`,
+`MirrorsFolded`). `.Reason` remains available in the pure MATLAB struct returned by
+`chooseVelocity` and `followTrunk`, and can be logged from MATLAB workspace calls, but
+it does not pass through the Simulink bus or the Stateflow chart.
+
 
 **`followTrunk` needs the vehicle wheelbase** and nothing in this repository states it. It defaults
 to 2.8 m. Person B should pass the real figure via `opts.wheelbase_m`.
