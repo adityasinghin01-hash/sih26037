@@ -446,6 +446,13 @@
     - `pushcart`: NaN (0 instances in IDD — confirmed documented finding)
     - **Overall Dataset mAP (IoU 0.50:0.95): 29.09%**
     - **Overall Dataset AP50 (IoU 0.50): 48.30%**
+* **[05:25 IST] Step 82: Production ONNX Export (Opset 18) on A100 COMPLETE**
+  * Exported `best_ckpt.pth` using `tools/export_onnx.py` with `--opset 18` and `--decode_in_inference`:
+    * Destination: `/home/jovyan/spotter_yolox_s_opset18.onnx`.
+    * Model size: **35.87 MB** (self-contained, 0 external data sidecars).
+    * Input node: `['images']` (shape `[1, 3, 640, 640]`).
+    * Output node: `['output']` (shape `[1, 8400, 20]` — decoded boxes, objectness, 15 S5 classes).
+    * Verified opset metadata in file: **18** (matches frozen contract and MATLAB R2024b requirements).
 
 ---
 
