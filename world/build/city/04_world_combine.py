@@ -31,6 +31,17 @@ for c in dst.collections:
 if dst.worlds:
     sc.world=dst.worlds[0]
 
+# ITEMS 13-15 STAY PARKED (PLAN s11 / Aditya, 6 Sep): the CLOUD_SHADOW plane and the god-ray
+# occluder stand-ins are the light-finalisation layer that needs real street/terrain geometry to
+# fall on. In pass 1 the shadow plane rendered as hard blocky patches (with inverted BRIGHT
+# blocks) all over the plain. Drop them from the combined file until light finalisation; the
+# SUN and the Nishita world stay.
+_drop=[o for o in bpy.data.objects
+       if o.name=="CLOUD_SHADOW" or o.name.startswith("GODRAY_OCCLUDER")]
+for o in _drop:
+    bpy.data.objects.remove(o, do_unlink=True)
+print(f"parked: removed {len(_drop)} item-13 object(s) (CLOUD_SHADOW + god-ray occluders)")
+
 sc.view_settings.view_transform='Standard'
 sc.view_settings.exposure=-3.06
 sc.render.engine='CYCLES'
@@ -49,8 +60,12 @@ def flag(name,cond):
     if not cond: fails.append(name)
 
 flag(f"exactly one SUN light in the combined file (got {n_lights})", n_lights==1)
-flag("SKY collection present and populated", "SKY" in bpy.data.collections and n_sky>0)
+flag("SKY collection present (holds the sun after item-13 parking)", "SKY" in bpy.data.collections and n_sky>0)
 flag("CLOUD collection present and populated", "CLOUD" in bpy.data.collections and n_cloud>0)
+flag("item-13 CLOUD_SHADOW plane is NOT in the combined file (parked)",
+     "CLOUD_SHADOW" not in bpy.data.objects)
+flag("no god-ray occluder stand-ins in the combined file (parked)",
+     not any(o.name.startswith("GODRAY_OCCLUDER") for o in bpy.data.objects))
 flag("world (Nishita sky) is set on the scene", sc.world is not None)
 _land_cols={"TERRAIN","WATER","HILL","DISTANT","ROADS","ROADS_KACCHA","ROCKS_3D","REFERENCE"}
 _present=_land_cols & {c.name for c in sc.collection.children}

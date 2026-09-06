@@ -42,6 +42,7 @@ BAND         = 78.0          # interior band width: the density falloff INWARD f
 # come later if the A1000 ever has to hold the whole field. Toggle with SIH_BANDS=1 to test that.
 BANDED_VOXELS = os.environ.get("SIH_BANDS","0")=="1"
 HOLE_MASK     = os.environ.get("SIH_HOLES","1")=="1"   # L2: large-scale blue-hole density mask - ON
+RIM_HALATION  = os.environ.get("SIH_HALO","0")=="1"    # L4: backlit-rim emission - OFF, mis-tuned
 FADE_START   =  9000.0        # radial density fade so the field edge never shows.
                               # MEASURED: a 1400 m cloud at 10 deg elevation is 7940 m away and at
                               # 6 deg is 13320 m. The old 4200/12000 fade deleted everything below
@@ -159,22 +160,25 @@ def cloud_material():
     t.links.new(a1.outputs["Value"],a2.inputs[0])
     t.links.new(a2.outputs["Value"],a3.inputs[0]); t.links.new(fade.outputs["Result"],a3.inputs[1])
     t.links.new(a3.outputs["Value"],pv.inputs["Density"])
-    # HALATION on the backlit RIM only (item 4, REF-12 s4). `present` is 0 in empty space and 1
-    # wherever there is any cloud; `edge` is 1 at the thin wisp and 0 in the dense core. Their
-    # product glows on the fringe and nowhere else - the core stays a solid volume.
-    present=t.nodes.new("ShaderNodeMapRange")
-    present.inputs["From Min"].default_value=0.004; present.inputs["From Max"].default_value=0.020
-    present.inputs["To Min"].default_value=0.0; present.inputs["To Max"].default_value=1.0; present.clamp=True
-    edge=t.nodes.new("ShaderNodeMapRange")
-    edge.inputs["From Min"].default_value=0.020; edge.inputs["From Max"].default_value=0.220
-    edge.inputs["To Min"].default_value=1.0; edge.inputs["To Max"].default_value=0.0; edge.clamp=True
-    hg=t.nodes.new("ShaderNodeMath"); hg.operation='MULTIPLY'
-    hs=t.nodes.new("ShaderNodeMath"); hs.operation='MULTIPLY'; hs.inputs[1].default_value=0.38
-    t.links.new(a3.outputs["Value"],present.inputs["Value"]); t.links.new(a3.outputs["Value"],edge.inputs["Value"])
-    t.links.new(present.outputs["Result"],hg.inputs[0]); t.links.new(edge.outputs["Result"],hg.inputs[1])
-    t.links.new(hg.outputs["Value"],hs.inputs[0])
-    pv.inputs["Emission Color"].default_value=(1.0,0.93,0.82,1.0)
-    t.links.new(hs.outputs["Value"],pv.inputs["Emission Strength"])
+    # HALATION on the backlit RIM (item 4, REF-12 s4). DEFAULT OFF: the first cut emitted across
+    # the whole cloud interior (edge factor was still ~0.65 at typical interior density 0.09,
+    # because the 0.02->0.22 window is far wider than the volume's real density range), so 60%
+    # sky-cover of emissive volume acted as a giant area light and blew the ground 2-3 stops.
+    # It needs the density range MEASURED off a working render first. SIH_HALO=1 to test.
+    if RIM_HALATION:
+        present=t.nodes.new("ShaderNodeMapRange")
+        present.inputs["From Min"].default_value=0.004; present.inputs["From Max"].default_value=0.020
+        present.inputs["To Min"].default_value=0.0; present.inputs["To Max"].default_value=1.0; present.clamp=True
+        edge=t.nodes.new("ShaderNodeMapRange")
+        edge.inputs["From Min"].default_value=0.020; edge.inputs["From Max"].default_value=0.220
+        edge.inputs["To Min"].default_value=1.0; edge.inputs["To Max"].default_value=0.0; edge.clamp=True
+        hg=t.nodes.new("ShaderNodeMath"); hg.operation='MULTIPLY'
+        hs=t.nodes.new("ShaderNodeMath"); hs.operation='MULTIPLY'; hs.inputs[1].default_value=0.38
+        t.links.new(a3.outputs["Value"],present.inputs["Value"]); t.links.new(a3.outputs["Value"],edge.inputs["Value"])
+        t.links.new(present.outputs["Result"],hg.inputs[0]); t.links.new(edge.outputs["Result"],hg.inputs[1])
+        t.links.new(hg.outputs["Value"],hs.inputs[0])
+        pv.inputs["Emission Color"].default_value=(1.0,0.93,0.82,1.0)
+        t.links.new(hs.outputs["Value"],pv.inputs["Emission Strength"])
     # top/bottom colour gradient with Z offset (REF-12 s4)
     gp=t.nodes.new("ShaderNodeNewGeometry"); sx=t.nodes.new("ShaderNodeSeparateXYZ")
     mr=t.nodes.new("ShaderNodeMapRange")
