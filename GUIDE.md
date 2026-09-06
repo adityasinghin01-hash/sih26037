@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **100% (core) + Part 16 staged** | All 68 active core milestones complete; Part 16 (Model 4 Road-Finder A100) is planned, post-Sept 7 |
-| **Completed Steps** | **68** | `[🟢COMPLETED]` — Entire core pipeline complete (Predictor, Spotter, Evaluation, Calibration & A100 Training) |
-| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — Zero pending engineering tasks in core pipeline |
-| **Active Planned Steps** | **6** | `[🔵TO DO]` — Part 16 Model 4 Road-Finder on A100 (Steps 84–89), staged post-Sept 7 demo |
+| **Overall Pipeline Progress** | **100% (core) + Part 16 in progress** | All 68 core milestones complete; Step 84 of Part 16 verified (dataset + converter ready) |
+| **Completed Steps** | **69** | `[🟢COMPLETED]` — Entire core pipeline (68) + Step 84 (Model 4 dataset downloaded & verified) |
+| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — Zero pending engineering tasks |
+| **Active Planned Steps** | **5** | `[🔵TO DO]` — Part 16 Steps 85–89 (Model 4 training, evaluation, and MATLAB verification) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -31,7 +31,7 @@
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
 | **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🟢 7/7 COMPLETE | Supercomputer pipeline complete: 15 epochs trained, ONNX exported & imported in MATLAB |
-| **Part 16: Model 4 Road-Finder (A100)** | 84–89 | 🔵 6/6 PLANNED | DeepLab v3+ on IDD Segmentation 24 GB — staged for DGX A100 post-Sept 7 demo |
+| **Part 16: Model 4 Road-Finder (A100)** | 84–89 | 🟡 1/6 COMPLETE | Step 84 verified: 24 GB IDD Seg downloaded in 7 min, AutoNUE converter tool ready |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1503,47 +1503,32 @@ in `PROGRESS.md`.
 
 ### Phase A: Dataset Acquisition & Layout Verification
 
-#### Step 84 Download IDD Segmentation to A100 and Verify Layout [🔵TO DO] [HIGH]
+#### Step 84 Download IDD Segmentation to A100 and Verify Layout [🟢COMPLETED] [HIGH]
 
-IDD Segmentation is a gated academic dataset from IIIT Hyderabad. It requires a sign-up.
+IDD Segmentation is a gated academic dataset from IIIT Hyderabad.
 
-**84a — Request access and download:**
-1. Sign up at `idd.insaan.iiit.ac.in/accounts/signup/` if you do not already have credentials.
-2. Once approved, download the two archives to `/home/jovyan/idd-segmentation/` on the A100:
-   - `leftImg8bit_trainvaltest.zip` (images, ~20 GB)
-   - `gtFine_trainvaltest.zip` (semantic labels, ~4 GB)
-3. Run this inside a JupyterLab terminal (in `tmux` — an ssh drop kills an undetached job):
-   ```bash
-   tmux new -s model4
-   mkdir -p /home/jovyan/idd-segmentation
-   # Copy your download command here — wget or curl with the signed download URL
-   # Timer starts now: record when download begins
-   ```
+**84a — Request access and download [VERIFIED]:**
+- Downloaded Part I (`idd-segmentation.tar.gz`, 18.53 GB) in **4m 27s** at 29.7 MB/s via direct signed S3 link.
+- Downloaded Part II (`idd-20k-II.tar.gz`, 5.56 GB) in **2m 10s** via direct signed S3 link.
+- Total download size: **24.09 GB** in under 7 minutes.
 
-**84b — Extract and verify IDD Segmentation layout:**
-```bash
-cd /home/jovyan/idd-segmentation
-unzip leftImg8bit_trainvaltest.zip
-unzip gtFine_trainvaltest.zip
+**84b — Extract and verify IDD Segmentation layout [VERIFIED]:**
+- Extracted both tarballs:
+  - Part I unpacked to `IDD_Segmentation/` (`leftImg8bit/` and `gtFine/`).
+  - Part II unpacked to `idd20kII/` (`leftImg8bit/` and `gtFine/`).
+- Verified images in `leftImg8bit/`: `train`, `val`, `test` partitions present.
+  - Part I: **7,974 images** (`.png`) in train+val.
+  - Part II: **8,089 images** (`.jpg`) in train+val.
+  - Total: **16,063 dashcam images** across both parts.
+- Verified ground truth in `gtFine/`:
+  - Cloned official IIIT Hyderabad repository `https://github.com/AutoNUE/public-code.git`.
+  - Fixed deprecated `PILLOW_VERSION` import in `preperation/createLabels.py`.
+  - Ran multi-threaded `createLabels.py` with `--id-type level3Id` (16 workers, ~300 it/s).
+  - Part I: **7,974 masks** (`_gtFine_labellevel3Ids.png`) generated in 25s.
+  - Part II: **8,089 masks** (`_gtFine_labellevel3Ids.png`) generated in 32s.
+  - Total: **16,063 semantic segmentation ground truth masks** — bit-perfect 1-to-1 match (16,063 images : 16,063 masks).
 
-# Verify the standard IDD Seg layout exists:
-ls leftImg8bit/     # should show: train/  val/  test/
-ls gtFine/          # should show: train/  val/  test/
-
-# Count images and labels — these numbers go into PROGRESS.md
-find leftImg8bit/train -name "*.png" | wc -l    # expected ~20,000
-find leftImg8bit/val   -name "*.png" | wc -l    # expected ~3,000 – 6,000
-find gtFine/train      -name "*labelids.png" | wc -l
-find gtFine/val        -name "*labelids.png" | wc -l
-```
-
-What to look for:
-- `leftImg8bit/` and `gtFine/` must both exist at the same level.
-- Image count and label count must match exactly within train and val.
-- If they do not match, send the full output of both `find | wc -l` commands to Aditya.
-
-Done when: Both directories exist, image and label counts match, and counts are recorded in
-`PROGRESS.md`.
+Done when: 16,063 image/mask pairs generated, verified 1-to-1 parity, ready for training.
 
 ---
 

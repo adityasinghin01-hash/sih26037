@@ -504,8 +504,9 @@ AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
 [x] Task 5 (Branch Sync): Merged origin/main into stream-ml (clean merge, pushed to origin)
 [x] Task 6 (Model 3 YOLOX): Curated dataset (3,691 frames), H7/H9 fixed, Spotter trained, AP evaluated & saved to spotter_yolox.mat (33.5 MB)
 [x] Part 15 (DGX A100 Supercomputer): Full 15-epoch training (mAP 29.09%, cow 16.3%, auto 38.2%) + ONNX opset 18 imported & verified in MATLAB R2024b (spotter_yolox_a100.mat, 36.6 MB)
+[x] Part 16 Step 84 (Model 4 Setup on A100): 24.09 GB IDD Segmentation downloaded (Part I in 4m 27s, Part II in 2m 10s), archives extracted, and AutoNUE tool generated 16,063 ground truth level3Id masks matching 16,063 images 1-to-1 (7,974 PNGs + 8,089 JPGs).
 ===============================================================================
-Workstation Deliverables Status: ALL 7 STREAMS & PART 15 100% COMPLETE AND SAVED TO DISK.
+Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) STEP 84 VERIFIED (16,063 PAIRS READY).
 ===============================================================================
 ```
 
