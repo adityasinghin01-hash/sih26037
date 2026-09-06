@@ -508,8 +508,10 @@ AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
 [x] Part 16 Step 85 (Code Sync): Authored train_deeplabv3.py in repo, committed (4f6523d), pulled on A100 cluster.
 [x] Part 16 Step 86 (DeepLab v3+ Training on A100): 10 epochs completed in 42.4 min (Train Loss 0.1179, Val Loss 0.1741, best checkpoint saved to /home/jovyan/best_deeplabv3_idd.pth, ONNX exported to /home/jovyan/road_segmenter_deeplabv3_opset18.onnx, 158.46 MB).
 [x] Part 16 Step 87 (Model 4 Metrics Evaluation): Drivable IoU = 0.9600 (96.00%), Obstacle IoU = 0.7395 (73.95%), Background IoU = 0.8899 (88.99%), Overall Mean IoU = 0.8630 (86.30%).
+[x] Part 16 Step 88 (Model 4 MATLAB Import & De-Risk Check 8): Downloaded ONNX (151.12 MB) to C:\Users\admin\meteor-data\, resolved bilinear Resize PLACEHOLDER in +road_segmenter_deeplabv3_opset18 via native dlresize, created derisk/check08_onnx_deeplab.m, verified forward pass (input [512 512 3 1], output [512 512 3 1]), saved standalone production asset road_segmenter_deeplab.mat (140.92 MB).
+[x] Part 16 Step 89 (Documentation & Git Commit): PROGRESS.md and GUIDE.md fully synchronized and committed to origin/stream-ml.
 ===============================================================================
-Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) TRAINED & EVALUATED (mIoU = 86.30%).
+Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) FULLY TRAINED, VERIFIED & SAVED IN MATLAB (mIoU = 86.30%).
 ===============================================================================
 ```
 

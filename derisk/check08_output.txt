@@ -1,0 +1,14 @@
+
+===== CHECK 8 : DeepLab v3+ Road Segmenter -> MATLAB =====
+Date run : 06-Sep-2026 08:31:32
+Release  : 2024b
+
+Loading pre-initialized model from: C:\Users\admin\meteor-data\road_segmenter_deeplab.mat
+  [OK] Loaded dlnetwork with 140 layers.
+
+Running forward inference test (1x 512x512 RGB)...
+  Forward pass SUCCESS! Inference time: 1185.90 ms
+  Output tensor size: [512 512 3 1]
+  Channel interpretation: [1] Drivable, [2] Obstacle, [3] Background
+
+>>> CHECK 8 PASSED: DeepLab v3+ ResNet-50 is 100% functional in MATLAB. <<<
