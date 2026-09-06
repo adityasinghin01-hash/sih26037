@@ -453,6 +453,16 @@
     * Input node: `['images']` (shape `[1, 3, 640, 640]`).
     * Output node: `['output']` (shape `[1, 8400, 20]` — decoded boxes, objectness, 15 S5 classes).
     * Verified opset metadata in file: **18** (matches frozen contract and MATLAB R2024b requirements).
+* **[05:35 IST] Step 83: Download ONNX to Windows & Verify in MATLAB R2024b COMPLETE**
+  * Transferred `spotter_yolox_s_opset18.onnx` (35.87 MB) to `C:\Users\admin\meteor-data\`.
+  * Verified import in MATLAB R2024b via `importNetworkFromONNX`:
+    * Architecture: 272 layers, 181 learnable parameter tensors, 0 unsupported placeholders.
+    * Forward pass executed with batch shape `[1, 3, 640, 640]` ('BCSS'):
+      * Output tensor size: `[1, 8400, 20]` ('BC' formatted dlarray).
+      * 8,400 anchors with 4 bbox coords + 1 objectness score + 15 S5 class probabilities.
+    * Persisted production model directly as MATLAB-native `dlnetwork`:
+      * File: `C:\Users\admin\meteor-data\spotter_yolox_a100.mat` (36.6 MB, `-v7.3`).
+      * Loadable natively in MATLAB and Simulink without ONNX dependencies.
 
 ---
 
@@ -493,9 +503,9 @@ AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
 [x] Task 4 (Scores Export): scores_lstm.npz extracted (2.92 MB, 783k samples, 77k positives)
 [x] Task 5 (Branch Sync): Merged origin/main into stream-ml (clean merge, pushed to origin)
 [x] Task 6 (Model 3 YOLOX): Curated dataset (3,691 frames), H7/H9 fixed, Spotter trained, AP evaluated & saved to spotter_yolox.mat (33.5 MB)
-[x] Part 15 Pre-requisite: voc2coco.py verified on 3,691 images (56k boxes) & pushed to stream-ml
+[x] Part 15 (DGX A100 Supercomputer): Full 15-epoch training (mAP 29.09%, cow 16.3%, auto 38.2%) + ONNX opset 18 imported & verified in MATLAB R2024b (spotter_yolox_a100.mat, 36.6 MB)
 ===============================================================================
-Workstation Deliverables Status: ALL 6 TASKS 100% COMPLETE AND SAVED TO DISK.
+Workstation Deliverables Status: ALL 7 STREAMS & PART 15 100% COMPLETE AND SAVED TO DISK.
 ===============================================================================
 ```
 

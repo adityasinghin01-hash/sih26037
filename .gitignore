@@ -26,6 +26,7 @@ blender/renders/
 # matlab
 slprj/
 codegen/
++spotter_yolox_s_opset*/
 *.asv
 *.autosave
 

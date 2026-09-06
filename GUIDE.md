@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **95%** | 68 active milestones addressed across 83 total steps |
-| **Completed Steps** | **67** | `[🟢COMPLETED]` — Steps 77-82 complete: A100 training & ONNX export (Opset 18, 35.87 MB) verified |
-| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — All active engineering tracks fully resolved |
-| **Active Planned Steps** | **1** | `[🔵TO DO]` — Part 15: Download & verify in MATLAB R2024b (Step 83) |
+| **Overall Pipeline Progress** | **100%** | All 68 active milestones fully completed and verified across 83 total steps |
+| **Completed Steps** | **68** | `[🟢COMPLETED]` — Entire pipeline complete (Predictor, Spotter, Evaluation, Calibration & A100 Training) |
+| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — Zero pending engineering tasks |
+| **Active Planned Steps** | **0** | `[🔵TO DO]` — All master roadmap tasks completed |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -30,7 +30,7 @@
 | **Part 12: Aditya's Directives** | 59–64 | 🟢 6/6 COMPLETE | check04 Opset 18 passed in MATLAB; Model 2 dangerous rate measured; scores exported |
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
-| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🔵 6/7 COMPLETE, 1 TO DO | Steps 77-82 complete (training + ONNX opset 18 exported); Step 83 verification next |
+| **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🟢 7/7 COMPLETE | Supercomputer pipeline complete: 15 epochs trained, ONNX exported & imported in MATLAB |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1410,7 +1410,7 @@ Done when: ONNX file exists, opset reads back as 17 or 18, no external sidecar f
 
 ### Phase F: Download and Verify in MATLAB
 
-#### Step 83 Download ONNX to Windows and Verify in MATLAB R2024b [🔵TO DO] [HIGH]
+#### Step 83 Download ONNX to Windows and Verify in MATLAB R2024b [🟢COMPLETED] [HIGH]
 
 **Step 83a — Download from A100:**
 In JupyterLab file browser, right-click `spotter_yolox_s_opset18.onnx` (or the inlined version)
