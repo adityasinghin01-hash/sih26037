@@ -22,6 +22,9 @@ results/
 # blender
 *.blend1
 blender/renders/
+# rendered images are build output, not source - keep them out of git history.
+# they were entering via world/build/city work; regenerate from the build scripts.
+world/renders/
 
 # matlab
 slprj/
