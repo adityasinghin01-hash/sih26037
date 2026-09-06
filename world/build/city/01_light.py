@@ -137,7 +137,10 @@ def cloud_material():
     rm.color_ramp.elements[0].position=0.19; rm.color_ramp.elements[1].position=0.77
     # a WIDE ramp = a gradual, semi-transparent boundary. A narrow one renders a hard shell.
     a1=t.nodes.new("ShaderNodeMath"); a1.operation='MULTIPLY'
-    a2=t.nodes.new("ShaderNodeMath"); a2.operation='MULTIPLY'; a2.inputs[1].default_value=0.090
+    a2=t.nodes.new("ShaderNodeMath"); a2.operation='MULTIPLY'; a2.inputs[1].default_value=0.068
+    #   0.090 -> 0.068: the deck read STORM-grey, not "peaceful fair-weather" (S0 s2). Lower
+    #   density = light penetrates the body, not just the rim, so the sunlit tops brighten and
+    #   only the deep base stays dark - which is how a real fair-weather cumulus is shaded.
     # RADIAL FADE: density falls to zero before the field edge, so the boundary never reads
     gp2=t.nodes.new("ShaderNodeNewGeometry"); sp2=t.nodes.new("ShaderNodeSeparateXYZ")
     cxy=t.nodes.new("ShaderNodeCombineXYZ")
@@ -185,7 +188,7 @@ def cloud_material():
     mr.inputs["From Min"].default_value=CLOUD_BASE
     mr.inputs["From Max"].default_value=CLOUD_BASE+640.0
     cr=t.nodes.new("ShaderNodeValToRGB")
-    cr.color_ramp.elements[0].color=(0.90,0.92,0.96,1.0)      # near-white ALBEDO, faint cool tint:
+    cr.color_ramp.elements[0].color=(0.94,0.95,0.98,1.0)      # near-white ALBEDO, faint cool tint:
     #   fair-weather cumulus, not storm cloud. Aditya asked for "peaceful", and a dark base is the
     #   difference between a fair-weather sky and a monsoon one.
     cr.color_ramp.elements[1].color=(1.0,1.0,1.0,1.0)         # pure white: droplets absorb ~nothing
@@ -298,11 +301,18 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     rr.inputs[0].default_value=(0,0,0); rr.inputs[1].default_value=(0,0,6.2832)
     rr.inputs["Seed"].default_value=seed+71
     L.new(rr.outputs["Value"], iop.inputs["Rotation"])
-    # lift so the BASE sits on the plane. base_jitter>0 breaks that deliberately (fractus has no
-    # flat base; cumulus and stratocumulus do - REF-13 s3).
+    # COPLANAR BASES (S0 s2: "EVERY CUMULUS AND STRATOCUMULUS BASE AT ONE HEIGHT" - the single
+    # loudest tell). The old lift (rs.Z * env_z) ignored the lobes that protrude PAST the
+    # envelope, so a bigger cloud floated ~lobe_max*rs.Z m higher and bases scattered. Measure
+    # the realized cluster's true min-Z and lift by exactly -minZ*rs.Z: every base lands on the
+    # plane whatever the cloud's size. base_jitter>0 then breaks it on purpose for fractus.
     sz=n.new("ShaderNodeSeparateXYZ"); L.new(rs.outputs["Value"], sz.inputs["Vector"])
-    zm=n.new("ShaderNodeMath"); zm.operation='MULTIPLY'; zm.inputs[1].default_value=env_z
-    L.new(sz.outputs["Z"], zm.inputs[0])
+    _bb=n.new("GeometryNodeBoundBox"); L.new(r2.outputs["Geometry"], _bb.inputs["Geometry"])
+    _bbs=n.new("ShaderNodeSeparateXYZ"); L.new(_bb.outputs["Min"], _bbs.inputs["Vector"])
+    _negz=n.new("ShaderNodeMath"); _negz.operation='MULTIPLY'; _negz.inputs[1].default_value=-1.0
+    L.new(_bbs.outputs["Z"], _negz.inputs[0])
+    zm=n.new("ShaderNodeMath"); zm.operation='MULTIPLY'          # lift = rs.Z * (-clusterMinZ)
+    L.new(sz.outputs["Z"], zm.inputs[0]); L.new(_negz.outputs["Value"], zm.inputs[1])
     if base_jitter>0.0:
         rj=n.new("FunctionNodeRandomValue"); rj.data_type='FLOAT'
         rj.inputs[2].default_value=-base_jitter; rj.inputs[3].default_value=base_jitter
@@ -318,13 +328,19 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     rl=n.new("GeometryNodeRealizeInstances"); L.new(tr.outputs["Instances"], rl.inputs["Geometry"])
     return rl.outputs["Geometry"]
 
+# FOUR populations = S0 s2's THREE TYPES (cumulus / stratocumulus / fractus) plus a size split
+# on the cumulus. STRATOCU is the missing one: broad (env_xy 640), FLAT (env_z 50), densely
+# spaced (min_d 1200) so adjacent clusters MERGE into a continuous lumpy sheet - it is what fills
+# the gaps between the discrete cumulus and stops the deck reading as "separate stones".
+# LARGE/MID envelopes widened + lobe density up so the cumulus itself merges into masses.
 #                tag          min_d  densMax   seed  envXY  envZ  smin  smax  lmin  lmax  lobeD    jitter
-pA=population("LARGE",        2500.0, 0.0000060,  7, 360.0, 330.0, 1.30, 3.10, 60.0, 140.0, 0.0000060,   0.0)
-pB=population("MID",           950.0, 0.0000160, 23, 275.0, 235.0, 0.55, 1.50, 42.0,  98.0, 0.0000075,   0.0)
+pA=population("LARGE",        2500.0, 0.0000060,  7, 430.0, 330.0, 1.30, 3.10, 60.0, 140.0, 0.0000082,   0.0)
+pB=population("MID",           950.0, 0.0000160, 23, 335.0, 235.0, 0.55, 1.50, 42.0,  98.0, 0.0000098,   0.0)
 pC=population("FRACTUS",       620.0, 0.0000180, 41, 185.0, 115.0, 0.30, 0.68, 30.0,  66.0, 0.0000130, 140.0)
+pD=population("STRATOCU",     1200.0, 0.0000110, 61, 640.0,  50.0, 0.90, 1.90, 55.0, 120.0, 0.0000120,   0.0)
 
 jn=n.new("GeometryNodeJoinGeometry")
-for sock in (pA,pB,pC): L.new(sock, jn.inputs["Geometry"])
+for sock in (pA,pB,pC,pD): L.new(sock, jn.inputs["Geometry"])
 
 # ============================================================================================
 # VOXEL SIZE VARIES WITH DISTANCE (S0 s2 "THE 4K CLOUD PASS" item 1, PLAN s10 item 12).
@@ -538,7 +554,7 @@ if BANDED_VOXELS:
     check("cloud voxels coarsen outward", 1.0 if _vsz==sorted(_vsz) and _vsz[0]<_vsz[-1] else 0.0, 1.0, 0.0)
     check("cloud bands", float(len(m2v_list)), 3.0, 0.0)
 print(f"  INFO  BANDED_VOXELS={BANDED_VOXELS}  HOLE_MASK={HOLE_MASK}  voxel sizes {_vsz}")
-check("cloud populations", 3.0, 3.0, 0.0)
+check("cloud populations (cumulus L/M + fractus + stratocumulus sheet)", 4.0, 4.0, 0.0)
 check("cloud field extent (m)", CLOUD_FIELD, 30000.0, 1e-6)
 check("radial fade start (m)",  FADE_START, 9000.0, 1e-6)
 check("radial fade end (m)",    FADE_END, 14500.0, 1e-6)
