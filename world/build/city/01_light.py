@@ -42,7 +42,7 @@ BAND         = 78.0          # interior band width: the density falloff INWARD f
 # come later if the A1000 ever has to hold the whole field. Toggle with SIH_BANDS=1 to test that.
 BANDED_VOXELS = os.environ.get("SIH_BANDS","0")=="1"
 HOLE_MASK     = os.environ.get("SIH_HOLES","1")=="1"   # L2: large-scale blue-hole density mask - ON
-RIM_HALATION  = os.environ.get("SIH_HALO","1")=="1"    # L4: backlit-rim emission - pass 3, re-tuned
+RIM_HALATION  = os.environ.get("SIH_HALO","0")=="1"    # L4: OFF - pass 3 re-tune still blew out; grade handles final tone
 FADE_START   =  9000.0        # radial density fade so the field edge never shows.
                               # MEASURED: a 1400 m cloud at 10 deg elevation is 7940 m away and at
                               # 6 deg is 13320 m. The old 4200/12000 fade deleted everything below
@@ -119,9 +119,7 @@ air.visible_camera=False
 def cloud_material():
     m=bpy.data.materials.new("CLOUD"); m.use_nodes=True
     t=m.node_tree; t.nodes.clear()
-    pv=t.nodes.new("ShaderNodeVolumePrincipled"); pv.inputs["Anisotropy"].default_value=0.42
-    #   0.50 -> 0.42 (pass 3): strong forward scatter was darkening the cloud BODY when viewed
-    #   away from the sun. 0.42 keeps the sun-side glow but lets the body sit lighter.
+    pv=t.nodes.new("ShaderNodeVolumePrincipled"); pv.inputs["Anisotropy"].default_value=0.50
     #   0.32 -> 0.50: stronger FORWARD scatter is the forward-lit halo round the sun (item 4).
     at=t.nodes.new("ShaderNodeAttribute"); at.attribute_name="density"   # the grid, soft at the edge
     n1=t.nodes.new("ShaderNodeTexNoise"); n1.inputs["Scale"].default_value=0.9
@@ -139,11 +137,9 @@ def cloud_material():
     rm.color_ramp.elements[0].position=0.19; rm.color_ramp.elements[1].position=0.77
     # a WIDE ramp = a gradual, semi-transparent boundary. A narrow one renders a hard shell.
     a1=t.nodes.new("ShaderNodeMath"); a1.operation='MULTIPLY'
-    a2=t.nodes.new("ShaderNodeMath"); a2.operation='MULTIPLY'; a2.inputs[1].default_value=0.052
-    #   0.090 -> 0.068 -> 0.052 (pass 2, pass 3): the deck still read STORM-grey. Lower density =
-    #   light penetrates the whole body, so the sunlit tops brighten and only the deep base stays
-    #   dark - which is how a real fair-weather cumulus is shaded. Peak density now ~0.052, so the
-    #   halation edge window below must sit UNDER that or it fires across the whole cloud.
+    a2=t.nodes.new("ShaderNodeMath"); a2.operation='MULTIPLY'; a2.inputs[1].default_value=0.062
+    #   0.090 -> 0.068 (pass 2) -> 0.052 (pass 3 - BLEW OUT with bounces 12 + albedo .965 + halation)
+    #   -> 0.062 (pass 4). Back near pass-2's known-good. One small step lighter, nothing else moved.
     # RADIAL FADE: density falls to zero before the field edge, so the boundary never reads
     gp2=t.nodes.new("ShaderNodeNewGeometry"); sp2=t.nodes.new("ShaderNodeSeparateXYZ")
     cxy=t.nodes.new("ShaderNodeCombineXYZ")
@@ -191,7 +187,7 @@ def cloud_material():
     mr.inputs["From Min"].default_value=CLOUD_BASE
     mr.inputs["From Max"].default_value=CLOUD_BASE+640.0
     cr=t.nodes.new("ShaderNodeValToRGB")
-    cr.color_ramp.elements[0].color=(0.965,0.97,0.985,1.0)    # near-white ALBEDO, faint cool tint:
+    cr.color_ramp.elements[0].color=(0.945,0.955,0.98,1.0)    # near-white ALBEDO, faint cool tint:
     #   fair-weather cumulus, not storm cloud. Aditya asked for "peaceful", and a dark base is the
     #   difference between a fair-weather sky and a monsoon one.
     cr.color_ramp.elements[1].color=(1.0,1.0,1.0,1.0)         # pure white: droplets absorb ~nothing
@@ -508,9 +504,7 @@ sc.render.engine='CYCLES'
 try: sc.cycles.device='GPU'
 except Exception: pass
 sc.cycles.samples=64; sc.cycles.use_denoising=True
-sc.cycles.volume_max_steps=24; sc.cycles.volume_step_rate=4.0; sc.cycles.volume_bounces=12
-#   8 -> 12 (pass 3): more multiple-scattering events carry sunlight deeper into the cloud body,
-#   which is the physically-correct way to lift a storm-grey deck to fair-weather brightness.
+sc.cycles.volume_max_steps=24; sc.cycles.volume_step_rate=4.0; sc.cycles.volume_bounces=8   # pass 3's 12 compounded with the other changes into a white-out
 sc.cycles.transparent_max_bounces=12
 sc.render.resolution_x=1280; sc.render.resolution_y=720
 vl=bpy.context.view_layer
@@ -570,7 +564,7 @@ check("field half-width > fade end", 1.0 if CLOUD_FIELD/2 >= FADE_END else 0.0, 
 check("godray occluders (many, REF-13 s4)", float(len(occ)), 34.0, 0.0)
 check("occluders hidden from camera", float(sum(1 for o in occ if not o.visible_camera)), 34.0, 0.0)
 check("volume max steps", float(sc.cycles.volume_max_steps), 24.0, 0.0)
-check("volume bounces",   float(sc.cycles.volume_bounces), 12.0, 0.0)
+check("volume bounces",   float(sc.cycles.volume_bounces), 8.0, 0.0)
 check("cloud material set IN TREE", 1.0 if setm.inputs["Material"].default_value==CMAT else 0.0, 1.0, 0.0)
 check("sun disc off (lamp is the light)", 0.0 if not sky.sun_disc else 1.0, 0.0, 0.0)
 check("view transform Standard", 1.0 if sc.view_settings.view_transform=='Standard' else 0.0, 1.0, 0.0)
