@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **100%** | All 68 active milestones fully completed and verified across 83 total steps |
-| **Completed Steps** | **68** | `[🟢COMPLETED]` — Entire pipeline complete (Predictor, Spotter, Evaluation, Calibration & A100 Training) |
-| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — Zero pending engineering tasks |
-| **Active Planned Steps** | **0** | `[🔵TO DO]` — All master roadmap tasks completed |
+| **Overall Pipeline Progress** | **100% (core) + Part 16 staged** | All 68 active core milestones complete; Part 16 (Model 4 Road-Finder A100) is planned, post-Sept 7 |
+| **Completed Steps** | **68** | `[🟢COMPLETED]` — Entire core pipeline complete (Predictor, Spotter, Evaluation, Calibration & A100 Training) |
+| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — Zero pending engineering tasks in core pipeline |
+| **Active Planned Steps** | **6** | `[🔵TO DO]` — Part 16 Model 4 Road-Finder on A100 (Steps 84–89), staged post-Sept 7 demo |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -31,6 +31,7 @@
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
 | **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🟢 7/7 COMPLETE | Supercomputer pipeline complete: 15 epochs trained, ONNX exported & imported in MATLAB |
+| **Part 16: Model 4 Road-Finder (A100)** | 84–89 | 🔵 6/6 PLANNED | DeepLab v3+ on IDD Segmentation 24 GB — staged for DGX A100 post-Sept 7 demo |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1449,4 +1450,258 @@ Done when: `importNetworkFromONNX` completes without error and `disp(net)` print
 `dlnetwork`. Record the final AP50 number (from A100 training output) and the ONNX file path
 in `PROGRESS.md`.
 
----
+---
+
+## Part 16: Model 4 — Road-Finder on DGX A100 [🔵PLANNED — post Sept 7 demo]
+
+> **What this part proves.** Unmarked Indian roads have no painted boundaries. This model
+> demonstrates that a camera image alone can classify every pixel as drivable, obstacle, or
+> background, using IDD Segmentation (real Indian dashcam footage from Hyderabad / Bengaluru).
+> The trained network itself **never enters the simulation loop** — S9 DrivableSpace is filled
+> by lidar geometry, not pixels — but the IoU numbers are our evidence that the segmentation
+> boundary problem is solved on real data.
+>
+> **Architecture:** DeepLab v3+ (ResNet-50 backbone, 512×512 input). Implementation:
+> `matlab/+sih/+models/trainRoadSegmenter.m`. API: `deeplabv3plus` + `trainnet`
+> (not `deeplabv3plusLayers`, which is removed from R2024a+).
+>
+> **Do not wire this into the planner.** Read `AGENTS.md` section 2 before asking why.
+
+---
+
+### Timing Estimate
+
+| Stage | Duration | Notes |
+|---|---|---|
+| Dataset download (IDD Seg 24 GB → A100 `/home/jovyan`) | TODO(unverified) — expected 20–40 min at cluster download speeds | Actual speed must be timed on first run |
+| Dataset extraction + inspect | ~10 min | `.tar.gz` unpack, verify `leftImg8bit/` + `gtFine/` layout |
+| 20 epoch training on A100 (1 GPU, bs=8, 512×512, ~30k images) | TODO(unverified) — expected **2–4 hours** | DeepLab forward+backward at this scale; timed at end of Step 86 |
+| Evaluation (semanticseg on val set + IoU table) | ~15–30 min | Depends on val set size (~6k images) |
+| Save `.mat` + pull to local Windows | ~5 min | |
+| **Total wall-clock estimate** | **~3–5 hours** | TODO(unverified) — must be measured and logged in PROGRESS.md |
+
+> **IMPORTANT — Timing rule (from `AGENTS.md` § "Verify, do not assume").** The numbers above
+> are engineering estimates, not measurements. Every actual duration must be timed during
+> execution and logged in `PROGRESS.md`. If training finishes faster or slower than the range
+> above, record the real number and update the table.
+
+---
+
+### Pre-flight Checklist (read before running Step 84)
+
+- [ ] IDD Segmentation dataset downloaded and you have the sign-up link
+  (`idd.insaan.iiit.ac.in/accounts/signup/`) — this is gated; a script cannot fetch it.
+- [ ] DGX A100 JupyterLab accessible and at least 30 GB free under `/home/jovyan`.
+- [ ] You are running MATLAB inside the cluster (not locally) — or you have confirmed with Aditya
+  that you intend to call `trainRoadSegmenter` from local MATLAB pointing at a network path.
+  **A 24 GB dataset over Wi-Fi is not an option.** Either train on the cluster or pre-download
+  to the local machine over ethernet.
+- [ ] `git pull origin stream-ml` on the cluster before starting — `trainRoadSegmenter.m` must
+  be the version from the repo, not an older copy.
+
+---
+
+### Phase A: Dataset Acquisition & Layout Verification
+
+#### Step 84 Download IDD Segmentation to A100 and Verify Layout [🔵TO DO] [HIGH]
+
+IDD Segmentation is a gated academic dataset from IIIT Hyderabad. It requires a sign-up.
+
+**84a — Request access and download:**
+1. Sign up at `idd.insaan.iiit.ac.in/accounts/signup/` if you do not already have credentials.
+2. Once approved, download the two archives to `/home/jovyan/idd-segmentation/` on the A100:
+   - `leftImg8bit_trainvaltest.zip` (images, ~20 GB)
+   - `gtFine_trainvaltest.zip` (semantic labels, ~4 GB)
+3. Run this inside a JupyterLab terminal (in `tmux` — an ssh drop kills an undetached job):
+   ```bash
+   tmux new -s model4
+   mkdir -p /home/jovyan/idd-segmentation
+   # Copy your download command here — wget or curl with the signed download URL
+   # Timer starts now: record when download begins
+   ```
+
+**84b — Extract and verify IDD Segmentation layout:**
+```bash
+cd /home/jovyan/idd-segmentation
+unzip leftImg8bit_trainvaltest.zip
+unzip gtFine_trainvaltest.zip
+
+# Verify the standard IDD Seg layout exists:
+ls leftImg8bit/     # should show: train/  val/  test/
+ls gtFine/          # should show: train/  val/  test/
+
+# Count images and labels — these numbers go into PROGRESS.md
+find leftImg8bit/train -name "*.png" | wc -l    # expected ~20,000
+find leftImg8bit/val   -name "*.png" | wc -l    # expected ~3,000 – 6,000
+find gtFine/train      -name "*labelids.png" | wc -l
+find gtFine/val        -name "*labelids.png" | wc -l
+```
+
+What to look for:
+- `leftImg8bit/` and `gtFine/` must both exist at the same level.
+- Image count and label count must match exactly within train and val.
+- If they do not match, send the full output of both `find | wc -l` commands to Aditya.
+
+Done when: Both directories exist, image and label counts match, and counts are recorded in
+`PROGRESS.md`.
+
+---
+
+### Phase B: Training on DGX A100
+
+#### Step 85 Upload Code to A100 via Git [🔵TO DO] [HIGH]
+
+The cluster does not run MATLAB. Training is done locally in MATLAB with `dataRoot` pointing at
+the downloaded dataset. If you are training on the A100, confirm the route with Aditya first.
+
+**If training locally in MATLAB (recommended for now):**
+Skip this step. `trainRoadSegmenter.m` is already in the repo. Ensure the IDD Segmentation
+dataset is on a local drive with enough space (24 GB).
+
+**If training on the A100 in MATLAB Online or a remote MATLAB session:**
+```bash
+# On the A100:
+cd /home/jovyan
+git clone https://github.com/adityasinghin01-hash/sih26037.git
+# OR if already cloned:
+cd sih26037 && git pull origin stream-ml
+```
+
+Done when: `matlab/+sih/+models/trainRoadSegmenter.m` is present on whichever machine
+will run MATLAB.
+
+---
+
+#### Step 86 Run DeepLab v3+ Training [🔵TO DO] [HIGH]
+
+Open MATLAB R2024b (or later) on whichever machine has the dataset. Record the start time.
+
+```matlab
+% Set these two paths before running:
+dataRoot = '/path/to/idd-segmentation';   % the folder containing leftImg8bit/ and gtFine/
+outFile  = '/path/to/meteor-data/road_segmenter_deeplab.mat';  % MUST be outside the repo
+
+tic
+net = sih.models.trainRoadSegmenter(dataRoot, outFile, ...
+    MaxEpochs     = 20, ...
+    MiniBatchSize = 8, ...
+    ImageSize     = [512 512], ...
+    Execution     = 'gpu');
+toc
+```
+
+> **Why `MiniBatchSize = 8` and not 32?** DeepLab's decoder holds full-resolution feature maps.
+> At 512×512, each sample uses ~1.5–2 GB of GPU memory during the backward pass. Batch 8 is
+> safe on a 40 GB A100. If you see an out-of-memory error, halve it to 4.
+
+> **Why 20 epochs?** IDD Segmentation is larger than what YOLOX trained on (30k vs 3.7k images).
+> More data means fewer epochs to convergence, but the baseline here is 20 — if the drivable IoU
+> has not improved for 5 consecutive epochs, stop early and tell Aditya.
+
+What to look for every epoch in the MATLAB training log:
+- `TrainingLoss` should decrease over epochs.
+- `ValidationLoss` should track it without diverging (a large gap = overfitting).
+- **The number that matters is not global accuracy — it is `drivable IoU`.** The function
+  prints this explicitly at the end. Background is most of every frame; a model that calls
+  everything background gets 90%+ accuracy while being useless.
+
+If training dies mid-run, MATLAB's `trainnet` does not auto-resume. Re-run the same command
+from scratch, or reduce `MaxEpochs` to 5 for a quick smoke-test first.
+
+Done when: Training completes all 20 epochs and prints `Saved <outFile>`.
+
+---
+
+### Phase C: Evaluation and Reporting
+
+#### Step 87 Read Per-Class IoU from the Saved `.mat` [🔵TO DO] [HIGH]
+
+After Step 86 completes, the `.mat` file contains the trained `net` and the full `metrics` struct
+from `evaluateSemanticSegmentation`. Inspect it:
+
+```matlab
+load('/path/to/meteor-data/road_segmenter_deeplab.mat', 'metrics', 'classes');
+
+disp('Per-class IoU:');
+disp(metrics.ClassMetrics);
+
+fprintf('Global accuracy: %.4f\n', metrics.DataSetMetrics.GlobalAccuracy);
+fprintf('Mean IoU:        %.4f\n', metrics.DataSetMetrics.MeanIoU);
+
+% The one number Aditya cares about:
+idx = find(classes == "drivable");
+fprintf('DRIVABLE class IoU: %.4f\n', metrics.ClassMetrics.IoU(idx));
+```
+
+What to look for:
+- **Drivable IoU > 0.70** is a respectable baseline for an unmarked-road segmenter.
+- **Drivable IoU < 0.50** means the network is still confused about what counts as drivable —
+  send the full `metrics.ClassMetrics` table to Aditya; do not re-tune it yourself.
+- `obstacle` IoU is expected to be lower (~0.40–0.60) because it groups everything from
+  a cow to a lamp post.
+
+Report the three numbers: drivable IoU, obstacle IoU, background IoU. Plus global accuracy and
+mean IoU. Five numbers, nothing else, unless something looks wrong.
+
+Done when: You have the five numbers and they are recorded in `PROGRESS.md`.
+
+---
+
+#### Step 88 Download `.mat` to Windows and Smoke-Test in MATLAB [🔵TO DO] [HIGH]
+
+If the model was trained on the A100, download it to `C:\Users\admin\meteor-data\` on the local
+Windows machine via JupyterLab file browser (right-click → Download).
+
+Then in MATLAB R2024b on Windows:
+```matlab
+s = load('C:\Users\admin\meteor-data\road_segmenter_deeplab.mat');
+disp(s.net)           % should print: dlnetwork with ...
+disp(s.classes)       % should print: ["drivable", "obstacle", "background"]
+disp(s.metrics.DataSetMetrics)   % should match the numbers you already logged
+```
+
+What to look for:
+- `s.net` is a `dlnetwork`. Not an `lgraph`, not a `DAGNetwork`.
+- `s.classes` has exactly 3 elements in the right order.
+- Metrics match what you read in Step 87 — if they differ the file is corrupt; re-download.
+
+Done when: `disp(s.net)` prints cleanly on the Windows machine without error.
+
+---
+
+### Phase D: Archival & Commit
+
+#### Step 89 Update PROGRESS.md and Commit [🔵TO DO] [LOW]
+
+1. Add a Model 4 section to `PROGRESS.md` with:
+   - Training date and machine (`DGX A100, sih26037-0`)
+   - Exact epoch count and wall-clock duration (measured, not estimated)
+   - Drivable IoU, obstacle IoU, background IoU, mean IoU, global accuracy
+   - Path to the saved `.mat` file (do NOT commit the file — AGENTS.md § 6 forbids `.mat`
+     weights in git)
+
+2. Commit the `PROGRESS.md` update:
+   ```powershell
+   git add PROGRESS.md
+   git commit -m "docs: Model 4 DeepLab v3+ road segmenter trained on A100 - drivable IoU = <number>"
+   git push origin stream-ml
+   ```
+   Push over mobile hotspot if college Wi-Fi is still blocked.
+
+Done when: The commit is on `stream-ml` and `PROGRESS.md` contains the verified IoU numbers.
+
+---
+
+### Summary Card — what to have at the end of Part 16
+
+| Item | What it should say |
+|---|---|
+| Trained model file | `road_segmenter_deeplab.mat` — saved outside the repo |
+| Drivable IoU | TODO(unverified) — measure in Step 87 |
+| Obstacle IoU | TODO(unverified) — measure in Step 87 |
+| Mean IoU | TODO(unverified) — measure in Step 87 |
+| Wall-clock training time | TODO(unverified) — time Step 86 with `tic`/`toc` |
+| PROGRESS.md updated | Yes — commit in Step 89 |
+
+---
+
