@@ -506,9 +506,10 @@ AI/ML STREAM DELIVERABLES SUMMARY (Internal Demo Sept 7)
 [x] Part 15 (DGX A100 Supercomputer): Full 15-epoch training (mAP 29.09%, cow 16.3%, auto 38.2%) + ONNX opset 18 imported & verified in MATLAB R2024b (spotter_yolox_a100.mat, 36.6 MB)
 [x] Part 16 Step 84 (Model 4 Setup on A100): 24.09 GB IDD Segmentation downloaded (Part I in 4m 27s, Part II in 2m 10s), archives extracted, and AutoNUE tool generated 16,063 ground truth level3Id masks matching 16,063 images 1-to-1 (7,974 PNGs + 8,089 JPGs).
 [x] Part 16 Step 85 (Code Sync): Authored train_deeplabv3.py in repo, committed (4f6523d), pulled on A100 cluster.
-[>] Part 16 Step 86 (DeepLab v3+ Training on A100): IN PROGRESS — Epoch 1 verified (239.1s, Train Loss 0.3031, Val Loss 0.2266, Drivable IoU = 0.9429, Obstacle IoU = 0.6397, Background IoU = 0.8168, Mean IoU = 0.7998).
+[x] Part 16 Step 86 (DeepLab v3+ Training on A100): 10 epochs completed in 42.4 min (Train Loss 0.1179, Val Loss 0.1741, best checkpoint saved to /home/jovyan/best_deeplabv3_idd.pth, ONNX exported to /home/jovyan/road_segmenter_deeplabv3_opset18.onnx, 158.46 MB).
+[x] Part 16 Step 87 (Model 4 Metrics Evaluation): Drivable IoU = 0.9600 (96.00%), Obstacle IoU = 0.7395 (73.95%), Background IoU = 0.8899 (88.99%), Overall Mean IoU = 0.8630 (86.30%).
 ===============================================================================
-Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) ACTIVELY TRAINING ON A100.
+Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) TRAINED & EVALUATED (mIoU = 86.30%).
 ===============================================================================
 ```
 
