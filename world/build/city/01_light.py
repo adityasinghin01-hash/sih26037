@@ -35,8 +35,13 @@ BAND         = 78.0          # interior band width: the density falloff INWARD f
                               # This is the single control that decides vapour vs rock. It is ABSOLUTE METRES, so it must
                               # stay small relative to the SMALLEST cloud or that population becomes pure
                               # falloff - grey mush with no form. 135 m swallowed the fractus entirely.
-BANDED_VOXELS = os.environ.get("SIH_BANDS","1")=="1"   # L1: distance-banded voxel sizes
-HOLE_MASK     = os.environ.get("SIH_HOLES","1")=="1"   # L2: large-scale blue-hole density mask
+# L1 distance-banded voxel sizes: DEFAULT OFF. `GeometryNodeJoinGeometry` of separate VOLUME
+# geometries yields nothing (the field evaluated to 0 verts and rendered near-empty on the RTX -
+# isolated 6 Sep). It is not needed: the A100 render target has 40 GB VRAM, and the RTX field is
+# 30 km + disc-culled and fits at ~1.2 GB. A real fix (3 separate volume OBJECTS, no join) can
+# come later if the A1000 ever has to hold the whole field. Toggle with SIH_BANDS=1 to test that.
+BANDED_VOXELS = os.environ.get("SIH_BANDS","0")=="1"
+HOLE_MASK     = os.environ.get("SIH_HOLES","1")=="1"   # L2: large-scale blue-hole density mask - ON
 FADE_START   =  9000.0        # radial density fade so the field edge never shows.
                               # MEASURED: a 1400 m cloud at 10 deg elevation is 7940 m away and at
                               # 6 deg is 13320 m. The old 4200/12000 fade deleted everything below
@@ -229,7 +234,10 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     hn.inputs["Detail"].default_value=2.0; hn.inputs["Roughness"].default_value=0.5
     L.new(hoff.outputs["Vector"], hn.inputs["Vector"])
     hr=n.new("ShaderNodeMapRange")
-    hr.inputs["From Min"].default_value=0.42; hr.inputs["From Max"].default_value=0.60; hr.clamp=True
+    # narrower, lower window: noise Fac ~centres on 0.5, so 0.43->0.55 sends the lowest ~30% of
+    # the field to a HARD zero (a real blue hole) and the rest to full density, with a short ramp
+    # between. The first try (0.42->0.60) averaged ~0.45 everywhere and just thinned the deck.
+    hr.inputs["From Min"].default_value=0.43; hr.inputs["From Max"].default_value=0.55; hr.clamp=True
     L.new(hn.outputs["Fac"], hr.inputs["Value"])
     if HOLE_MASK:
         L.new(hr.outputs["Result"], dp.inputs["Density Factor"])
@@ -356,7 +364,7 @@ if BANDED_VOXELS:
             m2v=_to_volume(rest, vox); m2v_list.append(m2v)
             L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
 else:
-    m2v=_to_volume(rest, BANDS[0][1]); m2v_list.append(m2v)
+    m2v=_to_volume(rest, VOXEL); m2v_list.append(m2v)   # single voxelisation at the proven 26 m
     L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
 
 setm=n.new("GeometryNodeSetMaterial")                     # <-- a GN VOLUME IGNORES OBJECT SLOTS
