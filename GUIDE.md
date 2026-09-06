@@ -8,10 +8,10 @@
 
 | Metric | Value | Breakdown / Notes |
 |---|:---:|---|
-| **Overall Pipeline Progress** | **100% (core) + Part 16 in progress** | All 68 core milestones complete; Step 84 of Part 16 verified (dataset + converter ready) |
-| **Completed Steps** | **69** | `[🟢COMPLETED]` — Entire core pipeline (68) + Step 84 (Model 4 dataset downloaded & verified) |
-| **Partially Done** | **0** | `[🟡PARTIALLY DONE]` — Zero pending engineering tasks |
-| **Active Planned Steps** | **5** | `[🔵TO DO]` — Part 16 Steps 85–89 (Model 4 training, evaluation, and MATLAB verification) |
+| **Overall Pipeline Progress** | **100% (core) + Part 16 in progress** | Core complete (68); Part 16 Steps 84–85 complete, Step 86 actively training on A100 |
+| **Completed Steps** | **70** | `[🟢COMPLETED]` — Core pipeline (68) + Steps 84 & 85 (Model 4 dataset & script verified) |
+| **Partially Done** | **1** | `[🟡PARTIALLY DONE]` — Step 86 (Model 4 DeepLab v3+ training on A100, Epoch 1 Drivable IoU = 0.9429) |
+| **Active Planned Steps** | **3** | `[🔵TO DO]` — Part 16 Steps 87–89 (Evaluation, ONNX export, and MATLAB verification) |
 | **Deferred / Bypassed** | **14** | `[⚪DEFERRED / BYPASSED]` — 8 supercomputer steps bypassed by local GPU; 6 post-S7 |
 
 ### Visual Pipeline Status Overview
@@ -31,7 +31,7 @@
 | **Part 13: Calibration Exploration** | 65–70 | 🟢 6/6 COMPLETE | Ensemble of Models 1 & 2 + Temp Scaling (Option B verdict logged) |
 | **Part 14: Fast-Track Model 3 (YOLOX)** | 71–76 | 🟢 6/6 COMPLETE | Dual bug fixed (H7/H9), 3.7k curated, Stage 1 trained & spotter_yolox.mat saved |
 | **Part 15: A100 YOLOX Continuation Training** | 77–83 | 🟢 7/7 COMPLETE | Supercomputer pipeline complete: 15 epochs trained, ONNX exported & imported in MATLAB |
-| **Part 16: Model 4 Road-Finder (A100)** | 84–89 | 🟡 1/6 COMPLETE | Step 84 verified: 24 GB IDD Seg downloaded in 7 min, AutoNUE converter tool ready |
+| **Part 16: Model 4 Road-Finder (A100)** | 84–89 | 🟡 2 DONE, 1 RUNNING | Step 84/85 complete; Step 86 training on A100 (Epoch 1 Drivable IoU = 0.9429) |
 
 ### Status Tag Legend:
 - [🟢COMPLETED] : Step successfully executed, verified against code/data, and logged.
@@ -1534,66 +1534,34 @@ Done when: 16,063 image/mask pairs generated, verified 1-to-1 parity, ready for 
 
 ### Phase B: Training on DGX A100
 
-#### Step 85 Upload Code to A100 via Git [🔵TO DO] [HIGH]
+#### Step 85 Synchronize Training Code via Git [🟢COMPLETED] [HIGH]
 
-The cluster does not run MATLAB. Training is done locally in MATLAB with `dataRoot` pointing at
-the downloaded dataset. If you are training on the A100, confirm the route with Aditya first.
+- Authored [`ml/python/idd/train_deeplabv3.py`](file:///c:/Users/admin/sih26037/ml/python/idd/train_deeplabv3.py) following `DGX.md` ("Code travels through GitHub only").
+- Committed to `stream-ml` (`commit 4f6523d`) and pulled on the DGX A100.
+- Configured with native PyTorch DeepLab v3+ (ResNet-50 backbone, AMP fp16, batch size 16, 512×512 resolution, class-weighted cross-entropy, and ONNX Opset 18 exporter).
 
-**If training locally in MATLAB (recommended for now):**
-Skip this step. `trainRoadSegmenter.m` is already in the repo. Ensure the IDD Segmentation
-dataset is on a local drive with enough space (24 GB).
-
-**If training on the A100 in MATLAB Online or a remote MATLAB session:**
-```bash
-# On the A100:
-cd /home/jovyan
-git clone https://github.com/adityasinghin01-hash/sih26037.git
-# OR if already cloned:
-cd sih26037 && git pull origin stream-ml
-```
-
-Done when: `matlab/+sih/+models/trainRoadSegmenter.m` is present on whichever machine
-will run MATLAB.
+Done when: Training code synchronized and verified on the cluster.
 
 ---
 
-#### Step 86 Run DeepLab v3+ Training [🔵TO DO] [HIGH]
+#### Step 86 Run DeepLab v3+ Training on DGX A100 [🟡IN PROGRESS] [HIGH]
 
-Open MATLAB R2024b (or later) on whichever machine has the dataset. Record the start time.
-
-```matlab
-% Set these two paths before running:
-dataRoot = '/path/to/idd-segmentation';   % the folder containing leftImg8bit/ and gtFine/
-outFile  = '/path/to/meteor-data/road_segmenter_deeplab.mat';  % MUST be outside the repo
-
-tic
-net = sih.models.trainRoadSegmenter(dataRoot, outFile, ...
-    MaxEpochs     = 20, ...
-    MiniBatchSize = 8, ...
-    ImageSize     = [512 512], ...
-    Execution     = 'gpu');
-toc
+Launched on DGX A100 SXM4 (40 GB VRAM) under `tmux` session `model4`:
+```bash
+python3 ml/python/idd/train_deeplabv3.py --data-dir /home/jovyan/idd-segmentation/unified_dataset --epochs 10 --batch-size 16
 ```
 
-> **Why `MiniBatchSize = 8` and not 32?** DeepLab's decoder holds full-resolution feature maps.
-> At 512×512, each sample uses ~1.5–2 GB of GPU memory during the backward pass. Batch 8 is
-> safe on a 40 GB A100. If you see an out-of-memory error, halve it to 4.
+**Measured Epoch 1 Results [VERIFIED]:**
+- Duration: **239.1s** (~3.9 minutes per epoch)
+- Train Loss: **0.3031** (dropped from initial 0.5217)
+- Val Loss: **0.2266**
+- **Drivable IoU:** **0.9429 (94.29%)** — exceeds >0.70 baseline significantly on Epoch 1!
+- Obstacle IoU: **0.6397 (63.97%)**
+- Background IoU: **0.8168 (81.68%)**
+- **Mean IoU (mIoU):** **0.7998 (79.98%)**
+- Best checkpoint saved to: `/home/jovyan/best_deeplabv3_idd.pth`
 
-> **Why 20 epochs?** IDD Segmentation is larger than what YOLOX trained on (30k vs 3.7k images).
-> More data means fewer epochs to convergence, but the baseline here is 20 — if the drivable IoU
-> has not improved for 5 consecutive epochs, stop early and tell Aditya.
-
-What to look for every epoch in the MATLAB training log:
-- `TrainingLoss` should decrease over epochs.
-- `ValidationLoss` should track it without diverging (a large gap = overfitting).
-- **The number that matters is not global accuracy — it is `drivable IoU`.** The function
-  prints this explicitly at the end. Background is most of every frame; a model that calls
-  everything background gets 90%+ accuracy while being useless.
-
-If training dies mid-run, MATLAB's `trainnet` does not auto-resume. Re-run the same command
-from scratch, or reduce `MaxEpochs` to 5 for a quick smoke-test first.
-
-Done when: Training completes all 20 epochs and prints `Saved <outFile>`.
+Total expected run time: 10 epochs × ~3.9 min = **~39 minutes**.
 
 ---
 
