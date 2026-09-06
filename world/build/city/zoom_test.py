@@ -44,6 +44,13 @@ for name in ("CLOUD","AIR"):
 sc.render.engine='CYCLES'
 try: sc.cycles.device='GPU'
 except Exception: pass
+# D2: the 4K circle displacement only shows under EXPERIMENTAL + adaptive subdivision. The .blend
+# should already carry both (02_land.py), but set it here too - this is the render that JUDGES it,
+# and at 2 m range the dicing wants to be fine.
+sc.cycles.feature_set='EXPERIMENTAL'
+for _o in bpy.data.objects:
+    if _o.name=='TERRAIN' and hasattr(_o.cycles,'use_adaptive_subdivision'):
+        _o.cycles.use_adaptive_subdivision=True; _o.cycles.dicing_rate=1.5
 sc.cycles.samples=32
 sc.render.resolution_x=960; sc.render.resolution_y=540
 sc.cycles.use_denoising=True

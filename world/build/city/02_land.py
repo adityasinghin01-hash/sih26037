@@ -74,6 +74,10 @@ try:
     bpy.ops.preferences.addon_enable(module='cycles')
 except Exception as e: print("cycles addon enable:", e)
 sc.render.engine='CYCLES'
+# D2's adaptive subdivision + true displacement ('BOTH') only render under the EXPERIMENTAL
+# feature set. Without this the terrain silently falls back to BUMP only and the 4K circle
+# relief never reaches the silhouette. Saved into the .blend so it propagates to 03/04.
+sc.cycles.feature_set='EXPERIMENTAL'
 sc.unit_settings.system='METRIC'; sc.unit_settings.length_unit='METERS'
 sc.view_settings.view_transform='Standard'; sc.view_settings.exposure=-3.06
 COL={}
@@ -1916,6 +1920,10 @@ flag("D2 - the displacement is GATED by the CIRCLE attribute (0 outside the circ
      _soil_out is not None and _feeds(_soil_out.inputs["Displacement"],"CIRCLE"))
 flag("D2 - terrain carries an adaptive-dice subdivision modifier for the displacement",
      any(m.type=='SUBSURF' for m in terr.modifiers))
+flag(f"D2 - EXPERIMENTAL feature set is on (adaptive subdiv needs it; got '{sc.cycles.feature_set}')",
+     sc.cycles.feature_set=='EXPERIMENTAL')
+flag("D2 - terrain has adaptive subdivision enabled",
+     getattr(terr.cycles,'use_adaptive_subdivision',False))
 print("  NOTE  D2 displacement HEIGHT (Scale 0.10 m) and dicing rate (2.0) are RTX-tuned - "
       "0.08 m of relief cannot be judged at 800x450. Scaffold + assertions ship here.")
 

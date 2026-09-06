@@ -29,6 +29,12 @@ sc.cycles.samples=SAMPLES
 sc.cycles.use_denoising=True
 sc.cycles.volume_bounces=8
 sc.cycles.volume_max_steps=24
+# D2 adaptive subdivision is for the 2 m circle crops, NOT for a 2 km wide shot: at this range a
+# dicing_rate of 2 would tessellate the whole visible plain into millions of micropolygons for
+# 8 cm of relief nobody can see. Crank it coarse here so the displacement effectively sleeps.
+for _o in bpy.data.objects:
+    if _o.name=='TERRAIN' and hasattr(_o.cycles,'dicing_rate'):
+        _o.cycles.dicing_rate=16.0
 sc.render.resolution_x=1600; sc.render.resolution_y=900; sc.render.resolution_percentage=100
 sc.view_settings.view_transform='Standard'; sc.view_settings.exposure=-3.06
 cams=[o for o in bpy.data.objects if o.type=='CAMERA' and o.name in WANT]
