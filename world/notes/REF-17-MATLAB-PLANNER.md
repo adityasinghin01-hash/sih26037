@@ -1217,3 +1217,258 @@ corrected; that value has not been re-measured yet.
 - **The S2 island tufts still read as dead twigs** against the doob mat, and the trunk
   whitewash band (REF-06 §4) is deliberately unbuilt rather than faked by paling whole trunks.
 - **Both films are stale and the S1 one is corrupt** (§18d). Neither has been re-rendered.
+
+---
+
+## 20 · PHASE 2 — THE EGO, AND SIX PARTS THAT WERE BUILT AND NEVER DREW A PIXEL
+
+**5 Sep, evening session.** The car stopped being eight cuboids. `blend/vehicles/car.py`
+builds it as 11 separate parts, `sc.carAsset` loads them into one mesh with a **per-face
+part index**, `sc.meshes("car")` returns that, and `sc.carColours` colours **by part id**.
+Nothing else changed: `s1_film`, `s1_hud_check`, `s1_action_shots`, `s2_film`,
+`s2_hud_check` and `s2_action_shots` all call the same two functions unchanged.
+
+**The S1 result is untouched and was re-run to prove it:** free width **3.830 m**, margin
+**0.965 m each side**, past her at **8.00 km/h**, `map/ego_S1.csv` 1,240 rows. Every actor
+number in this project comes from `dim`, never from mesh vertices - `sc.s1geom`, `sc.s1gap`
+and the separation check all read `[~, d] = sc.meshes(...)` - so swapping the geometry
+**cannot** move an arithmetic claim as long as `dim` still asserts. That is worth knowing
+before the bus and the rest of the traffic go the same way.
+
+### 20a · THE CAR WAS 1.808 m WIDE WITHOUT ITS MIRRORS, AGAINST A WRITTEN 1.700
+The handover said the asset measured "exactly 3.990 x 1.900 x 1.500", and as a bounding
+box it did. **Measured per part off the exported STL, three parts stood outside the body:**
+the sills at **+-0.904** (57 mm proud), the door handles at **+-0.888**, and the tyres at
+**+-0.862** - the last from a `+ 0.015` whose own comment read *"outer face flush with the
+body side"*. So the car was **1.808 m** wide without its mirrors.
+
+**This is not cosmetic, for the same reason the zebu's width was not** (s10a). SPEC and S1
+both state *"ego 1.70 m, 1.90 m with mirrors"*, `sc.meshes` asserts the 1.70, and folding
+the mirrors is a planner action worth exactly that 200 mm. The assert would have fired the
+moment the asset was wired in. **Loosening it to 1.808 was the available shortcut and it
+was the wrong one** - s11b and s19d, a third time.
+
+**AND ONE UNIFORM SCALE CANNOT FIX IT, WHICH IS THE REAL FINDING.** 1.700 and 1.900 are two
+independent load-bearing widths. The old normaliser scaled the full 1.906 m span to 1.900 and
+left the body wherever it fell; it hit neither number. Normalisation is now **two-stage in y**:
+scale so the **non-mirror** body is exactly 1.700, then slide the mirrors until the overall
+is exactly 1.900. The stalk length is not a sourced dimension and the 1.900 is, so the stalk
+absorbs the residual (measured: 3.0 mm) rather than the body being stretched to swallow it.
+`car.py` now **asserts all four numbers itself** and fails, instead of printing its miss.
+
+### 20b · POLYGONS ARE NOT TRIANGLES — 2,888, NOT 2,708
+`car.py` reported `len(ob.data.polygons)`. The shell is lofted as **quads** and the loft caps
+are 36-gons, and STL triangulates on export, so the file MATLAB reads holds **2,888** where
+the script said 2,708. Both are now printed side by side. Not a defect - but the ego went
+from 96 triangles to 2,888 and any film budget should carry the right number.
+
+### 20c · SIX PARTS WERE BUILT, EXPORTED, ASSERTED — AND DREW NOTHING
+`car.py` already carried the rule in capitals: *"EVERY DETAIL MUST PROTRUDE. The shell is a
+closed opaque solid, so anything flush with it is simply invisible."* **It was then broken
+six times in the same file.** Every one passed every assertion, because an assertion checks
+a bounding box and burial does not change one.
+
+| part | what it did | why |
+|---|---|---|
+| **windscreen** | the front view showed a car with **no windscreen** | typed as four fixed corners against a cabin that was later re-raked into a hatchback; the shell closed over it |
+| **rims x4** | every wheel a **flat black disc** | the fix for the z-fighting chevron inset the rim 30 mm from the sidewall, putting its outer face **20 mm inside the tyre's closed cap** |
+| **front bumper** | nothing | centred at 1.880 with half-length 0.08, so it ended at 1.960 - **30 mm inside the shell's own end cap at 1.990** |
+| **rear bumper** | nothing | identical |
+| **rear number plate** | did not exist | only the front one was built, and **the chase camera sits behind the ego for the whole of both films** |
+| **sills** | the INVERSE - a **running board** slung between the wheels | a straight box cannot lie flush on a ROUNDED lofted section: at the rocker the corner radius pulls the body in to 0.824 and the sill sat at 0.846 |
+
+**The rims are the instructive one. The cure for burial is not "less inset".** Three
+concentric discs on one axle have to **step outward** - tyre 0.836, rim 0.845, hub 0.850 -
+each proud of the last, none coincident with another, and none outside the 0.850 the body
+is asserted to. A single number cannot satisfy "not coincident" and "not hidden" at once.
+
+**The sills were deleted rather than repaired.** Pulling them in far enough to sit flush
+buries them; leaving them out makes a side step no Indian hatchback has. The dark rocker
+band they existed to provide is the **shell's own vertical shade** in `sc.carColours`, which
+follows the real curved surface instead of floating outside it.
+
+**And the glass is now built from the profile rather than against it.** `screen()` reads
+`cab_prof`'s own numbers and offsets along the local normal, so it cannot be buried when the
+cabin changes shape. Fixed coordinates could not survive one re-rake; reading the profile can.
+
+### 20d · `sc.carColours` COLOURS BY PART, NOT BY GUESSED REGION
+The old version recovered the parts geometrically - *glass is above z = 0.72 and inboard of
+|y| = 0.82*, *a tyre is below 0.62 within 0.42 m of an axle*, *a mirror is |y| > 0.80 between
+z 0.90 and 1.14*. **Those bands were exactly right for the primitive, because on eight
+cuboids the regions WERE the parts.** On a lofted shell they are not: the glass band also
+contains the door skin and the handles, the tyre band contains the wheel arches and the
+sills, the mirror band contains the roof rails. The parts are separate files, so nothing has
+to be inferred, and **a part index cannot drift when the model changes shape.**
+The same applies to the body-width assert in `sc.meshes`, which excluded the mirrors as a
+**z-band** - true of the primitive only because its mirrors were the sole geometry at that
+height. It now excludes them **as a part**, and additionally asserts that the mirrors really
+do span the 1.900, so the two numbers cannot become unrelated.
+
+### 20e · `matlab/car_look.m` — AN ACTOR LOOP THAT COSTS 13 SECONDS, NOT FIVE MINUTES
+The only loop that has ever worked here is render → LOOK → fix (s7, s19). For the WORLD it
+costs 4-9 minutes, which is why `s1_look.m` exists; for an **actor** there was nothing, and
+the car was being judged inside a full HUD still that spends its whole budget on 2,200 trees
+the car is not. `car_look.m` renders one vehicle alone from the three views that decide a
+vehicle - and the **rear three-quarter is first, because that is the chase camera's view and
+the judges look at it for 110 seconds.** Three views, **13 s.**
+
+**It also answers the question a still cannot: WHICH PART AM I LOOKING AT.** Run with
+`PARTS=true` every part gets its own hue and a printed legend. **This paid for itself twice
+in one session, in both directions:**
+- it identified the running board as the **sills** (green) rather than an exhaust, and proved
+  the rims drew **no pixels at all** - there was no rim hue anywhere in the frame;
+- and it stopped a fix that was not needed. Two dark strips ran down each side of the cabin
+  in the HUD still and looked like stray geometry. Coloured, they are the **roof rail**, the
+  **B-pillar trim** and the **side glass standing proud of the cabin** - three real parts.
+  **s19h, avoided this time by colouring rather than by reasoning.**
+
+**MATLAB has no textures, so a defect and a deliberate part look identical.** That is the
+whole argument for the parts diagnostic, and it is the same argument s19f paid for the hard
+way when a height scale used as a radius filled 55 % of the S2 approach shot with black.
+
+---
+
+## 21 · PHASE 3 — THE BUS, AND THE SAME BURIAL BUG A SEVENTH TIME
+
+**5 Sep, same session.** `sc.meshes("bus")` was **eight cuboids in one flat colour** - a
+body, a roof slab and six wheel stubs - and in the S2 chowk it is the largest object in
+frame after the island. It rendered as a **solid yellow box on legs**. It is now
+`blend/vehicles/bus.py` → 14 parts → `sc.busAsset` → `sc.busColours`, at
+**10.8000 x 2.6000 x 3.1000** asserted, base at z = 0, **3,312 triangles**.
+
+### 21a · WHAT READS ON A BUS, IN ORDER, AND ALL FOUR ARE GEOMETRY
+1. **The window band** - a long row of dark glass divided by pillars. Nothing else says
+   "bus" so fast, and the primitive had none of it.
+2. **The two-tone.** An Indian state bus is banded horizontally, never one colour. It is
+   built as three lofts - skirt, waist rail, upper - so the livery is **geometry** and
+   survives any change to the palette.
+3. **The wheels**, which are what say "vehicle" rather than "shed".
+4. **The destination board and the entrance.**
+
+**And the seventh burial.** The window pillars were at 1.298 against glass at 1.300, so
+they sat **2 mm inside it** and the whole band rendered as **one continuous black slab**.
+They showed only at a grazing angle, off their own 30 mm thickness - which is why the
+front three-quarter looked right and the profile did not. On a real body the pillar IS
+the outermost surface and the glazing sits in it, so **the pillars now carry the 2.60**.
+**That is six parts on the car and one on the bus, all built, exported, asserted, and
+drawing nothing.** A bounding-box assertion cannot see burial, and neither can Blender's
+viewport (s12c trap 18). Only the renderer that ships it can.
+
+### 21b · NO MIRRORS, AND IT IS SAID OUT LOUD
+A real bus has large ones. `sc.meshes` asserts **2.60 m over the body** (REF-04 s1) and
+mirrors would break it, so they are absent. Recorded rather than silently widened,
+because S2's clearances are measured off that box.
+
+### 21c · `blend/vehicles/_veh.py` — THE SHARED KIT
+Extracted when the bus needed the car's helpers. It holds the rounded section, the loft,
+the profile reader, the profile-following screen, the **three stepped wheel discs**, and
+the **normalise-and-assert**, with the four things that cost something to learn written
+at the top. Five actors are still primitives - auto, motorcycle, tractor, trolley,
+Tata Ace - and that is five more chances to retype the two-stage width normalisation
+slightly differently. `sc.s1geom` is the record of what two sources for one number cost.
+**`car.py` has NOT been moved onto the kit yet** - it works and is verified, and
+refactoring a verified asset for tidiness while the bus was unproven was the wrong order.
+The kit is proven now, so that move is available and is listed as outstanding.
+
+### 21d · THE MATLAB SIDE, GENERALISED
+`sc.partAsset(prefix, names)` does the loading, the part index and the integrity
+assertions for any vehicle; `sc.carAsset` and `sc.busAsset` exist to own **one thing
+each - the part ORDER**, which is the contract every per-face colour depends on.
+`car_look.m` became **`veh_look.m`**, taking `VEH` and scaling its three camera
+distances off the vehicle's own length, so a 10.8 m bus frames like a 3.99 m hatchback
+instead of falling out of the picture.
+
+### 21e · THE HUD WAS CUTTING THE EGO IN HALF, IN BOTH SCENARIOS
+Not the car's fault and not found by looking for it. With `'Ahead', 13` the ego sits
+**13.7 deg below the view axis against a 16.5 deg half-frame - 83 % of the way to the
+bottom** - so the bumper, both rear wheels and half the number plate were behind the
+instrument panel **in every HUD still and for the whole of both films**. A shorter
+look-ahead steepens the view axis and pitches the subject up the frame; at **10** it
+clears. Applied to `s1_hud_check`, `s1_film`, `s2_hud_check` and `s2_film` - and S2 was
+**verified on `s2hud_hud_commit` before changing it**, not assumed from S1.
+**Five files carried that same magic-number tuple.** They still do; one source for the
+HUD chase geometry is outstanding.
+
+---
+
+## 22 · PHASE 5 — THE ROAD TEXTUREMAP, AND THE NUMBER THAT SAID IT WAS NOT THE BIG WIN
+
+**5 Sep, same session.** `sc.roadTexture` + `sc.scene/carpet`, wired into `sc.s1render`
+(the carriageway) and `sc.s2render` (four arms and the ring).
+
+### 22a · THE MECHANISM WAS VERIFIED BEFORE ANYTHING WAS BUILT ON IT
+s19j says *"s12a's correction proved `surface` + `FaceColor','texturemap'` works"*.
+**That claim had never been executed** - it is a note about a note. Run:
+- it **binds**, `CDataMapping` scaled, CData accepted at any size;
+- **a 2 x 2 grid carrying a 512-wide image renders at luminance std 65.4.** So the
+  IMAGE resolution genuinely beats the GRID resolution, which is the whole reason this
+  is affordable: the ribbon can stay at 7 x 137 quads and the detail lives in a picture.
+**s18a's rule, in a new place: a probe that has never been executed is not a probe.**
+
+### 22b · THE ROAD IS NOT FLAT PAPER, AND THE CLAIM THAT IT IS RESTS ON AN UNCOMPARED NUMBER
+s19j calls the road *"flat paper"* at local contrast 7.4 and **"the largest available
+win"**. 7.4 was never compared to anything. **Measured, off Aditya's own 64 dashcam
+frames - the same source s19h took the road's HUE from, which nobody had asked for its
+CONTRAST:**
+
+| pass | what it sampled | contrast | why it was wrong |
+|---|---|---|---|
+| 1 | a fixed lower-centre rectangle | **13.2** | the accepted crops were **verge and edge line**. Looked at, not assumed |
+| 2 | the most desaturated of 20 candidate rectangles per frame | **8.0** | still holding guardrails, a bumper, a motorcycle wheel and lane markings |
+| 3 | + markings, vehicles and shadow edges rejected | **6.1** (p25 4.6, p75 8.5) | 59 of 64 frames; contact sheet looked at |
+
+**The real road of this class runs at local contrast 6.1 at matched pixels-per-metre.
+Ours was 5.4. The gap is about ONE LEVEL, not a chasm.** Excluding the markings is not
+a convenience: ours are separate measured geometry, so what a surface texture has to
+represent is the road BETWEEN them.
+
+**Each refinement lowered the number, which is the tell that the first one was
+contamination and not signal** - REF-17 s18b, in the other direction. Pass 1 would have
+sent someone to triple the amplitude of a texture that was already nearly right, and
+the result would have looked like gravel.
+
+**What the flat patch genuinely lacked was not contrast but STRUCTURE.** One `patch` in
+one colour has no wheel paths, no streaking, no oil line and no patches at all, at any
+contrast. That is what this buys, and it is a smaller win than advertised. **Phase 5's
+GROUND half - the 1.2 m shoulders and the verge - has not been measured and may now be
+the better half of it.**
+
+### 22c · THE AMPLITUDE IS SOLVED, THE CHARACTER IS CHOSEN, AND THE FILE SAYS WHICH IS WHICH
+`sc.roadTexture` returns a **multiplier around 1.0, asserted to 0.2 %**, so it *cannot*
+move the tarmac grey that s19h measured and that deliberately overrules REF-06 s6. The
+relative weights - aggregate, streaking, patchiness, wheel paths, oil line - set the
+character and are stated as chosen. The **amount** is solved: the deviation field is
+scaled until its coefficient of variation equals the measured **0.0561**.
+Matching CoV rather than absolute contrast is the physical choice - the texture is an
+ALBEDO variation, and our road renders at brightness 92 against the dashcam's 109, so
+matching absolute levels would over-state the albedo. Rendered result: **near road 5.0
+against a measured 6.1 (p25 4.6)**, i.e. exactly the measured CoV, and the residual is
+the lighting and dirt the dashcam frames also carry.
+
+### 22d · TWO THINGS THE RENDER CAUGHT THAT NO NUMBER DID
+**BUG - A SIN-HASH ON A REGULAR LATTICE ALIASES INTO A VISIBLE CHEQUER.** The first
+version hashed `sin(a*I + b*J)` per texel, the idiom the rest of the package uses for
+per-face grain, with two incommensurate terms specifically to avoid banding. **It banded
+anyway** - a diagonal chequer across the near foreground. A hash evaluated at scattered
+world centroids is not the same problem as one evaluated at every cell of a
+128 x 5600 grid. Replaced with `rng(seed)` + `rand`, **with the global stream saved and
+restored** - just as deterministic, so the film cannot crawl, which was the only reason
+to avoid `rand` here.
+
+**BUG - `texturemap` MAGNIFIES NEAREST-NEIGHBOUR AND THERE IS NO FILTERING.** With the
+chequer gone, the texel grid itself was visible: at 2 m from a 1.35 m eye each texel
+covers several screen pixels, and any hard edge between neighbours is drawn as one.
+No MATLAB surface property controls this, **so the cure has to be in the SOURCE** - the
+aggregate is now band-limited to a ~2-texel cell and interpolated. Fine enough to read
+as aggregate, correlated enough to have no edges.
+**Both were invisible in the texture previewed as a flat image, and obvious the moment
+it was on a surface under a camera.**
+
+### 22e · S2 GETS IT TOO, AND THE RING IS DELIBERATELY ONE LANE
+The four arms use a grid version of the same band helper. **The ring needs no helper at
+all - an annulus is already a grid**, rows radius and columns theta.
+**It is generated with `Lanes` 1 on purpose.** S2 turns on the circulating carriageway
+carrying **no lane markings**; there are not two lanes to wear two pairs of wheel paths
+into, there is one circulating stream and one broad worn band. Passing 2 would have
+drawn a lane structure onto the single surface in the scenario whose whole point is
+that it has none.

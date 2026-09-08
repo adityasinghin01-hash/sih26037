@@ -24,6 +24,13 @@ def ok(msg):   print(f"  OK   {msg}")
 print(f"\n================= AUDIT : {BLEND.split('/')[-1]} =================")
 meshes=[o for o in bpy.data.objects if o.type=='MESH' and len(o.data.vertices)]
 print(f"  {len(meshes)} mesh objects, {sum(len(o.data.polygons) for o in meshes)} faces")
+# SKY-SCALE objects (cloud field, cirrus at 7.2 km, god-ray occluder stand-ins) are checked by
+# 01_light.py's own 33 assertions. This tool measures GROUND things against the terrain, so a
+# cirrus sheet "floats +7187 m" and a GN-volume cloud "has no material slot" are false FAILs that
+# train us to ignore the net. Skip anything in SKY / CLOUD / AIR.
+_SKYCOLS={"SKY","CLOUD","AIR"}
+sky_objs={o.name for c in bpy.data.collections if c.name in _SKYCOLS for o in c.all_objects}
+meshes=[o for o in meshes if o.name not in sky_objs]
 
 # --- the terrain height field, so 'floating' can be MEASURED rather than eyeballed
 terr=bpy.data.objects.get(TERR)
@@ -33,6 +40,15 @@ if terr:
     gj=np.clip(np.round((co[:,0]+GEXT)/CELL).astype(int),0,NG)   # REF-05 s10a: rebuild the index
     gi=np.clip(np.round((co[:,1]+GEXT)/CELL).astype(int),0,NG)   # from actual x,y, never assume
     H=np.zeros((NG+1,NG+1)); H[gi,gj]=co[:,2]
+    # THE HILL IS PART OF THE GROUND. Rocks and terraces sit on its surface at z up to 170 m;
+    # measured against the flat terrain alone they read as "floats +170 m" - a false FAIL that
+    # trains us to ignore rule 3. Fold every HILL-named mesh into the field as a max.
+    for ho in meshes:
+        if ho is terr or not ho.name.startswith(("HILL","hill")): continue
+        hco=np.array([(ho.matrix_world @ v.co)[:] for v in ho.data.vertices])
+        hj=np.clip(np.round((hco[:,0]+GEXT)/CELL).astype(int),0,NG)
+        hi=np.clip(np.round((hco[:,1]+GEXT)/CELL).astype(int),0,NG)
+        np.maximum.at(H,(hi,hj),hco[:,2])
 def tz(x,y):
     fx=np.clip((x+GEXT)/CELL,0,NG-1e-6); fy=np.clip((y+GEXT)/CELL,0,NG-1e-6)
     i0=fx.astype(int); j0=fy.astype(int); tx=fx-i0; ty=fy-j0
@@ -68,6 +84,11 @@ if H is not None:
     float_bad=[]
     for o in meshes:
         if o is terr or o.name.startswith(("DISTANT","RANGE","CLOUD","SKY","AIR")): continue
+        # ROCK_* are ray-cast onto the hill/plain surface at build time (02_land.py) and asserted
+        # there by measured footprint. Rule 3's 6.67 m height grid cannot resolve a 2-3 m rock on
+        # a steep, sub-grid-detailed hill face to better than ~2 m - it was reporting them all as
+        # "buried -2.1 m", a false FAIL. Their placement is checked where it is actually done.
+        if o.name.startswith("ROCK_"): continue
         v=np.array([(o.matrix_world @ x.co)[:] for x in o.data.vertices])
         if len(v)>40000: v=v[::max(1,len(v)//40000)]
         d=v[:,2]-tz(v[:,0],v[:,1])

@@ -133,9 +133,10 @@ close this. Expect it to find something.
   simulates in 47 s on the Mac.** It is the only harness that actually consumes `SteerAngle` —
   see `plan/HARNESS-STEERING-FINDING.md`.
 
-### Not built at all
-- Everything in `matlab/+sih/+scenario/`, `+perception/`, `+metrics/` — so there is no S9, no S10
-  and no metrics code. Stream D builds against hand-made structs
+### Built since this was written (5 Sep) — corrected 8 Sep
+- `matlab/+sih/+scenario/` and `+perception/` are now REAL and committed on `main` (Phases 5-6,
+  8 Sep) — real S9 DrivableSpace, a noisy S1 TrackList via trackerGNN. 344/344 tests.
+- **Still not built**: `+metrics/` — the folder exists, empty, no metrics code.
 
 **Moved out of this section on 5 Sep: D9, D10 and `arbitrate.m` are BUILT** — on `stream-d-a`,
 not on `main`, so say which branch when you quote them. `arbitrate` is frozen in

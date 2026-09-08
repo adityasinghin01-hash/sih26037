@@ -12,8 +12,9 @@ unstructured Indian roads.
 
 **Latest state and per-person next steps: `HANDOFF.md`.**
 PRD: a PDF, ask Aditya. Your tasks: your stream folder, `ml/` or `plan/`.
-Who does what: `TEAM.md`. **The World is Aditya's, not a folder here** - `S1` and `S9` come
-from him.
+Who does what: `TEAM.md`. **The World is Aditya's** - the 3D city, the demo, and `world/` are his,
+even though the repos were merged 8 Sep so everything lives in one clone. `S1` and `S9` come from
+him.
 
 **Machine-learning task? Read `ml/ML.md` first.** Planner task? Read `plan/ReadThis.md` first.
 Neither loads automatically, and both carry facts you must not re-derive.
