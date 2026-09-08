@@ -5,7 +5,7 @@
 # simply not drawn. The scene looks empty and nothing is actually wrong with it.
 import bpy, sys, os
 args=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 F=args[0] if args else f"{REF}/blend/01_LIGHT.blend"
 bpy.ops.wm.open_mainfile(filepath=F)
 

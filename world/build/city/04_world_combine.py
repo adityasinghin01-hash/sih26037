@@ -7,7 +7,7 @@
 # real cameras come from preview.py/02b_land_cameras.py; bringing the other one in would just be
 # a second, redundant figure standing in the same world.
 import bpy, os, sys, math, time
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 LAND_ROADS=f"{REF}/blend/03_ROADS.blend"
 LIGHT=f"{REF}/blend/01_LIGHT.blend"
 OUT=f"{REF}/blend/04_WORLD.blend"

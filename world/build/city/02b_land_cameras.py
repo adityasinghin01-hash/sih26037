@@ -4,7 +4,7 @@
 import bpy, sys, os, math
 from mathutils import Vector
 a=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 F=a[0] if a else f"{REF}/blend/03_ROADS.blend"
 bpy.ops.wm.open_mainfile(filepath=F)
 sc=bpy.context.scene

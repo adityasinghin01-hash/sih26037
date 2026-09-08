@@ -9,7 +9,7 @@ import bpy, sys, os, time
 a=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
 WANT=set(a[0].split(",")) if a and a[0] else {"CAM_6_WIDE","CAM_1_HILL_FROM_S","CAM_3_RIVER","CAM_DASH"}
 SAMPLES=int(a[1]) if len(a)>1 else 96
-REF=os.environ.get("SIH_REF","/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF","/Users/aditya/dev/sih2026/world")
 OUT=f"{REF}/renders/city"; os.makedirs(OUT,exist_ok=True)
 sc=bpy.context.scene
 sc.render.engine='CYCLES'

@@ -7,7 +7,7 @@ from mathutils import Vector
 a=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
 BLEND=a[0]; TAG=a[1] if len(a)>1 else "pv"; MODE=a[2] if len(a)>2 else "cheap"
 ONLY=set(a[3].split(",")) if len(a)>3 else None   # render just these shots
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 OUT=f"{REF}/renders/city"; os.makedirs(OUT,exist_ok=True)
 bpy.ops.wm.open_mainfile(filepath=BLEND)
 sc=bpy.context.scene

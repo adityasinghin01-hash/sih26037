@@ -3,7 +3,7 @@
 import bpy, csv, json, math, os
 from mathutils import Vector
 OFFSET = (35.0, -100.0)     # measured: MATLAB frame -> OSM metric frame
-REF = os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF = os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 MAP = f"{REF}/map"
 OUT = f"{REF}/blend/S1_realnetwork.blend"
 BOX = 1000.0                # our 2 km world box, centred on the town

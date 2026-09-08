@@ -13,7 +13,7 @@ import numpy as np
 from mathutils import Vector
 a=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
 BLEND=a[0]; TAG=a[1]; SX=float(a[2]); SY=float(a[3]); HEAD=float(a[4]) if len(a)>4 else 0.0
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 OUT=f"{REF}/renders/city"; os.makedirs(OUT,exist_ok=True)
 bpy.ops.wm.open_mainfile(filepath=BLEND)
 sc=bpy.context.scene
