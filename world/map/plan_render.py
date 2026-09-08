@@ -1,5 +1,5 @@
 import bpy, os, math
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 sc=bpy.context.scene
 def mat(n,rgb):
     m=bpy.data.materials.new(n); m.use_nodes=True

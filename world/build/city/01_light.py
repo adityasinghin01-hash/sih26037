@@ -12,7 +12,7 @@
 import bpy, math, os, sys, time
 from mathutils import Vector
 
-REF  = os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF  = os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 OUT  = f"{REF}/blend/01_LIGHT.blend"
 RND  = f"{REF}/renders/city"
 os.makedirs(RND, exist_ok=True)

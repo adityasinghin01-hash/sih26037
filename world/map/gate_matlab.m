@@ -1,5 +1,5 @@
-f = '/Users/aditya/Desktop/SIH26037-Reference/map/najibabad.osm';
-out = '/Users/aditya/Desktop/SIH26037-Reference/map/matlab_roads.csv';
+f = '/Users/aditya/dev/sih2026/world/map/najibabad.osm';
+out = '/Users/aditya/dev/sih2026/world/map/matlab_roads.csv';
 fprintf('MATLAB %s\n', version);
 s = drivingScenario;
 try

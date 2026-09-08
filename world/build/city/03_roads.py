@@ -7,7 +7,7 @@
 import bpy, bmesh, math, os, sys, csv, json, time
 import numpy as np
 T0=time.time()
-REF=os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF=os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 LAND=f"{REF}/blend/02_LAND.blend"; OUT=f"{REF}/blend/03_ROADS.blend"
 
 # ---------------------------------------------------------------- the numbers

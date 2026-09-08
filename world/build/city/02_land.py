@@ -19,7 +19,7 @@ import bpy, bmesh, math, os, sys, json, time
 import numpy as np
 from mathutils import Vector
 
-REF  = os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF  = os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 OUT  = f"{REF}/blend/02_LAND.blend"
 RND  = f"{REF}/renders/city"
 os.makedirs(RND, exist_ok=True)
