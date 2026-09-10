@@ -107,7 +107,8 @@ function out = plannerView(action, d)
 %   under -batch when no Snap= was asked for.)
 
 persistent S
-out = struct('Paused',false,'Quit',false,'Frames',0,'LastFrame_ms',NaN);
+out = struct('Paused',false,'Quit',false,'Frames',0,'LastFrame_ms',NaN, ...
+             'InjectPending',false,'InjectXY',[NaN NaN]);
 
 switch action
 % --------------------------------------------------------------------- init
@@ -121,6 +122,7 @@ case 'init'
     % tried and the ego was too small to read.
     S.span = getf(d,'ViewSpan',60);          % m, half-span of the follow camera
     S.interactive = getf(d,'Interactive',true);
+    S.enableInjection = getf(d,'EnableInjection',S.interactive);
     % See demo_play's own note: feature('ShowFigureWindows') is TRUE under
     % `matlab -batch` on this machine, so it cannot detect "nobody is
     % watching". batchStartupOptionUsed is true for exactly that case.
@@ -297,14 +299,25 @@ case 'init'
     % State lives in the FIGURE's appdata, not in this persistent struct: the
     % KeyPressFcn callback fires from MATLAB's event loop, where it cannot see
     % or safely mutate a persistent in a function that is mid-call.
-    setappdata(S.fig, 'ctl', struct('Paused',false,'StepOnce',false,'Quit',false));
+    setappdata(S.fig, 'ctl', struct('Paused',false,'StepOnce',false,'Quit',false, ...
+        'InjectPending',false,'InjectXY',[NaN NaN]));
+    setappdata(S.fig, 'injectAxes', S.axMap);
     if S.interactive
         set(S.fig, 'KeyPressFcn', @onKey, 'CloseRequestFcn', @onClose);
+        if S.enableInjection
+            % Figure-level by design: clicks on an existing road line, hazard,
+            % candidate or vehicle must not get swallowed by that child object.
+            set(S.fig, 'WindowButtonDownFcn', @onMapClick);
+        end
     end
     S.hHint = annotation(S.fig, 'textbox', [0.035 0.955 0.615 0.04], ...
-        'String', 'SPACE pause/resume     ->  or  N   step one frame     Q quit', ...
+        'String', 'CLICK road: add obstacle     SPACE pause     N step     Q quit', ...
         'FontName','Menlo','FontSize',10,'Color',[.35 .35 .35], ...
         'EdgeColor','none','VerticalAlignment','middle');
+    S.hLive = annotation(S.fig, 'textbox', [0.035 0.922 0.615 0.032], ...
+        'String','', 'FontName','Menlo','FontSize',10,'FontWeight','bold', ...
+        'Color',[.78 .18 .08], 'EdgeColor','none', ...
+        'VerticalAlignment','middle','Visible','off');
     S.hBanner = annotation(S.fig, 'textbox', [0.30 0.60 0.30 0.08], ...
         'String','PAUSED','FontName','Menlo','FontSize',26,'FontWeight','bold', ...
         'Color',[.85 .25 .1],'BackgroundColor',[1 1 1],'FaceAlpha',0.82, ...
@@ -509,7 +522,7 @@ case 'step'
         ctl.StepOnce = false;  ctl.Paused = true;
         setappdata(S.fig, 'ctl', ctl);
     else
-        while ctl.Paused && ~ctl.Quit
+        while ctl.Paused && ~ctl.Quit && ~getf(ctl,'InjectPending',false)
             set(S.hBanner,'Visible','on');
             drawnow;                   % full drawnow: limitrate can drop the
             pause(0.03);               % banner and swallow the keypress
@@ -524,6 +537,28 @@ case 'step'
 
     out.Paused = ctl.Paused;  out.Quit = ctl.Quit;
     out.Frames = S.nFrames;  out.LastFrame_ms = S.lastMs;
+    out.InjectPending = getf(ctl,'InjectPending',false);
+    out.InjectXY = getf(ctl,'InjectXY',[NaN NaN]);
+    if out.InjectPending
+        % Consume exactly once. A held mouse button must never trigger a
+        % second re-plan on the following frame.
+        ctl.InjectPending = false;
+        setappdata(S.fig, 'ctl', ctl);
+    end
+
+% --------------------------------------------------------------- addHazard
+case 'addHazard'
+    if isempty(S) || ~isgraphics(S.fig) || ~isfield(d,'Hazard'), return; end
+    if isempty(S.hz), S.hz = d.Hazard; else, S.hz(end+1) = d.Hazard; end
+    drawHazard(S.axMap, S.P, d.Hazard, numel(S.hz));
+    if ~S.headless, drawnow; end
+
+% ------------------------------------------------------------------ status
+case 'status'
+    if isempty(S) || ~isgraphics(S.fig) || ~isfield(S,'hLive') || ~isgraphics(S.hLive), return; end
+    msg = string(getf(d,'Text',""));
+    set(S.hLive, 'String',char(msg), 'Visible',onoff(strlength(msg) > 0));
+    if ~S.headless, drawnow; end
 
 % --------------------------------------------------------------------- snap
 case 'snap'
@@ -543,7 +578,8 @@ case 'close'
     % load, not ordering - see demo_play's header. Releasing the figure
     % promptly is still the right thing to do.)
     if ~isempty(S) && isfield(S,'fig') && isgraphics(S.fig)
-        set(S.fig,'CloseRequestFcn','closereq','KeyPressFcn',[]);
+        set(S.fig,'CloseRequestFcn','closereq','KeyPressFcn',[], ...
+            'WindowButtonDownFcn',[]);
         delete(S.fig);
     end
     S = [];
@@ -564,6 +600,21 @@ switch lower(ev.Key)
     case {'q','escape'}
         ctl.Quit = true;  ctl.Paused = false;
 end
+setappdata(fig, 'ctl', ctl);
+end
+
+function onMapClick(fig, ~)
+% Figure callback, not an axes callback: objects drawn on the map still count.
+if ~isgraphics(fig) || ~strcmp(get(fig,'SelectionType'),'normal'), return; end
+ax = getappdata(fig, 'injectAxes');
+if isempty(ax) || ~isgraphics(ax), return; end
+hit = hittest(fig);
+hitAx = ancestor(hit, 'axes');
+if isempty(hitAx) || ~isequal(hitAx, ax), return; end
+cp = get(ax, 'CurrentPoint');
+ctl = getappdata(fig, 'ctl');
+ctl.InjectPending = true;
+ctl.InjectXY = cp(1,1:2);
 setappdata(fig, 'ctl', ctl);
 end
 

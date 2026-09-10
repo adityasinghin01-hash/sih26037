@@ -820,7 +820,7 @@ function R = play(D, LOG, DT, opts)
 n = numel(LOG.t);
 sc.plannerView('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
     'Hazards',D.Hazards,'Title',D.Title,'ViewSpan',opts.ViewSpan, ...
-    'Interactive',opts.Interactive));
+    'Interactive',opts.Interactive,'EnableInjection',opts.Interactive));
 
 if strlength(opts.Snap) > 0                       % one frame, for a screenshot
     i = max(1, round(n/2));
@@ -869,6 +869,18 @@ for i = 2:n
     ctl = sc.plannerView('step', frameOf(LOG, i));
     ft(i) = ctl.LastFrame_ms;
     if ctl.Quit, quit = true; break; end
+    if ctl.InjectPending
+        [hs, he, accepted, why] = sc.clickToRoad(D.W.Path, D.W, ctl.InjectXY, LOG.s(i));
+        if accepted
+            liveHz = hz("barrier", hs, he, "LIVE OBSTACLE - judge click", 0.45, NaN, 0);
+            D.Hazards(end+1) = liveHz;
+            sc.plannerView('addHazard', struct('Hazard',liveHz));
+            sc.plannerView('status', struct('Text',sprintf( ...
+                'LIVE OBSTACLE PLACED AT s=%.1f m, e=%+.1f m', hs, he)));
+        else
+            sc.plannerView('status', struct('Text',"OBSTACLE NOT PLACED - " + why));
+        end
+    end
     drawn = i;
     % Pace against a real clock, not by accumulating pauses: time spent PAUSED
     % must not be repaid by the car sprinting to catch up afterwards.
