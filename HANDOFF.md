@@ -20,7 +20,7 @@ Kishan (independently on ML), Aditya B. (bridges ML into the live demo).**
 | **`OpenTrafficLab/` must be cloned into the repo root** | `git clone https://github.com/mathworks/OpenTrafficLab.git`. Without it, 9 tests silently report Incomplete instead of running. It's gitignored — every clone needs its own copy |
 | **`matlab/baseline/` is full, has been run, and it fails** | MathWorks' own shipped planner dies 19.7s into its own scenario, 0 of 120 candidates collision-free. **That is the result. Never edit that folder to make it survive** — `plan/BASELINE-R2026a.md` |
 | **S1 (the cow) is fully solved** | 610m real Najibabad road, full route, **0.965m clearance each side** — the headline number |
-| **S2 (the chowk) has one honestly disclosed bug** | −0.909m — a real structural finding about the planner's lateral-commit tie-break, traced and written up, not hidden. Antara's fix is on her task list |
+| **S2 (the chowk) does not currently finish the route, under either sensing condition** | Re-run 10 Sep: ground truth grazes the wrong-way rider at −0.003m (t=17.65s); real sensing collides at −0.909m (t=12.70s, the previously-documented figure, reproduced exactly). **In both cases the planner then permanently stalls partway around the ring** (s≈116–121m of 244m) and never reaches the exit — a D9 WAIT-rung mechanism repeatedly finding, then losing, a viable pass. Not a sensing artefact: it reproduces under ground truth too, just at a slightly different station. Antara's fix is on her task list — see `plan/CLAIM-LEDGER.md` Part 2 for the full account |
 | **Real sensing is now wired into the live demo** | `demo_play.m` has a `Sensed=true` option (`sc.senseRig`/`sc.senseStep` — simulated lidar/radar/near-field-ring + a real tracker). Verified: the 0.965m headline number holds under real sensing too, not just ground truth. Default is still `Sensed=false` for the rehearsed path. **Done by Aditya 10 Sep — if this looks unassigned anywhere else, it isn't** |
 | **Four ML models exist** | Calibration and domain-gap fixes are Shourya's and Kishan's current work — not yet done as of this writing |
 
@@ -45,8 +45,10 @@ Your own track, not handed out. Current build queue, in order:
 ## Antara (Planner)
 
 Independent piece, not shared with Anjali. Your list: the S2 lateral-commit fix (closes the
-−0.909m disclosed bug), reactive multi-agent traffic (agents that respond to the ego instead of
-following a script), the live-obstacle-injection mechanism, S3's reverse-gear/deadlock behaviour
+−0.909m disclosed bug AND the permanent ring stall re-run 10 Sep under both sensing conditions —
+see `plan/CLAIM-LEDGER.md` Part 2, a fix for one does not automatically fix the other), reactive
+multi-agent traffic (agents that respond to the ego instead of following a script), the
+live-obstacle-injection mechanism, S3's reverse-gear/deadlock behaviour
 once Aditya's galli world exists, S4/S5 if there's time.
 
 **Before you start:** `plan/ReadThis.md` — the mechanism explanation there (the trunk-is-the-probe,

@@ -34,7 +34,7 @@ Confirmed by running every piece on it, not by assuming.
 | Full test suite | **344 tests, 335 pass, 0 fail, 9 incomplete** (OpenTrafficLab-not-cloned skips — expected on a fresh clone, not a regression) |
 | `matlab/baseline/` | Runs, **fails at 19.7s, 0/120 collision-free** — the result, not a bug to fix |
 | S1 (the cow) | **Fully solved.** 610m real route, 0.965m clearance each side, full route |
-| S2 (the chowk) | Works, **one disclosed bug** (−0.909m, a lateral-commit tie-break) — Antara's task |
+| S2 (the chowk) | **Does not finish the route, under either sensing condition** — re-run 10 Sep: ground truth grazes at −0.003m, real sensing collides at −0.909m (the previously-documented figure, reproduced exactly), and BOTH then permanently stall around s≈116–121m of 244m, never reaching the ring exit. Antara's task — `plan/CLAIM-LEDGER.md` Part 2 has the full account |
 | Real sensing in the live demo | **Done 10 Sep.** `demo_play.m`'s `Sensed=true` wires `sc.senseRig`/`sc.senseStep` into the per-step planning loop. 0.965m clearance holds under real sensing too. Default stays `Sensed=false` for the rehearsed path |
 
 ---
