@@ -100,6 +100,10 @@ if H is not None:
         # EXT_* are the flyover corridor's extension pieces into the ordinary road network
         # (03d_flyovers.py) - same elevated-by-design reasoning, same exclusion.
         if o.name.startswith("EXT_") and "_PIER_" not in o.name: continue
+        # OHE_ARM (the cantilever bracket, 03e_railway.py) is elevated at BOTH ends by design -
+        # it spans from the mast (which itself correctly touches the ground and is NOT excluded)
+        # to a point above the track. OHE_MAST is not excluded: it should, and does, pass normally.
+        if o.name.startswith("OHE_ARM"): continue
         v=np.array([(o.matrix_world @ x.co)[:] for x in o.data.vertices])
         if len(v)>40000: v=v[::max(1,len(v)//40000)]
         d=v[:,2]-tz(v[:,0],v[:,1])
