@@ -682,6 +682,76 @@ Vary: width 2.9–9.5 m · storeys 1/2/3 · colour, often per floor · clutter m
 Every wall: a dust band on the lower 0.6 m, water staining under the tank, one painted
 advertisement or poster. Nothing clean, nothing plumb.
 
+**COMPONENT 4 PASS 1 · ITEM 1 — REAL FOOTPRINTS, MEASURED FIRST, written 11 Sep 2026 before
+building, per Rule 1.** Sourced from `map/pull_buildings.py` (run 11 Sep), which pulls OSM
+`building=*`/`shop=*`/`amenity=place_of_worship` ways plus `landuse=*` zoning polygons in the same
+2 km box and frame as the road/rail pulls, saved to `map/najibabad_buildings.json`.
+**The honest finding: OSM has almost no traced individual building footprints here** — 8 ways
+total in the whole 2 km box (7 generic `building=yes`, 1 place-of-worship), against 42 km of
+richly-mapped road. This is normal for a small Indian town on OSM — routing apps map roads,
+nobody traces buildings — and it is the same kind of real limit the flyover corridor shortfall
+and the S5 grade tension were: measured, not assumed, and it changes the method rather than being
+patched over.
+**What IS real and is honoured exactly:**
+- **7 `building=yes` footprints** at their real OSM polygon and position (none named, no
+  `building:levels` tag on any of them — height per REF-03 §3's road-width rule below).
+- **St. Mary's Church**, a real place-of-worship node at (1264,−280) plus its own way footprint —
+  built as a real, specific building at Component 4 Pass 2, not a generic box.
+- **10 real `landuse` zones** (7 residential, 1 commercial, 1 industrial, 1 railway), several
+  overlapping the 1 km world box — used to set character/density (commercial = taller, tighter
+  frontage, more shopfront parts; residential = the REF-03 §5 kutcha mix further from the paved
+  network; industrial = left alone, Component 4 does not build sheds there).
+**What is NOT real and must be generated, per REF-03 §4's own stated method for how these towns
+actually work — "the frontage is a continuous wall of building, shops face the street with
+nothing in front of them, residential sits directly behind"**: every other building is a plot
+placed directly on the REAL road network's own frontage line (the roads are real; this is
+generating from real geometry, not inventing a location). Plot width drawn from REF-03's own
+2.9–9.5 m anti-repetition range, zero setback, both sides of every road that has ANY buildings on
+it per the source imagery (S2 chowk and the through-roads — not the open trunk/highway stretches
+between villages, which stay fields per Component 3/§3).
+
+**COMPONENT 4 PASS 1 · ITEM 2 — THE FACADE PART LIBRARY, written 11 Sep 2026 before building, per
+Rule 1.** REF-03 §2 dimensions (NBC India / IS 6248), REF-09 §1–2 mechanism (a plain box, vertex
+groups per face, a module chosen per group — manually where it matters, randomly everywhere else;
+storeys added by extruding the top face group by one floor-to-floor height and repeating).
+**The part library, each a real NBC/IS-6248 dimension, never guessed:**
+window (with sill at 0.9 m, ≥10% of its bay's face area) · rolling shutter (2.4–3.7 m wide, up to
+3.0 m high, 75 mm laths) · balcony · AC box · sign board · awning (max 4.5 m long × 2.4 m
+projection, ≥2.2 m clear beneath) · drainpipe · grille · exterior staircase · water tank (on the
+roof, always with a water-stain module below it) · parapet (≥1.0 m, 1.2 m+ on 3-storey) · door ·
+meter box · satellite dish · drying washing · exposed rebar (roof corners, "the storey that never
+got built," a fraction of buildings only). Each built by the REF-09 §3 method — inset/extrude/
+bevel, real-world scale via Blender's own Edge Length overlay, never eyeballed — then converted,
+joined, scale-applied, origin-to-geometry, origin moved to its own base so it instances correctly
+onto a wall vertex group.
+**Floor-to-floor 3.0–3.15 m** (NBC), extrusion height for every storey. **Height by road width**
+(REF-03 §3): roads <6 m → 2 storeys max; the S2 chowk's wider frontage and the trunk-adjacent
+stretch → 3 storeys allowed. Two-storey shop-house plinth-to-parapet **7.3 m**; three-storey
+**~10.45 m** — these are the two target silhouette heights the box generator builds to, not a
+free height roll.
+**Anti-repetition draws, per building, all seeded by `zlib.crc32` on the building's own footprint
+ID (never Python `hash()`, per the project's own non-determinism rule)**: width from its real or
+generated footprint · storeys 1/2/3 per the road-width cap · base colour, often re-rolled per
+floor · a clutter draw across the part library · ±2° rotation on the whole box. **Structured
+repetition is kept where a real reason repeats it** (a colonnade of identical shutters along one
+shopfront, a candelabra-pole spacing) **per REF-09 §11 — the "nothing repeats" rule targets
+unstructured repetition (the same building appearing at random), never a row a real cause would
+produce.**
+
+**COMPONENT 4 PASS 1 · ITEM 3 — DISTRIBUTION AND DETAIL BY DISTANCE, written 11 Sep 2026 before
+building, per Rule 1.** ~1000 buildings total: **~400 detailed** (full facade-part coverage, near
+the S0 §8 drive route and the S2 chowk) · **~600 shells** (box + roof clutter only, correct
+silhouette, no individual parts) at the edges of the built-up frontage and past ~400 m from the
+drive route (REF-03 §1 — the haze has eaten detail by then regardless). The 7 real footprints and
+the church are always full-detail regardless of distance, since they are named, real, specific
+places. Every wall gets the §5 base treatment (dust band, water staining, one poster) at every
+detail level, including shells — it is cheap and it is the dust layer that "ties separate objects
+together," per §6 below.
+**Deferred, honestly, not forgotten**: the temple (REF-03 §6, a modest 6–7 m roadside shikhara
+with a hall, sited near S5 per its own scenario doc) · the kutcha/rural house mix (REF-03 §5,
+away from the paved network) · street vendor carts and stalls (REF-03 §8) — each is its own
+Component 4 Pass 2 item, written before it is built, same as Component 3's items were.
+
 ## 6 · THE SHARED LAYERS
 **Vegetation, seven layers:** kans grass 2.2–3.0 m · sugarcane 2.25 m in rows 1.35 m ·
 shrub 0.8–1.4 m · mid grasses 0.30–0.60 m · doob 0.05–0.15 m grazed · weeds · floor litter.
