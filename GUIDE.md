@@ -1852,7 +1852,7 @@ an honest claim or a human-approved future horizon is documented.
 
 ### Phase F: Final Test, MATLAB Export, and Handoff
 
-#### Step 98 Open the Untouched Test Set Once [🔵TO DO] [CRITICAL]
+#### Step 98 Open the Untouched Test Set Once [🟢COMPLETED] [CRITICAL]
 
 Run the frozen model, calibrator, threshold, and abstention rules on the untouched test clips.
 
@@ -1981,13 +1981,13 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** (Done) |
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
 | 7 | 97 | Verify that the target predicts early enough | No (Done) |
-| 8 | 98–100 | Final test, export, MATLAB verification, and documentation | No |
+| 8 | 98–100 | Final test (Step 98 Done), export, MATLAB verification, and docs | No |
 | 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No |
 | 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** |
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 98 (Open Untouched Test Set Once).
+**Immediate next action:** Step 99 (Export and Verify the Selected LSTM with Valid=false safety enforcement).
 
 ---
 

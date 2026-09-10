@@ -772,7 +772,57 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     2. **Kinematic Lead-Time:** Because the model consumes a rolling 2.0-second trajectory history, it acts as a **near-field early warning system** ($77.3\%$ advance warning at $-0.5$ s) without requiring artificial label shifting.
     3. **Honest Claim:** The paper and team deliverables will formally claim an **"assertion detector and near-field early warning classifier"**, avoiding inflated claims of unconstrained multi-second future intent forecasting.
     4. **Feature Integrity:** No feature rebuilding or label shifting is required; the existing features and frozen gate are fully valid for Step 98.
-  * **Outcome:** Step 97 is `[🟢COMPLETED]`. Step 96 (the sweep) was bypassed as safe coverage met targets. All prerequisites for Step 98 are complete. Untouched test partition remains unopened. Immediate next action is Step 98.
+  * **Outcome:** Step 97 is `[🟢COMPLETED]`. Step 96 (the sweep) was bypassed as safe coverage met targets. All prerequisites for Step 98 are complete.
+
+* **[11-Sept-2026 00:55 IST] Step 98: Open the Untouched Test Set Once — COMPLETED (FAIL & GATED OFF)**
+  * **Objective & Protocol:** Execute the official, single-pass evaluation of the frozen baseline LSTM checkpoint (`yield_lstm.pt`), Platt calibrator, and frozen threshold on the **Untouched Test Partition** (6 sessions, 233 clips, 694,864 samples) under strict zero-leakage conditions.
+  * **Configuration & Identifiers:**
+    - Model Checkpoint: `C:\Users\admin\meteor-data\features\yield_lstm.pt`
+    - SHA256 Hash: `202f1630d9bbffd95c0870c4d0ad19dc6f88e0c73609bb36f1a2abc689bdf14f`
+    - Frozen Calibrator (Platt Scaling): $A = -0.538430, B = 1.734140$.
+    - Frozen Operating Threshold: $P(\text{assert}) \le 0.00326120$.
+    - Target Safety Bound: Dangerous rate $\le 1.00\%$ at 95% cluster-bootstrap confidence.
+    - JSON Report: `results/step98_test_report.json`.
+  * **Global Test Set Results (694,864 samples, 73,820 assert positives, 10.62% base rate):**
+    - **Total Planner GO Decisions ($n_{\text{go}}$):** 72,806 (Safe Coverage: **10.478%**).
+    - **Dangerous Errors (FP GO decisions):** 1,521.
+    - **Dangerous Error Rate (Point Estimate):** **2.089%** ($1,521 / 72,806$).
+    - **95% Session-Cluster Confidence Interval (400 resamples):** **[1.315%, 2.854%]** (Upper bound: **2.854%**).
+    - **95% Clip-Cluster Confidence Interval (400 resamples):** **[1.122%, 3.283%]**.
+    - **Clips with ZERO Dangerous Errors:** 168 / 233 (**72.1%**).
+    - **Calibration Honestness:** Raw ECE = 0.1886 $\rightarrow$ Platt Calibrated ECE = **0.0159** (worst bin gap: 4.0%).
+    - **Abstention Gate Ratio:** Active on **80.24%** of samples; abstains on **19.76%** due to sequence padding, physical limits, or unsupported classes.
+    - **Gate Status:** **FAIL** (Upper bound 2.854% strictly exceeds the 1.00% safety bar).
+  * **Sensor Noise Degradation Analysis (M3 Benchmark):**
+    | Noise Level (% of Feature Std) | Dangerous Rate | Safe Coverage | Average Precision (AP) |
+    |---|---|---|---|
+    | 5% Noise | 2.12% | 10.50% | 0.3588 |
+    | 10% Noise | 2.13% | 10.57% | 0.3585 |
+    | 25% Noise | 2.14% | 11.28% | 0.3553 |
+    | 50% Noise | 2.49% | 13.83% | 0.3358 |
+  * **Per-Class Behavioral Breakdown on Unseen Test Traffic:**
+    | ClassID | Name | Samples | Positives | Coverage | Dangerous Rate |
+    |---|---|---|---|---|---|
+    | 0 | unknown | 2,239 | 38 | 15.23% | 0.880% |
+    | 1 | car | 202,781 | 28,682 | 7.99% | 2.173% |
+    | 2 | truck | 156,230 | 10,119 | 17.46% | 2.009% |
+    | 3 | bus | 28,463 | 3,209 | 26.08% | 1.643% |
+    | 4 | auto-rickshaw | 54,846 | 3,746 | 5.43% | 3.729% |
+    | 5 | motorbike | 153,479 | 21,208 | 3.09% | 5.756% |
+    | 6 | scooter | 52,202 | 6,150 | 1.79% | 8.146% |
+    | 7 | van | 7,676 | 418 | 8.36% | 0.000% |
+    | 8 | pedestrian | 34,124 | 220 | 30.76% | 0.057% |
+    | 9 | bicycle | 1,698 | 0 | 40.58% | 0.000% |
+    | 10 | cow | 789 | 30 | 97.08% | 3.916% |
+    | 14 | tractor | 337 | 0 | 92.28% | 0.000% |
+    - *Key Traffic Insight:* Highly structured traffic (pedestrians at 0.057% and vans at 0.000%) remained exceptionally safe. Two-wheelers (motorbikes at 5.76% and scooters at 8.15%) displayed severe behavioral variance and erratic trajectory onset across previously unseen Hyderabad test sessions.
+  * **Engineering & Safety Decision (Strict Contract S3 Compliance):**
+    1. **Zero Contamination:** The test set was opened once and will not be re-tuned or retroactively cherry-picked.
+    2. **Failsafe Gate Triggered:** Because the upper confidence bound (2.854%) exceeds 1.00%, the safety gate enters **terminal failsafe mode**.
+    3. **Enforcement:** Per `AGENTS.md` Section 3 and `GUIDE.md` Step 99, the yield predictor model must be exported with **`Valid = false`** hard-coded for autonomous deployment, forcing the planner to fall back entirely onto the geometric velocity obstacle and barrier guarantees ($h = \lambda - \beta \ge 0$).
+    4. **Result Quality:** This is a mathematically honest, unvarnished scientific result demonstrating why autonomous driving in unstructured traffic requires formal geometric control barriers rather than blind reliance on learned neural network predictions.
+  * **Outcome:** Step 98 is `[🟢COMPLETED]`. Final report frozen in `results/step98_test_report.json`. Immediate next action is Step 99 (Export ONNX model with `Valid = false` failsafe enforcement).
+
 
 
 
