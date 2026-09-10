@@ -1760,24 +1760,27 @@ and saved with the run configuration.
 
 ---
 
-#### Step 94 Define the Safety Gate Before Seeing Test Results [🔵TO DO] [HIGH]
+#### Step 94 Define the Safety Gate and Platt Calibration Before Seeing Test Results [🔵TO DO] [HIGH]
 
-On calibration clips only:
+On calibration clips only (build `ml/python/model/calibrate.py`):
 
 1. Correct the weighted-cross-entropy probability using the recorded training `pos_weight`.
-2. Compare raw scores, Platt scaling, and isotonic calibration.
-3. For each method, build the low-`P(assert)` risk-versus-coverage curve.
-4. Select the largest GO region whose **clip-level 95% upper confidence bound** satisfies the
-   dangerous-rate target of `<= 1.0%`.
-5. Freeze the calibration method and threshold before opening the test partition.
-6. Define `Valid = false` for unsupported classes, insufficient history, out-of-range features,
-   model disagreement, or any group whose risk bound does not pass.
+2. Fit Platt scaling ($A, B$) using Platt's smoothed targets:
+   $$t_+ = \frac{N_+ + 1}{N_+ + 2}, \quad t_- = \frac{1}{N_- + 2}$$
+   $$P_{\text{calibrated}} = \frac{1}{1 + \exp(A \cdot \text{score} + B)}$$
+   Fit via numerically stable logistic regression on $(score, t)$ pairs.
+3. Generate and save before and after reliability diagrams using **quantile bins** (equal sample counts per bin to prevent empty/noisy bins) rather than fixed-width bins.
+4. Compare raw scores, Platt scaling, and isotonic calibration.
+5. For each method, build the low-`P(assert)` risk-versus-coverage curve.
+6. Select the largest GO region whose **clip-level 95% upper confidence bound** satisfies the dangerous-rate target of `<= 1.0%`.
+7. Freeze the calibration method and threshold before opening the test partition.
+8. Define `Valid = false` for unsupported classes, insufficient history, out-of-range features, model disagreement, or any group whose risk bound does not pass.
 
 No threshold is accepted merely because it produces zero observed errors on a tiny number of GO
 samples. Coverage and `n_go` are always displayed beside risk.
 
 Done when: the calibration method, threshold, abstention rules, and test command are frozen in a
-config file before test inference begins.
+config file before test inference begins, and both before/after reliability diagrams are saved.
 
 ---
 
@@ -1908,19 +1911,83 @@ checkpoint hash, calibration method, and exact commands without asking a questio
 
 ---
 
-### Part 17 Execution Order
+## Part 18: Round 2 Multi-Model Calibration, Spotter Domain-Gap Fix, and Team Handoffs
+
+### Step 101 Calibrate the Yield-Attention/GNN Model [🔵TO DO] [MEDIUM]
+
+Run the identical Platt calibration pipeline from Step 94 on the secondary model (`yield_attention.pt`):
+
+1. Load calibration-split sequences and adjacencies.
+2. Fit Platt parameters $A$ and $B$ using smoothed targets ($t_+, t_-$).
+3. Generate before and after quantile-binned reliability diagrams.
+4. Measure post-calibration dangerous rate and safe-GO recall on the calibration set.
+5. Verify that this secondary model never blocks the primary LSTM on the critical path.
+
+Done when: calibrated parameters for the attention model and its before/after reliability diagrams are saved.
+
+---
+
+### Step 102 Fix YOLOX Spotter Domain Gap on Rendered Simulator Scenes [🔵TO DO] [HIGH]
+
+The detector achieves high AP on real IDD photographs (29.09% mAP on A100), but confidence drops to 5–19% on synthetic/rendered camera frames from the simulation graphics. This is MATLAB work (`matlab/+sih/+models/trainSpotter.m`).
+
+1. Extract a domain-matched batch of 100–300 frames directly from the rendered demo scenes (S1 cattle-crossing and S2 chowk).
+2. Fine-tune `spotter_yolox_a100.mat` (or apply contrast/texture/noise domain augmentations) in MATLAB using `trainYOLOXObjectDetector`.
+3. Measure detection confidence on identical held-out rendered test frames before and after the fix.
+4. Report the exact before-and-after confidence numbers honestly (e.g. "improved from X% to Y%").
+
+Done when: spotter confidence on rendered simulator frames is measured before and after fine-tuning, and the updated detector asset is verified in MATLAB.
+
+---
+
+### Step 103 Re-verify DeepLab v3+ Road Segmenter Sanity [🔵TO DO] [LOW]
+
+DeepLab v3+ is already fully trained on A100 (86.30% Mean IoU, 96.00% drivable IoU) and imported into MATLAB (`road_segmenter_deeplab.mat`).
+
+1. Execute `derisk/check08_onnx_deeplab.m` in MATLAB.
+2. Confirm the forward pass executes cleanly with expected output dimensions `[512 512 3 1]` and drivable segmentation mask.
+3. Confirm zero silent regressions.
+
+Done when: `check08_onnx_deeplab.m` passes in MATLAB with 0 errors.
+
+---
+
+### Step 104 Package and Deliver Team Handoffs [🔵TO DO] [HIGH]
+
+Package verified deliverables for immediate team integration:
+
+1. **To Kishan (Independent Evaluation):**
+   - Provide the calibrated checkpoints for both yield models (`yield_lstm.pt` and `yield_attention.pt`).
+   - Provide both before-and-after quantile reliability diagrams.
+   - Provide the exact calibration code (`calibrate.py`) for his 12-fold leave-one-station-out verification.
+2. **To Aditya B. (HUD Panel & Integration):**
+   - Provide the real, honest post-calibration dangerous error rate and safe-GO coverage.
+   - Provide the explicit gating criteria (`Valid = false` conditions) so the live UI panel accurately displays model status.
+3. **To Aditya (Lead / Demo Assembly):**
+   - Provide the production MATLAB assets and confirmed integration checklist for S1 and S2 scenario runs.
+
+Done when: all handoff artifacts are delivered in writing and acknowledged.
+
+---
+
+### Parts 17 & 18 Execution Order
 
 | Order | Step | Action | Retraining? |
 |---:|---:|---|:---:|
-| 1 | 90 | Correct assert-versus-yield evaluation semantics | No |
-| 2 | 91 | Add known-answer metric tests | No |
-| 3 | 92 | Re-score the existing LSTM as an exploratory baseline | No |
-| 4 | 93–94 | Create the clean split and freeze the safety gate | No |
+| 1 | 90 | Correct assert-versus-yield evaluation semantics | No (Done) |
+| 2 | 91 | Add known-answer metric tests | No (Done) |
+| 3 | 92 | Re-score the existing LSTM as an exploratory baseline | No (Done) |
+| 4 | 93–94 | Create the clean split, fit Platt calibration, and freeze safety gate | No |
 | 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** |
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
 | 7 | 97 | Verify that the target predicts early enough | Maybe |
 | 8 | 98–100 | Final test, export, MATLAB verification, and documentation | No |
+| 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No |
+| 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** |
+| 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
+| 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 91 only. Do not start training until Steps 90–94 are complete.
+**Immediate next action:** Step 93 (Create Train, Calibration, and Untouched Test Partitions).
 
 ---
+
