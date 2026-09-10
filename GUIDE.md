@@ -1760,7 +1760,7 @@ and saved with the run configuration.
 
 ---
 
-#### Step 94 Define the Safety Gate and Platt Calibration Before Seeing Test Results [🔵TO DO] [HIGH]
+#### Step 94 Define the Safety Gate and Platt Calibration Before Seeing Test Results [🟢COMPLETED] [HIGH]
 
 On calibration clips only (build `ml/python/model/calibrate.py`):
 
@@ -1977,7 +1977,7 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 1 | 90 | Correct assert-versus-yield evaluation semantics | No (Done) |
 | 2 | 91 | Add known-answer metric tests | No (Done) |
 | 3 | 92 | Re-score the existing LSTM as an exploratory baseline | No (Done) |
-| 4 | 93–94 | Create the clean split, fit Platt calibration, and freeze safety gate | No |
+| 4 | 93–94 | Create the clean split, fit Platt calibration, and freeze safety gate | No (Done) |
 | 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** |
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
 | 7 | 97 | Verify that the target predicts early enough | Maybe |
@@ -1987,7 +1987,7 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 94 (Define the Safety Gate and Platt Calibration Before Seeing Test Results).
+**Immediate next action:** Step 95 (Retrain an Unchanged LSTM Baseline).
 
 ---
 

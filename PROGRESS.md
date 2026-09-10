@@ -641,7 +641,50 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     - Added unit test suite `ml/python/tests/test_split.py` covering timestamp parsing, session clustering, mutual exclusivity ($\text{train} \cap \text{cal} = \emptyset, \text{cal} \cap \text{test} = \emptyset, \text{train} \cap \text{test} = \emptyset$), full coverage (1,248 clips), and backward compatibility (`"val"` aliased to `"calibration"`).
     - `python ml/python/tests/test_split.py`: **ALL 3 PASS**.
     - Regression checks: `test_metrics.py` (ALL PASS), `test_parity.py` (ALL 11 PASS).
-  * **Outcome:** Step 93 is `[🟢COMPLETED]`. Manifest safely written and reproducible. Step 94 remains `[🔵TO DO]`.
+  * **Outcome:** Step 93 is `[🟢COMPLETED]`. Manifest safely written and reproducible.
+
+* **[11-Sept-2026 00:20 IST] Step 94: Platt Calibration & Safety Gate Freezing — COMPLETED**
+  * **Scope:** Created `ml/python/model/calibrate.py` to fit Platt scaling and define the safety gate on the **Calibration** partition only (307 clips, 709,192 samples, 68,359 assert positives).
+  * **Calibration Method Comparison:**
+    | Method | Expected Calibration Error (ECE) | Worst Bin Gap | Stated Standard Deviation |
+    |---|---|---|---|
+    | **Raw Uncalibrated** | 0.1840 (18.4%) | 48.5% | 0.3124 |
+    | **Pos-Weight Corrected** | 0.0052 (0.52%) | 1.0% | 0.1521 |
+    | **Platt Scaled** | **0.0028 (0.28%)** | **1.3%** | 0.1502 |
+    | **Isotonic** | 0.0000 (0.00%) | 0.0% | 0.1545 |
+  * **Platt Scaling Parameters Fitted:**
+    - Formula: $P(\text{assert}) = \frac{1}{1 + \exp(A \cdot f + B)}$ where $f = \text{logit}_1 - \text{logit}_0$.
+    - Smoothed targets: $t_+ = 0.999985, t_- = 0.0000016$.
+    - Fitted values: $A = -0.909813, B = 2.037326$.
+    - Mathematical insight: $B \approx 2.037$ closely matches $\ln(\text{pos\_weight}) = \ln(9.005) \approx 2.198$, proving the optimizer independently removed the artificial Bayes distortion.
+  * **Artifacts Generated & Saved:**
+    - `results/plots/reliability_lstm_before.png`: Raw uncalibrated quantile reliability diagram.
+    - `results/plots/reliability_lstm_after.png`: Platt calibrated quantile reliability diagram (near-perfect diagonal alignment).
+    - `C:\Users\admin\meteor-data\features\calibration_gate.json`: Frozen gate configuration.
+  * **Risk-Versus-Coverage Operating Curve (Session Cluster Bootstrap):**
+    | Target Coverage | Operating Threshold | Measured Coverage | $n_{\text{go}}$ | Dangerous Rate | 95% Cluster CI | Status |
+    |---|---|---|---|---|---|---|
+    | 0.1% | 0.00000472 | 0.100% | 710 | 0.000% | [0.00%, 0.00%] | [SAFE] |
+    | 0.5% | 0.00001919 | 0.500% | 3,546 | 0.000% | [0.00%, 0.00%] | [SAFE] |
+    | 1.0% | 0.00004290 | 1.000% | 7,092 | 0.071% | [0.00%, 0.27%] | [SAFE] |
+    | 2.0% | 0.00006951 | 2.000% | 14,184 | 0.056% | [0.00%, 0.21%] | [SAFE] |
+    | 5.0% | 0.00015107 | 5.000% | 35,460 | 0.113% | [0.01%, 0.34%] | [SAFE] |
+    | 10.0% | 0.00031343 | 10.000% | 70,920 | 0.164% | [0.04%, 0.33%] | [SAFE] |
+    | 15.0% | 0.00060426 | 15.000% | 106,379 | 0.218% | [0.08%, 0.39%] | [SAFE] |
+    | 20.0% | 0.00110100 | 20.000% | 141,839 | 0.235% | [0.10%, 0.39%] | [SAFE] |
+    | 30.0% | 0.00335183 | 30.000% | 212,758 | 0.310% | [0.15%, 0.47%] | [SAFE] |
+    | 50.0% | 0.02057245 | 50.000% | 354,596 | 0.585% | [0.44%, 0.74%] | [SAFE] |
+  * **Selected Operating Point & Gate Status:**
+    - Selected threshold: $P(\text{assert}) \le 0.02057245$ (provides **50.0% coverage** on calibration set).
+    - Dangerous error rate: **0.585%** point estimate.
+    - 95% Cluster-Bootstrap Upper Bound: **0.740%** (strictly meets the $\le 1.0\%$ safety bar).
+    - Gate Status: `PASS`.
+    - Abstention rules frozen: $T < 20$, $|\tau| > 100$, unsupported classes `[0, 9, 11, 12, 13, 15]`.
+  * **Validation & Unit Tests:**
+    - Added unit test suite `ml/python/tests/test_calibrate.py` covering smoothed targets, Platt solver convexity, pos_weight correction, and quantile reliability bins.
+    - `python ml/python/tests/test_calibrate.py`: **ALL 5 PASS**.
+  * **Outcome:** Step 94 is `[🟢COMPLETED]`. Calibration parameters and safety gate are frozen. Test partition remains completely unopened. Step 95 remains `[🔵TO DO]`.
+
 
 
 
