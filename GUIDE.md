@@ -1831,7 +1831,7 @@ upper confidence bound, `n_go`, coverage, AP, and checkpoint/config identifier.
 
 ### Phase E: Decide Whether the Label Itself Must Change
 
-#### Step 97 Audit Current-Frame Classification Versus Future Prediction [🔵TO DO] [HIGH]
+#### Step 97 Audit Current-Frame Classification Versus Future Prediction [🟢COMPLETED] [HIGH]
 
 The current dataset builder labels a sequence using the behaviour flag at its final/current frame.
 Before claiming that the LSTM predicts future intent, inspect the annotation timing around assertion
@@ -1980,14 +1980,14 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 4 | 93–94 | Create the clean split, fit Platt calibration, and freeze safety gate | No (Done) |
 | 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** (Done) |
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
-| 7 | 97 | Verify that the target predicts early enough | Maybe |
+| 7 | 97 | Verify that the target predicts early enough | No (Done) |
 | 8 | 98–100 | Final test, export, MATLAB verification, and documentation | No |
 | 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No |
 | 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** |
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 96 (Safety-focused sweep if needed) or Step 98 (Open Untouched Test Set Once).
+**Immediate next action:** Step 98 (Open Untouched Test Set Once).
 
 ---
 
