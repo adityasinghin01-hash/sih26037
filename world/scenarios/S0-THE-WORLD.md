@@ -590,6 +590,29 @@ deck's own measured length, same construction as the river bridges' piers but at
 of beam 700–750 mm, posts at 2.0 m** (REF-01 §10), the standard approach-barrier detail, run the
 full deck length on both edges.
 
+**COMPONENT 3 PASS 2 · ITEM 4 — THE S2 GYRATORY, written 10 Sep 2026 before building, per Rule 1.**
+Numbers from S2-THE-CHOWK.md and REF-01 §6 (IRC 65:2017 Table 6.2, the fixed ICD 40 → island 24 →
+circulatory 8 pairing). **Scope is the ROAD GEOMETRY only** — the chowk statue/monument and the
+96 surrounding buildings are Component 4/7's job, not this one.
+**MEASURED, not assumed, which pieces actually meet here:** every pass-1 `ROAD_*` piece with an
+endpoint inside the outer circulatory radius (20 m) gets trimmed at exactly that radius (found by
+walking its own points, not guessed) rather than hand-naming which of the ~8 real OSM pieces
+converge here — this is a real 5-way junction with two close, separate node clusters ~8–9 m apart
+(itself real, not merged into a single point) and at least one one-way pair, and a general
+radius-based trim handles that robustly where hand-picking names would not.
+- **Central island: radius 12 m** (24 m diameter), raised kerb ~150 mm, planted/grassed top.
+- **Circulatory carriageway: 8 m wide** (r 12→20 m), conformed to local ground height, **no lane
+  markings at all** — S2's own point: vehicles take whatever line they want.
+- **Give-way line at each entry: double line, 200 mm wide, 300 mm apart** (IRC 65:2017), placed
+  where each trimmed arm meets the outer edge.
+- **Splitter islands**, kerbed, 150 mm high, at each arm — channelization only, not a precise
+  one-way-pair reconstruction (the pass-1 pieces already carry the real one-way split).
+- **Kerb paint: black-and-white 500 mm bands** on the island edge (S2's own detail: "chipped,
+  repainted over old paint" — a wear/dirt pass is Component 8, not this build).
+- **No truck apron** — S2/REF-01 §6: the 24 m island is large enough without one.
+- NH534's elevated crossing is **already built** (FLYOVER_895269402, pass 2 item 2) — not touched
+  here; only the at-grade arms are this item's job.
+
 **COMPONENT 3 PASS 2 · ITEM 3 — THE RAILWAY, written 10 Sep 2026 before building, per Rule 1.**
 Full numbers already exist in `S0b-THE-RAILWAY.md` — this item is Rule 1 by reference, not a
 duplicate. Built from `map/najibabad_rail.json` (22 real rail ways, pulled and saved 3 Sep,
