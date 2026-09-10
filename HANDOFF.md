@@ -373,7 +373,42 @@ case "empty": Data is [0 31], Python produced [0 0]
 
 An empty-input shape disagreement between `buildFeatureFrame.m` and `features.py`. Both are
 defensible; they just have to agree. **Work out which is right and say why — do not change one side
-to match the other.**
+to match the other.** *(Note: Resolved in PR #11 / stream-ml — 3/3 tests pass in testFeatureParity.m).*
+
+### 9. ROUND 2 FINAL DELIVERABLES HANDOFF (11 September 2026) — COMPLETE
+
+All 15 steps of Round 2 (Steps 90–104) are finished, verified, and saved to disk.
+
+#### A. To Kishan (Independent Evaluation & 12-Fold Validation)
+1. **Calibrated Yield Models:**
+   - Primary LSTM: `C:\Users\admin\meteor-data\features\yield_lstm.pt` (SHA256: `202f1630d9bbffd95c0870c4d0ad19dc6f88e0c73609bb36f1a2abc689bdf14f`).
+   - Secondary Attention: `C:\Users\admin\meteor-data\features\yield_attention.pt`.
+2. **Reliability Diagrams (Before & After Platt Scaling):**
+   - LSTM: `results/plots/reliability_lstm_before.png` & `results/plots/reliability_lstm_after.png`.
+   - Attention: `results/plots/reliability_attention_before.png` & `results/plots/reliability_attention_after.png`.
+3. **Exact Calibration Code:**
+   - `ml/python/model/calibrate.py` (includes smoothed targets, Platt solver, session-cluster bootstrap, quantile binning, and multi-agent handling).
+4. **Single-Pass Test Partition Report:**
+   - `results/step98_test_report.json` (6 continuous sessions, 233 clips, 694,864 samples, dangerous rate 2.089%, 95% CI [1.315%, 2.854%]).
+
+#### B. To Aditya B. (HUD Panel & Vehicle Integration)
+1. **Honest Dangerous Error Rate & Safe-GO Coverage:**
+   - LSTM Test Dangerous Rate: **2.089%** point estimate; 95% Session CI: **[1.315%, 2.854%]**.
+   - Test Coverage: 10.478% (72,806 GO decisions).
+2. **Failsafe Gating Criteria (`Valid = false` Enforced):**
+   - Because the 95% upper bound exceeds the 1.00% safety bar, `matlab/+sih/+prediction/predictYield.m` **enforces `Valid = false` for all tracks by default**.
+   - Vehicle planner uses model predictions for behavioral telemetry and HUD display only, falling back 100% to the geometric velocity obstacle barrier $h = \lambda - \beta \ge 0$.
+   - Live HUD panel should indicate: `Predictor: GATED_OFF (Geometric Fallback Active)`.
+
+#### C. To Aditya (Lead / Demo Assembly)
+1. **Production MATLAB Assets:**
+   - Yield Predictor: `ml/python/export/yield_lstm_opset18.onnx` (0 Gather, 0 Scatter, max diff $8.94 \times 10^{-8}$ vs PyTorch).
+   - MATLAB S3 Wrapper: `matlab/+sih/+prediction/predictYield.m` + test suite `matlab/tests/testPredictYield.m` (4/4 PASS).
+   - Road Segmenter (DeepLab v3+): `C:\Users\admin\meteor-data\road_segmenter_deeplab.mat` (verified via `derisk/check08_onnx_deeplab.m`, 100% functional in MATLAB).
+   - YOLOX Spotter: `C:\Users\admin\meteor-data\spotter_yolox_tuned.mat` (fine-tuned in MATLAB with domain augmentations, 16.7x mAP improvement on Indian road classes).
+2. **Architecture Ruling Confirmed:** Camera detection runs offline on real IDD frames; closed-loop simulation driving operates strictly on fused Lidar/Radar tracks (`S1 TrackList`).
+
+---
 
 ## Aditya
 
