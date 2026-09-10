@@ -569,7 +569,7 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     4. Threshold equality handled consistently (boundary inclusive, ties kept together).
     5. n_go = 0 reported as 0 coverage, not a false 0% risk victory.
     6. S3 identity verified: $P_{\text{yield}} = 1 - P(\text{assert})$ maps assert-mode scores to frozen contract requirements without modifying ONNX output tensor names (`yield_logits`).
-  * **Outcome:** All 6 known-answer test cases passed (`python ml/python/tests/test_metrics.py`). Regression checks verified: `test_parity.py` passed all 11 tests; `test_contract.py` passed 15 of 16 tests (single existing float precision mismatch noted). `GUIDE.md` updated to mark Step 91 as `[🟢COMPLETED]`. Step 92 remains `[🔵TO DO]`.
+  * **Outcome:** All 6 known-answer test cases passed (`python ml/python/tests/test_metrics.py`). Regression checks verified: `test_parity.py` passed all 11 tests; `test_contract.py` passed 15 of 16 tests (single existing float precision mismatch noted). `GUIDE.md` updated to mark Step 91 as `[🟢COMPLETED]`.
 
 * **[10-Sept-2026 19:05 IST] Step 92: Exploratory Evaluation on Existing Checkpoint — COMPLETED**
   * **Scope:** Re-scored the existing `yield_lstm.pt` checkpoint on the 249 validation clips (783,928 samples, 77,373 assert positives). All numbers are labelled `exploratory — previously inspected validation data`.
@@ -577,8 +577,44 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     - Operating threshold: $P(\text{assert}) \le 0.00122345$ gives $n_{\text{go}} = 77,718$ (**9.914% coverage**).
     - Dangerous error rate: **1.00%** (777 errors out of 77,718 GO decisions).
     - Safe-GO recall: **10.89%**. Model Average Precision: **0.3500**.
-    - Per-class breakdown: Car (1.00% dangerous, 8.2% recall), Truck (0.90% dangerous, 17.9% recall), Bus (1.49% dangerous, 26.4% recall), Auto-rickshaw (1.26% dangerous, 7.1% recall), Cow (0.11% dangerous, 63.4% recall), Bicycle (10.14% dangerous, 1.6% recall).
-    - Per-clip failure distribution: 197 / 249 clips (**79.1%**) have 0 dangerous errors. Just 10 clips account for **62.0%** of all dangerous errors (top clip `REC_2020_10_12_00_04_19_F.npz` alone holds 12.2%). Failures are heavily concentrated in a small minority of drives.
-    - Cluster bootstrap vs naive resampling (400 resamples of 249 whole clips): Naive frame resampling severely understates variance. Clip-resampled 95% CI for dangerous rate is `[0.63%, 1.47%]` (vs naive `[0.93%, 1.06%]`) and for AP is `[0.3110, 0.3895]` (vs naive `[0.3464, 0.3535]`).
+    - **Risk-versus-coverage curve (same validation data - descriptive only):**
+      | Target Coverage | Measured Coverage | $n_{\text{go}}$ | Dangerous Errors | Dangerous Rate (Risk) |
+      |---|---|---|---|---|
+      | 0.100% | 0.100% | 784 | 0 | 0.000% |
+      | 0.500% | 0.500% | 3,920 | 5 | 0.128% |
+      | 1.000% | 1.000% | 7,840 | 8 | 0.102% |
+      | 2.000% | 2.000% | 15,679 | 14 | 0.089% |
+      | 5.000% | 5.000% | 39,197 | 157 | 0.401% |
+      | 10.000% | 10.000% | 78,393 | 788 | 1.005% |
+      | 20.000% | 20.000% | 156,786 | 2,355 | 1.502% |
+      | 50.000% | 50.000% | 391,964 | 10,052 | 2.565% |
+    - **Per-class breakdown (frozen S5 ClassIDs):**
+      | ClassID | Class Name | Total Samples ($n$) | Assert Positives | Dangerous Rate | Safe-GO Recall |
+      |---|---|---|---|---|---|
+      | 0 | unknown | 3,430 | 65 | 0.00% | 36.9% |
+      | 1 | car | 255,519 | 29,237 | 1.00% | 8.2% |
+      | 2 | truck | 100,260 | 6,591 | 0.90% | 17.9% |
+      | 3 | bus | 38,591 | 3,487 | 1.49% | 26.4% |
+      | 4 | auto-rickshaw | 70,561 | 5,086 | 1.26% | 7.1% |
+      | 5 | motorbike | 178,310 | 21,600 | 0.82% | 1.8% |
+      | 6 | scooter | 74,823 | 9,867 | 0.33% | 0.9% |
+      | 7 | van | 10,218 | 474 | 0.66% | 23.2% |
+      | 8 | pedestrian | 45,461 | 852 | 1.00% | 41.8% |
+      | 9 | bicycle | 3,902 | 47 | 10.14% | 1.6% |
+      | 10 | cow | 1,538 | 50 | 0.11% | 63.4% |
+      | 14 | tractor | 1,315 | 17 | 0.09% | 82.4% |
+    - **Per-clip failure distribution:**
+      - 197 / 249 clips (**79.1%**) have 0 dangerous errors.
+      - Top 5 clips account for **42.9%** of all dangerous errors (333 / 777).
+      - Top 10 clips account for **62.0%** of all dangerous errors (482 / 777).
+      - Top 20 clips account for **80.4%** of all dangerous errors (625 / 777).
+      - Top clips: `REC_2020_10_12_00_04_19_F.npz` (95 errors, 12.2%), `REC_2020_10_29_02_36_56_F.npz` (89 errors, 11.5%), `REC_2020_10_11_05_21_02_F.npz` (63 errors, 8.1%). Failures are heavily concentrated in a small minority of drives.
+    - **Cluster bootstrap vs naive resampling (400 resamples of 249 whole clips):**
+      - Dangerous rate: Point estimate **1.00%** | Clip-resampled 95% CI **[0.63%, 1.47%]** vs Naive frame CI **[0.93%, 1.06%]**.
+      - Safe-GO recall: Point estimate **10.89%** | Clip-resampled 95% CI **[9.41%, 12.41%]** vs Naive frame CI **[10.83%, 10.95%]**.
+      - Coverage: Point estimate **9.914%** | Clip-resampled 95% CI **[8.580%, 11.303%]**.
+      - Average Precision (AP): Point estimate **0.3500** | Clip-resampled 95% CI **[0.3110, 0.3895]** vs Naive frame CI **[0.3464, 0.3535]**.
+      - Crucial finding: Naive frame-level resampling severely understates variance; clip-level resampling is mandatory for honest safety bounds.
   * **Outcome:** Step 92 is `[🟢COMPLETED]`. Establishes the baseline ahead of Step 93's fresh 3-way split protocol.
+
 
