@@ -624,5 +624,25 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     - Updated execution order table to span Steps 90–104.
   * **Outcome:** Planning and roadmap synchronized across all team work briefs. No model weights, checkpoints, or executable code modified. All Part 17 and Part 18 remaining steps are `[🔵TO DO]`. Immediate next action is Step 93.
 
+* **[11-Sept-2026 00:05 IST] Step 93: Deterministic 3-Way Session-Grouped Split — COMPLETED**
+  * **Scope:** Created session-level grouping and deterministic 3-way partitioning (`train`, `calibration`, `test`) in `ml/python/meteor/split.py` to prevent clip- and session-level leakage.
+  * **Leakage prevention mechanism:**
+    - Analyzed timestamps in all 1,248 METEOR clips (`(REC|Rec)_YYYY_MM_DD_HH_MM_SS_F.npz`).
+    - Clustered contiguous recording drives into 36 sessions based on a maximum inter-clip gap threshold of 1,800 seconds (30 minutes), merging midnight transitions.
+    - Shuffled sessions deterministically with seed `42` so no session drive spans across multiple partitions.
+  * **Verified Partition Counts (`C:\Users\admin\meteor-data\features\split.json`):**
+    | Partition | Sessions | Clips (%) | Samples (%) | Assert Positives (%) | Base Rate |
+    |---|---|---|---|---|---|
+    | **Train** | 24 | 708 (56.7%) | 2,328,607 (62.4%) | 229,915 (61.8%) | 9.9% |
+    | **Calibration** | 6 | 307 (24.6%) | 709,192 (19.0%) | 68,359 (18.4%) | 9.6% |
+    | **Untouched Test** | 6 | 233 (18.7%) | 694,864 (18.6%) | 73,820 (19.8%) | 10.6% |
+    | **Total** | 36 | 1,248 (100.0%) | 3,732,663 (100.0%) | 372,094 (100.0%) | 10.0% |
+  * **Validation & Integrity Verification:**
+    - Added unit test suite `ml/python/tests/test_split.py` covering timestamp parsing, session clustering, mutual exclusivity ($\text{train} \cap \text{cal} = \emptyset, \text{cal} \cap \text{test} = \emptyset, \text{train} \cap \text{test} = \emptyset$), full coverage (1,248 clips), and backward compatibility (`"val"` aliased to `"calibration"`).
+    - `python ml/python/tests/test_split.py`: **ALL 3 PASS**.
+    - Regression checks: `test_metrics.py` (ALL PASS), `test_parity.py` (ALL 11 PASS).
+  * **Outcome:** Step 93 is `[🟢COMPLETED]`. Manifest safely written and reproducible. Step 94 remains `[🔵TO DO]`.
+
+
 
 

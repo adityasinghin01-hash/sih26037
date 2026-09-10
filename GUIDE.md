@@ -1737,7 +1737,7 @@ Done when: the existing LSTM has a corrected baseline report and every number is
 
 ### Phase C: Build a Clean Evaluation Protocol
 
-#### Step 93 Create Train, Calibration, and Untouched Test Partitions [🔵TO DO] [HIGH]
+#### Step 93 Create Train, Calibration, and Untouched Test Partitions [🟢COMPLETED] [HIGH]
 
 Create a new deterministic split manifest outside the model checkpoint:
 
@@ -1987,7 +1987,7 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 93 (Create Train, Calibration, and Untouched Test Partitions).
+**Immediate next action:** Step 94 (Define the Safety Gate and Platt Calibration Before Seeing Test Results).
 
 ---
 
