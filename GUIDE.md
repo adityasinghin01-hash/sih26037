@@ -1940,7 +1940,7 @@ Done when: spotter confidence on rendered simulator frames is measured before an
 
 ---
 
-### Step 103 Re-verify DeepLab v3+ Road Segmenter Sanity [🔵TO DO] [LOW]
+### Step 103 Re-verify DeepLab v3+ Road Segmenter Sanity [🟢COMPLETED] [LOW]
 
 DeepLab v3+ is already fully trained on A100 (86.30% Mean IoU, 96.00% drivable IoU) and imported into MATLAB (`road_segmenter_deeplab.mat`).
 
@@ -1984,10 +1984,10 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 8 | 98–100 | Final test, export, MATLAB verification, and docs (Steps 98–100 Done) | No (Done) |
 | 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No (Done) |
 | 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** (Done) |
-| 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
+| 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No (Done) |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 103 (Re-verify DeepLab v3+ Road Segmenter Sanity in MATLAB - Task 4).
+**Immediate next action:** Step 104 (Package and Deliver Team Handoffs - Task 5).
 
 ---
 
