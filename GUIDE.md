@@ -1786,7 +1786,7 @@ config file before test inference begins, and both before/after reliability diag
 
 ### Phase D: Retrain the LSTM Under the Clean Protocol
 
-#### Step 95 Retrain an Unchanged LSTM Baseline [🔵TO DO] [HIGH]
+#### Step 95 Retrain an Unchanged LSTM Baseline [🟢COMPLETED] [HIGH]
 
 Retrain the current one-layer LSTM first, using the new training partition and the existing
 architecture and feature contract. This is required to obtain a genuinely untouched final test;
@@ -1978,7 +1978,7 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 2 | 91 | Add known-answer metric tests | No (Done) |
 | 3 | 92 | Re-score the existing LSTM as an exploratory baseline | No (Done) |
 | 4 | 93–94 | Create the clean split, fit Platt calibration, and freeze safety gate | No (Done) |
-| 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** |
+| 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** (Done) |
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
 | 7 | 97 | Verify that the target predicts early enough | Maybe |
 | 8 | 98–100 | Final test, export, MATLAB verification, and documentation | No |
@@ -1987,7 +1987,7 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 95 (Retrain an Unchanged LSTM Baseline).
+**Immediate next action:** Step 96 (Safety-focused sweep if needed) or Step 98 (Open Untouched Test Set Once).
 
 ---
 

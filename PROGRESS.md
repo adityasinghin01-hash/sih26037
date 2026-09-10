@@ -683,7 +683,71 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
   * **Validation & Unit Tests:**
     - Added unit test suite `ml/python/tests/test_calibrate.py` covering smoothed targets, Platt solver convexity, pos_weight correction, and quantile reliability bins.
     - `python ml/python/tests/test_calibrate.py`: **ALL 5 PASS**.
-  * **Outcome:** Step 94 is `[🟢COMPLETED]`. Calibration parameters and safety gate are frozen. Test partition remains completely unopened. Step 95 remains `[🔵TO DO]`.
+  * **Outcome:** Step 94 is `[🟢COMPLETED]`. Calibration parameters and safety gate are frozen. Test partition remains completely unopened.
+
+* **[11-Sept-2026 00:35 IST] Step 95: Retrain Unchanged Baseline LSTM on Clean Train Partition — COMPLETED**
+  * **Objective & Scope:** Retrain the unchanged one-layer LSTM baseline strictly on the new non-overlapping training partition (24 sessions, 708 clips) to establish a clean, reproducible baseline prior to any untouched test evaluation. Zero test clips were opened or evaluated.
+  * **Dataset & Partition Summary:**
+    - **Training partition (`split.json`):** 24 sessions, 708 clips, 2,328,607 agent-sequences (229,915 assert positives, 2,098,692 negatives; 9.9% base rate).
+    - **Validation/Calibration partition:** 6 sessions, 307 clips, 709,192 agent-sequences (68,359 assert positives).
+    - **Untouched Test partition:** 6 sessions, 233 clips, 694,864 agent-sequences — strictly unopened and untouched.
+  * **Training Setup & Hyperparameters:**
+    - Model family: 1-layer LSTM (`YieldNet`), hidden size = 64, Contract S2 31-feature input.
+    - Hardware: NVIDIA RTX A1000 GPU (1 GPU, CUDA acceleration).
+    - Optimizer: AdamW, learning rate = 0.001.
+    - Batch size: 1024. Epochs: 15. Random seed: 42 (explicitly seeded across `torch`, `numpy`, and CUDA).
+    - Loss: Weighted binary cross-entropy with rare-class `pos_weight = 9.128121262205598` (computed strictly from training split counts: $2,098,692 / 229,915$).
+    - Normalisation: Per-feature mean and standard deviation computed strictly across the 46,572,140 rows of the training partition only; 4 constant features left at scale 1. Baked into model buffers.
+  * **Epoch Training Loss & Calibration Validation Progression:**
+    | Epoch | Train Loss | Assert Precision | Assert Recall | Support (Asserts) | No-Assert Precision | No-Assert Recall |
+    |---|---|---|---|---|---|---|
+    | 1 | 0.4828 | 0.287 | 0.716 | 68,359 | 0.964 | 0.811 |
+    | 2 | 0.4516 | 0.265 | 0.769 | 68,359 | 0.969 | 0.772 |
+    | 3 | 0.4347 | 0.273 | 0.747 | 68,359 | 0.967 | 0.788 |
+    | 4 | 0.4223 | 0.262 | 0.743 | 68,359 | 0.966 | 0.777 |
+    | 5 | 0.4118 | 0.258 | 0.766 | 68,359 | 0.968 | 0.765 |
+    | 6 | 0.4024 | 0.277 | 0.694 | 68,359 | 0.961 | 0.807 |
+    | 7 | 0.3945 | 0.260 | 0.740 | 68,359 | 0.965 | 0.775 |
+    | 8 | 0.3878 | 0.266 | 0.723 | 68,359 | 0.964 | 0.787 |
+    | 9 | 0.3822 | 0.260 | 0.735 | 68,359 | 0.965 | 0.777 |
+    | 10 | 0.3768 | 0.248 | 0.752 | 68,359 | 0.966 | 0.757 |
+    | 11 | 0.3723 | 0.261 | 0.710 | 68,359 | 0.962 | 0.786 |
+    | 12 | 0.3683 | 0.264 | 0.716 | 68,359 | 0.963 | 0.787 |
+    | 13 | 0.3631 | 0.265 | 0.712 | 68,359 | 0.963 | 0.790 |
+    | 14 | 0.3600 | 0.261 | 0.712 | 68,359 | 0.962 | 0.784 |
+    | 15 | 0.3570 | 0.257 | 0.730 | 68,359 | 0.964 | 0.775 |
+  * **Checkpoint Identification:**
+    - File: `C:\Users\admin\meteor-data\features\yield_lstm.pt`
+    - SHA256: `202f1630d9bbffd95c0870c4d0ad19dc6f88e0c73609bb36f1a2abc689bdf14f`
+    - Backup of Step 92 model: `C:\Users\admin\meteor-data\features\yield_lstm_step92.pt` (SHA256: `80df684bf392b86e9b4ce7b8129a588329bba212367b3acabe71fc33be48a48a`).
+    - Stored metadata: `model: lstm`, `label_mode: assert`, `hidden: 64`, `pos_weight: 9.128121`, `lr: 0.001`, `epochs: 15`, `seed: 42`, `batch_size: 1024`, `train_clips: 708`, `val_clips: 307`.
+  * **Calibration & Safety Gate Verification on Newly Retrained Baseline (`calibrate.py`):**
+    - Evaluated against 307 calibration clips (709,192 sequences):
+      - Raw uncalibrated ECE: **0.1757** (worst bin gap: 48.4%).
+      - Platt scaled ECE: **0.0112** (worst bin gap: 6.3%) — **93.6% reduction in calibration error**.
+      - Platt parameters: $A = -0.538430$, $B = 1.734140$.
+    - Risk vs Coverage Curve (Session Cluster Bootstrap):
+      | Target Cov | Thr $P(\text{assert})$ | Coverage | $n_{\text{go}}$ | Dang Rate | 95% Cluster CI | Status |
+      |---|---|---|---|---|---|---|
+      | 0.1% | 0.00045176 | 0.100% | 710 | 0.000% | [0.00%, 0.00%] | [SAFE] |
+      | 0.5% | 0.00061428 | 0.500% | 3,546 | 0.000% | [0.00%, 0.00%] | [SAFE] |
+      | 1.0% | 0.00081869 | 1.000% | 7,092 | 0.324% | [0.00%, 0.54%] | [SAFE] |
+      | 2.0% | 0.00112716 | 2.000% | 14,186 | 0.261% | [0.03%, 0.51%] | [SAFE] |
+      | 5.0% | 0.00215194 | 5.000% | 35,460 | 0.685% | [0.33%, 1.05%] | |
+      | 10.0% | 0.00326120 | 10.000% | 70,920 | 0.701% | [0.33%, 0.97%] | [SAFE] |
+      | 15.0% | 0.00458626 | 15.000% | 106,379 | 0.858% | [0.57%, 1.09%] | |
+      | 20.0% | 0.00659534 | 20.000% | 141,839 | 1.043% | [0.77%, 1.27%] | |
+      | 30.0% | 0.01421350 | 30.000% | 212,758 | 1.518% | [1.26%, 1.78%] | |
+      | 50.0% | 0.05414711 | 50.000% | 354,596 | 2.169% | [1.61%, 2.56%] | |
+    - Selected Safe Operating Threshold: $P(\text{assert}) \le 0.00326120$
+      - Coverage: **10.000%** (70,920 samples).
+      - Dangerous Rate Point Estimate: **0.701%**.
+      - 95% Cluster-Bootstrap Upper Bound: **0.972%** (strictly $\le 1.00\%$).
+      - Gate Status: **`PASS`**.
+    - Updated Gate Config: `C:\Users\admin\meteor-data\features\calibration_gate.json`.
+    - Updated Visualizations: `results/plots/reliability_lstm_before.png`, `results/plots/reliability_lstm_after.png`.
+  * **Test Partition Integrity:** Untouched and unopened (6 sessions, 233 clips, 694,864 samples).
+  * **Outcome:** Step 95 is `[🟢COMPLETED]`. The clean baseline LSTM is retrained, verified, and calibrated under strict zero-leakage conditions.
 
 
 
