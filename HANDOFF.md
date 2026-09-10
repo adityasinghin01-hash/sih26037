@@ -244,7 +244,7 @@ cd matlab/baseline && shasum -a 256 -c CHECKSUMS.txt      # every line must say 
 
 ---
 
-## Stream C — ML
+## Stream C — ML (Shaurya)
 
 **Both predictor models are trained and honestly measured. Good work.** Three things are settled
 below, and **one of them stops you before ONNX export.**

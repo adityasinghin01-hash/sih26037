@@ -618,7 +618,7 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
   * **Outcome:** Step 92 is `[🟢COMPLETED]`. Establishes the baseline ahead of Step 93's fresh 3-way split protocol.
 
 * **[10-Sept-2026 19:25 IST] Round 2 Brief Integrated into `GUIDE.md` — PLANNING COMPLETE**
-  * **Change:** Integrated Round 2 tasks from `SIH26037-Shourya-Round2-Brief.md` and `SIH26037-Round2-Master-Brief.md` into `GUIDE.md`:
+  * **Change:** Integrated Round 2 tasks from `SIH26037-Shaurya-Round2-Brief.md` and `SIH26037-Round2-Master-Brief.md` into `GUIDE.md`:
     - Enriched Step 94 with Platt scaling smoothed targets ($t_+, t_-$), quantile-binned reliability diagrams, and numerical logistic regression solver details.
     - Added Part 18 (Steps 101–104): Step 101 (Calibrate Yield-Attention/GNN model), Step 102 (Fix YOLOX Spotter domain gap on rendered simulator frames in MATLAB), Step 103 (Re-verify DeepLab v3+ sanity in MATLAB), Step 104 (Package team handoffs for Kishan and Aditya B.).
     - Updated execution order table to span Steps 90–104.

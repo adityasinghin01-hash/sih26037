@@ -26,7 +26,7 @@ That is why the two halves cannot break each other.
 |---|---|---|---|---|
 | **Aditya** | 1 + F | **WORLD and Perception in MATLAB.** Plus integration, the demo and the pitch | **Mac — THE MAIN MACHINE. The demo runs here** | — |
 | **World teammate** | 1 | Meerut footage, OSM exports, PPT, docs, the claim ledger, judging whether a scene looks Indian | any | **nothing here — Aditya briefs them on a call** |
-| **ML person** | C | METEOR, both yield models, ONNX export, the three MATLAB models | roomiest machine — datasets are tens of GB | **`ml/ReadThis.md`** |
+| **Shaurya** | C | **ML / Perception.** METEOR, both yield models, ONNX export, and the three MATLAB models | roomiest machine — datasets are tens of GB | **`ml/ReadThis.md`** |
 | **Planner A** | 2 | `matlab/+sih/+planner/*.m` — pure functions | Windows — develops here | **`plan/ReadThis.md`** then `/plan-work` |
 | **Planner B** | 2 | The Simulink model and Stateflow chart, **and the baseline** | Windows — develops here, and our **second platform** | **`plan/ReadThis.md`** then `/plan-harness` |
 
@@ -80,7 +80,7 @@ proven. It now is. **The demo runs on the Mac.**
 ```
 Aditya         -> nothing, we work session by session
 World teammate -> nothing here, Aditya briefs them on a call
-ML person      -> ml/ReadThis.md
+Shaurya        -> ml/ReadThis.md
 Planner A      -> plan/ReadThis.md, then plan/CONTRACT-AB.md
 Planner B      -> plan/ReadThis.md, then plan/CONTRACT-AB.md
 ```
