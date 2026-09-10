@@ -723,9 +723,11 @@ switch string(typ)
 case "hut",       c = [.82 .70 .50];   % mud/dung-plastered, thatch
 case "house1",    c = [.80 .78 .74];   % single-storey unplastered brick
 case "house2",    c = [.72 .70 .64];   % two-storey
+case "house3",    c = [.60 .58 .55];   % three-storey, darkest of the three heights
+case "wall",      c = [.85 .84 .80];   % a blank compound wall, not a habitable building
 case "shop",      c = [.55 .62 .78];   % distinguishable from housing at a glance
 case "shrine",    c = [.95 .90 .55];   % whitewashed + marigold, a warm highlight
-case "tin_shed",  c = [.60 .58 .62];
+case {"tin_shed","shed"}, c = [.60 .58 .62];
 otherwise,        c = [.78 .76 .72];
 end
 end
