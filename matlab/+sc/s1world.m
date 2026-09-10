@@ -553,11 +553,130 @@ for i = 1:size(W.Trees,1)
 end
 assert(bad == 0, "sc:s1corridor", ...
     "%d trees stand inside the %.1f m cleared corridor", bad, opts.CorridorHalf);
+
+% =======================================================================================
+% BUILDINGS, INFRASTRUCTURE, SIDE ROADS - added 11 Sep 2026, the 5-scenario density
+% initiative. Zero planner risk (nothing here changes W.Path, W.Occluders, W.Trees or any
+% field the planner reads) - this is pure static-world furniture for the 2D top-down
+% viewer (sc.plannerView). Real vs chosen, said plainly, same discipline as the forest above.
+%
+% THE JUNCTION - REAL, MEASURED, AND A GENUINE CORRECTION TO THE WRITTEN ACTION.
+% S1-CATTLE-CROSSING.md gives the junction coordinate as (-252.8, +373.3) and its own
+% ACTION section describes the ego arriving there at t=52s ("The junction. Three roads,
+% no signal... Shop."), which reads as if the ego drives INTO the 3-way point itself.
+% Measured against sc.localRoads([-280 450], 205) - the real OSM network inside S1's own
+% written 205 m radius, not the 350 m net used above for the through-road alone: the real
+% 3-way meeting of three side roads sits at (-251.8, 370.5), 2.8 m from the written
+% coordinate - a real match. But it is NOT on the ego's own tertiary road. The ego's road
+% meets exactly ONE side road (a living_street, 111.0 m, bearing 43.9 deg - the written
+% script calls this one "residential... 111 m at 44 deg"; OSM classifies it living_street,
+% kept as measured) at real station s=386 m, e~=0. That living_street runs 111 m out to
+% the real 3-way point, where the residential (219.2 m @ 66.6 deg, matches the written
+% "221 m at 66 deg") and a second living_street (98.4 m @ 226.4 deg, bearing matches the
+% written "157 m at 226 deg", length does not - real data wins) actually meet each other.
+% So "the junction" the ego reaches at t=52s is the point where the living_street forks
+% off (s=386), and the literal 3-road meeting is 111 m further out, off the driven route -
+% never driven, drawn as context only. Two further real OSM pieces near S1 (an unclassified
+% 78.6 m and a living_street 56.2 m) sit 140-270 m laterally off the corridor - outside any
+% view span this project uses - and are left out rather than drawn where nobody will see them.
+R2 = sc.localRoads([-280 450], 205);
+sideSpec = struct('Class',{"living_street","residential","living_street"}, ...
+                   'LenApprox',{111.0, 219.2, 98.4}, ...
+                   'Name',{"living_street to the junction (44 deg, real)", ...
+                           "residential lane, 66 deg (real, spec: 221 m)", ...
+                           "living_street, 226 deg (real, spec: 157 m)"});
+W.SideRoads = struct('Name',{},'XY',{});
+for k = 1:numel(sideSpec)
+    hit = [];
+    for i = 1:numel(R2)
+        if R2(i).Class == sideSpec(k).Class && abs(R2(i).Length - sideSpec(k).LenApprox) < 1.0
+            hit = i; break
+        end
+    end
+    assert(~isempty(hit), "sc:s1sideRoadMissing", ...
+        "expected a %s piece of ~%.1f m near S1 - not found in the live OSM export; " + ...
+        "the map data may have changed since this was measured (11 Sep 2026)", ...
+        sideSpec(k).Class, sideSpec(k).LenApprox);
+    W.SideRoads(end+1) = struct('Name', sideSpec(k).Name, 'XY', R2(hit).Centers); %#ok<AGROW>
+end
+[W.JunctionS, W.JunctionE] = W.Path.inverse([-174.9, 450.5]);   % real: ego road meets the living_street
+assert(abs(W.JunctionS - 386) < 2, "sc:s1junctionDrift", ...
+    "the ego-road/living_street junction solved to s=%.1f m, expected ~386 m", W.JunctionS);
+
+% ---------------------------------------------------------------- buildings, 14, spec count
+% WRITTEN S1 "BUILDINGS - 14" gives the roll call (2 kutcha huts, 4 single-storey, 3
+% two-storey, 1 shop AT THE JUNCTION, 1 shrine, 3 outlying) and the LEFT-SIDE metre-by-metre
+% section separately gives the huts a station range, "330-410 m: a mud boundary wall, then
+% two kutcha huts." Nothing in either section gives a station for the shop - CHOSEN here
+% to be the real junction station (386 m) because that is where the written ACTION's own
+% "t=52 The junction... Shop" beat actually lands (see above), not an arbitrary pick.
+% Every other station/lateral below is CHOSEN, disclosed, and kept inside the 330-410 m
+% band the written village-edge section names, clustered around the real 386 m junction so
+% the shop and shrine read as belonging to it rather than floating alone.
+% LATERAL OFFSETS ARE SOLVED FOR CLEARANCE, NOT EYEBALLED. The shoulder edge is at
+% W.Width/2+W.Shoulder = 4.7 m from the centreline; every footprint's NEAR edge (its own
+% Lateral minus its own Width/2) is placed at 5.5 m, a disclosed 0.8 m yard beyond the
+% shoulder - close enough to read as roadside, never overlapping the shoulder or the road.
+NEARSET = 5.5;
+mk = @(typ,s,e,w,d,st,lbl) struct('Type',string(typ),'Station',double(s),'Lateral',double(e), ...
+    'Width',double(w),'Depth',double(d),'Storeys',double(st),'Label',string(lbl));
+lat = @(w,side) side*(NEARSET + w/2);
+W.Buildings = [ ...
+    mk("hut",     345, lat(6.0,+1),  6.0, 5.5, 1, "")
+    mk("hut",     365, lat(6.0,+1),  6.0, 5.5, 1, "")
+    mk("house1",  338, lat(6.5,+1),  6.5, 6.0, 1, "")
+    mk("house1",  355, lat(6.5,-1),  6.5, 6.0, 1, "")
+    mk("house1",  395, lat(6.5,+1),  6.5, 6.0, 1, "")
+    mk("house1",  405, lat(6.5,-1),  6.5, 6.0, 1, "")
+    mk("house2",  375, lat(7.5,-1),  7.5, 7.0, 2, "")
+    mk("house2",  392, lat(7.5,+1),  7.5, 7.0, 2, "exposed rebar")
+    mk("house2",  402, lat(7.5,-1),  7.5, 7.0, 2, "")
+    mk("shop",    386, lat(3.0,+1),  3.0, 4.0, 1, "shop (at the real junction, s=386m)")
+    mk("shrine",  398, lat(2.5,+1),  2.5, 2.5, 1, "shrine, under a peepal")
+    mk("house1",  350, +55,          7.0, 6.0, 1, "outlying, roofline only")
+    mk("house1",  380, -70,          7.0, 6.0, 1, "outlying, roofline only")
+    mk("house1",  400, +60,          7.0, 6.0, 1, "outlying, roofline only")
+]';
+assert(numel(W.Buildings) == 14, "sc:s1buildingCount", ...
+    "%d buildings built, S1's own spec states 14", numel(W.Buildings));
+nOnRoadB = 0;
+for k = 1:numel(W.Buildings)
+    if abs(W.Buildings(k).Lateral) < W.Width/2 + W.Buildings(k).Width/2, nOnRoadB = nOnRoadB+1; end
+end
+assert(nOnRoadB == 0, "sc:s1buildingOnRoad", "%d buildings overlap the carriageway", nOnRoadB);
+
+% ---------------------------------------------------------------- infrastructure
+% S0 s6: "11 kV candelabra poles along every road that has buildings... 45 m spans."
+% S1's own canopy-cover section already carries "an electricity clearance cut at 244 m" as
+% a real hole in the treeline - that is FAR from this village-end cluster (244 vs 335-410),
+% so it is left alone; it is evidence the real build already has a cut for a run somewhere
+% else, not something this pole run should try to explain. This run is the village-end one,
+% because that is where S0 says poles go ("every road that has buildings") and this is the
+% one 80 m stretch that has any.
+POLE_E = 3.9;                          % just outside the shoulder (3.5+1.2=4.7 would be
+                                        % the field edge; 3.9 sits on the verge, inside it)
+poleS = 335:45:425;    % 335/380/425 - spans the 335-410 m building cluster plus overhang
+W.Poles = struct('Station',{},'Lateral',{},'Run',{},'Label',{});
+for s = poleS
+    W.Poles(end+1) = struct('Station',s,'Lateral',POLE_E,'Run',1, ...
+        'Label',"11kV poles, 45m spans (village end)"); %#ok<AGROW>
+end
+% the culvert at 158 m: "a hume pipe culvert, 900 mm, half silted" crossing UNDER the
+% road, not a drain running alongside it like S3's. Modelled as a short marker at its own
+% station rather than the true cross-road pipe shape - the true shape never intrudes on the
+% carriageway either way, so it does not matter for a top-down schematic. Disclosed, not
+% hidden: this is a simplification, not a measurement.
+W.Drains = struct('S0',156.5,'S1',159.5,'Lateral',0,'Width',1.2, ...
+    'Label',"culvert, 900mm, half silted (158m)");
+
 fprintf(['[S1 world] cover %.0f%% open / %.0f%% village (lean %.2f) | route %.0f m | %d trees (%d carry understorey) | %d scrub ' ...
          '(h_full %.2f-%.2f m) | thicket r=%.2f m | REVEAL %.0f m (spec %.0f) | nearest veg to centreline %.2f m (road edge %.2f)\n'], ...
         W.CoverOpen, W.CoverVillage, W.LeanK, W.Path.Len, size(W.Trees,1), sum(W.Trees(:,7) > 0), ...
         size(W.Scrub,1), min(W.Scrub(:,4)), max(W.Scrub(:,4)), ...
         W.Thicket(3), W.RevealDistance, opts.Reveal, W.RoadNearest, W.Width/2);
+fprintf('[S1 world] %d buildings (spec 14) | %d poles in %d run(s) | junction at s=%.0f m (real, %.1f m from written coord) | %d side roads drawn\n', ...
+        numel(W.Buildings), numel(W.Poles), numel(unique([W.Poles.Run])), W.JunctionS, ...
+        norm([-174.9,450.5] - W.Path.at(W.JunctionS,0)), numel(W.SideRoads));
 end
 
 % =======================================================================================

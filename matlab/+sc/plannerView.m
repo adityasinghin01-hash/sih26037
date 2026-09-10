@@ -195,6 +195,15 @@ case 'init'
         try set(kids(k), 'Clipping', 'on'); catch, end %#ok<CTCH>
     end
 
+    % ---- STATIC: world furniture, drawn once, from S.W's OWN fields -------
+    % Added 11 Sep 2026 for the 5-scenario density initiative. Every field is
+    % OPTIONAL: a scenario's world struct (sc.s1world and its future
+    % siblings) may or may not carry Buildings/Poles/Drains/SideRoads, and
+    % this draws whichever are present and silently skips the rest - the same
+    % "absent field, no error" discipline the hazard/track fields already
+    % have. plannerView does not know or care which scenario S.W came from.
+    drawWorldFurniture(S.axMap, S.P, S.W);
+
     % ---- DYNAMIC: preallocated, updated with set(), never deleted --------
     % the whole candidate fan in ONE line object, NaN-separated
     S.hCand  = plot(S.axMap, NaN, NaN, '-', 'Color',[.72 .72 .78], 'LineWidth',0.5);
@@ -591,6 +600,136 @@ end
 % =========================================================================
 %                              HAZARDS
 % =========================================================================
+function drawWorldFurniture(ax, P, W)
+%DRAWWORLDFURNITURE  The static world layer beyond the road itself -
+%   buildings, pole/wire runs, drains, and any side roads the world struct
+%   carries. Every field is OPTIONAL and this function does not judge
+%   whether the counts/positions are real or chosen - that disclosure lives
+%   in whichever sc.<scenario>world.m built the struct, per this project's
+%   "real vs chosen, said plainly" rule. This just draws what it is given.
+%
+%   Deliberately NOT one label per object, unlike drawHazard. A hazard is
+%   sparse (a handful per scenario) and the planner-relevant point of each
+%   one is unique, so every one earns a caption. A building count runs to
+%   dozens-to-hundreds (S2 alone is 96) and most of them are visually
+%   interchangeable brick houses - labelling all of them would bury the
+%   map in text boxes nobody can read. So buildings are colour-coded by
+%   Type (a legend, not per-object text) and only the ones carrying a
+%   non-empty .Label (a shop, a shrine, a named landmark) get an on-map
+%   caption, the same visual weight a hazard label gets.
+
+% ---- buildings ------------------------------------------------------
+if isfield(W,'Buildings') && ~isempty(W.Buildings)
+    B = W.Buildings;
+    nB = numel(B);
+    V = zeros(4*nB,2);  F = zeros(nB,4);  Cd = zeros(nB,3);
+    for k = 1:nB
+        b = B(k);
+        [alongDir, acrossDir] = frame(P, b.Station);
+        c = P.at(b.Station, b.Lateral);
+        d_ = fieldOr(b,'Depth', 6.0);
+        w_ = fieldOr(b,'Width', 6.0);
+        corners = c + alongDir.*[-d_/2 d_/2 d_/2 -d_/2]' + acrossDir.*[-w_/2 -w_/2 w_/2 w_/2]';
+        V(4*k-3:4*k,:) = corners;
+        F(k,:) = (4*k-3):(4*k);
+        Cd(k,:) = buildingColour(fieldOr(b,'Type',"house"));
+    end
+    patch(ax, 'Faces',F, 'Vertices',V, 'FaceVertexCData',Cd, 'FaceColor','flat', ...
+          'EdgeColor',[.35 .32 .28], 'LineWidth',0.6, 'FaceAlpha',0.92, 'Clipping','on');
+    for k = 1:nB
+        b = B(k);
+        lbl = string(fieldOr(b,'Label',""));
+        if strlength(lbl) == 0, continue; end
+        c = P.at(b.Station, b.Lateral);
+        text(ax, c(1), c(2), char(labelHead(lbl,26)), ...
+             'HorizontalAlignment','center','VerticalAlignment','middle', ...
+             'FontName','Helvetica','FontSize',8,'FontWeight','bold','Color',[.15 .12 .05], ...
+             'BackgroundColor',[1 1 .92],'EdgeColor',[.6 .5 .3],'Margin',1.5, ...
+             'Interpreter','none','Clipping','on');
+    end
+end
+
+% ---- pole/wire runs ---------------------------------------------------
+if isfield(W,'Poles') && ~isempty(W.Poles)
+    Pl = W.Poles;
+    runs = unique([Pl.Run]);
+    for r = runs
+        idxR = find([Pl.Run] == r);
+        [~, ord] = sort([Pl(idxR).Station]);
+        idxR = idxR(ord);
+        xy = zeros(numel(idxR),2);
+        for i = 1:numel(idxR)
+            xy(i,:) = P.at(Pl(idxR(i)).Station, Pl(idxR(i)).Lateral);
+        end
+        plot(ax, xy(:,1), xy(:,2), '-', 'Color',[.45 .40 .35], 'LineWidth',0.7, 'Clipping','on');
+        plot(ax, xy(:,1), xy(:,2), 'o', 'MarkerSize',3, 'MarkerFaceColor',[.3 .27 .22], ...
+             'MarkerEdgeColor','none', 'Clipping','on');
+    end
+    if isfield(Pl,'Label') && strlength(string(Pl(1).Label)) > 0
+        c0 = P.at(Pl(1).Station, Pl(1).Lateral);
+        text(ax, c0(1), c0(2)+3.0, char(labelHead(string(Pl(1).Label),26)), ...
+             'FontName','Helvetica','FontSize',7.5,'Color',[.35 .3 .25], ...
+             'BackgroundColor',[1 1 1],'Margin',1.0,'Interpreter','none','Clipping','on');
+    end
+end
+
+% ---- drains -------------------------------------------------------------
+if isfield(W,'Drains') && ~isempty(W.Drains)
+    for k = 1:numel(W.Drains)
+        dr = W.Drains(k);
+        ns = max(2, ceil((dr.S1 - dr.S0)/4));
+        ss = linspace(dr.S0, dr.S1, ns);
+        wd = fieldOr(dr,'Width', 0.4);
+        LL = zeros(ns,2); RR = zeros(ns,2);
+        for i = 1:ns
+            LL(i,:) = P.at(ss(i), dr.Lateral + wd/2);
+            RR(i,:) = P.at(ss(i), dr.Lateral - wd/2);
+        end
+        band = [LL; flipud(RR)];
+        patch(ax, band(:,1), band(:,2), [.32 .30 .22], 'EdgeColor','none', ...
+              'FaceAlpha',0.75, 'Clipping','on');
+        lbl = string(fieldOr(dr,'Label',""));
+        if strlength(lbl) > 0
+            mid = P.at((dr.S0+dr.S1)/2, dr.Lateral);
+            text(ax, mid(1), mid(2), char(labelHead(lbl,26)), ...
+                 'FontName','Helvetica','FontSize',7.5,'Color',[.25 .22 .16], ...
+                 'BackgroundColor',[1 1 1],'Margin',1.0,'Interpreter','none','Clipping','on');
+        end
+    end
+end
+
+% ---- side roads (context only - not drivable by the ego) ---------------
+if isfield(W,'SideRoads') && ~isempty(W.SideRoads)
+    for k = 1:numel(W.SideRoads)
+        sr = W.SideRoads(k);
+        plot(ax, sr.XY(:,1), sr.XY(:,2), '-', 'Color',[.7 .7 .68], 'LineWidth',3.0, ...
+             'Clipping','on');
+        lbl = string(fieldOr(sr,'Name',""));
+        if strlength(lbl) > 0
+            text(ax, sr.XY(end,1), sr.XY(end,2), char(labelHead(lbl,26)), ...
+                 'FontName','Helvetica','FontSize',8,'Color',[.3 .3 .3], ...
+                 'BackgroundColor',[1 1 1],'Margin',1.0,'Interpreter','none','Clipping','on');
+        end
+    end
+end
+end
+
+function c = buildingColour(typ)
+%BUILDINGCOLOUR  One colour per building Type tag, so the map reads as a
+%   legend even with no per-object label. Not sourced from a photograph -
+%   these are MAP SYMBOL colours (a legibility convention, same footing as
+%   drawHazard's speed-sign red rim), disclosed as such.
+switch string(typ)
+case "hut",       c = [.82 .70 .50];   % mud/dung-plastered, thatch
+case "house1",    c = [.80 .78 .74];   % single-storey unplastered brick
+case "house2",    c = [.72 .70 .64];   % two-storey
+case "shop",      c = [.55 .62 .78];   % distinguishable from housing at a glance
+case "shrine",    c = [.95 .90 .55];   % whitewashed + marigold, a warm highlight
+case "tin_shed",  c = [.60 .58 .62];
+otherwise,        c = [.78 .76 .72];
+end
+end
+
 function drawHazard(ax, P, hz, idx)
 %DRAWHAZARD  One static road hazard plus its on-screen label, drawn once at
 %   init. Real-world sourced colours - see plannerView's own header for exactly
