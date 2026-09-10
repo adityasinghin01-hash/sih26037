@@ -1913,7 +1913,7 @@ checkpoint hash, calibration method, and exact commands without asking a questio
 
 ## Part 18: Round 2 Multi-Model Calibration, Spotter Domain-Gap Fix, and Team Handoffs
 
-### Step 101 Calibrate the Yield-Attention/GNN Model [🔵TO DO] [MEDIUM]
+### Step 101 Calibrate the Yield-Attention/GNN Model [🟢COMPLETED] [MEDIUM]
 
 Run the identical Platt calibration pipeline from Step 94 on the secondary model (`yield_attention.pt`):
 
@@ -1982,12 +1982,12 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
 | 7 | 97 | Verify that the target predicts early enough | No (Done) |
 | 8 | 98–100 | Final test, export, MATLAB verification, and docs (Steps 98–100 Done) | No (Done) |
-| 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No |
+| 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No (Done) |
 | 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** |
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 101 (Calibrate Yield-Attention/GNN Model - Task 2).
+**Immediate next action:** Step 102 (Fix YOLOX Spotter Domain Gap on Rendered Simulator Scenes - Task 3).
 
 ---
 

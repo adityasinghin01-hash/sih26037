@@ -249,6 +249,8 @@ def main() -> int:
 
     net = (YieldAttentionNet(hidden=ck.get("hidden", 64)) if grouped
            else YieldNet(hidden=ck.get("hidden", 64)))
+    if "feat_mean" in ck and "feat_std" in ck:
+        net.set_normaliser(np.array(ck["feat_mean"]), np.array(ck["feat_std"]))
     net.load_state_dict(ck["state_dict"])
     net.eval()
 
@@ -306,8 +308,8 @@ def main() -> int:
         for i in range(0, len(x), batch):
             xb = x[i:i + batch].to(device)
             lg = net(xb, adj[i:i + batch].to(device)) if grouped else net(xb)
-            # Logit difference: logit(1) - logit(0)
-            diff = (lg[:, 1] - lg[:, 0]).cpu().numpy().reshape(-1)
+            # Logit difference: logit(1) - logit(0) across classes dimension
+            diff = (lg[..., 1] - lg[..., 0]).cpu().numpy().reshape(-1)
             raw_diffs.append(diff)
 
     raw_diffs = np.concatenate(raw_diffs)[keep]
@@ -349,11 +351,11 @@ def main() -> int:
 
     # 5. Generate and save before & after reliability diagrams
     args.plots_dir.mkdir(parents=True, exist_ok=True)
-    before_plot = args.plots_dir / "reliability_lstm_before.png"
-    after_plot = args.plots_dir / "reliability_lstm_after.png"
+    before_plot = args.plots_dir / f"reliability_{kind}_before.png"
+    after_plot = args.plots_dir / f"reliability_{kind}_after.png"
 
-    plot_reliability_diagram(m_raw["bins"], "Raw Uncalibrated Model (YieldNet LSTM)", before_plot, m_raw["ece"], m_raw["worst_gap"])
-    plot_reliability_diagram(m_platt["bins"], "Platt-Calibrated Model (YieldNet LSTM)", after_plot, m_platt["ece"], m_platt["worst_gap"])
+    plot_reliability_diagram(m_raw["bins"], f"Raw Uncalibrated Model ({kind.upper()})", before_plot, m_raw["ece"], m_raw["worst_gap"])
+    plot_reliability_diagram(m_platt["bins"], f"Platt-Calibrated Model ({kind.upper()})", after_plot, m_platt["ece"], m_platt["worst_gap"])
     print(f"\nSaved before diagram: {before_plot}")
     print(f"Saved after diagram : {after_plot}")
 
@@ -397,7 +399,8 @@ def main() -> int:
         print(f"Enforcing safety rule: Gate status = {gate_status}. Model must emit Valid=false.")
 
     # 8. Save frozen calibration config
-    out_cfg = args.out_config or (args.features / "calibration_gate.json")
+    default_cfg = args.features / ("calibration_gate.json" if kind == "lstm" else f"calibration_gate_{kind}.json")
+    out_cfg = args.out_config or default_cfg
     calibration_config = {
         "timestamp": datetime.now().isoformat(),
         "model_file": str(args.model),
