@@ -574,6 +574,23 @@ deck's own measured length, same construction as the river bridges' piers but at
 of beam 700–750 mm, posts at 2.0 m** (REF-01 §10), the standard approach-barrier detail, run the
 full deck length on both edges.
 
+**COMPONENT 3 PASS 2 · ITEM 3 — THE RAILWAY, written 10 Sep 2026 before building, per Rule 1.**
+Full numbers already exist in `S0b-THE-RAILWAY.md` — this item is Rule 1 by reference, not a
+duplicate. Built from `map/najibabad_rail.json` (22 real rail ways, pulled and saved 3 Sep,
+station NBD confirmed at (−551.75,−900.06) against S0b's (−552,−900)).
+**Scope for THIS build is Stage 2 blockout only, per S0b's own "WHAT GETS BUILT, BY STAGE" table:**
+the formation as an embankment solid (6.85 m single line, 2:1 side slopes, minimum 1.0 m bank
+height in flat terrain) · the yard tracks built individually from their own real pulled geometry,
+not forced into an idealised even spacing (the real spacing is already IN the data) · station
+platform masses at 0.84 m near NBD · the two level crossings as a flat break (the formation tapers
+to grade within a short window either side of each crossing point). **Rails, sleepers, ballast are
+Stage 3; OHE masts, portals and the catenary are Stages 4 and 9 — explicitly not this build**,
+same staging S0b itself specifies. The two road-over-rail decks at 6.25 m clear are **already
+built** — they are FLYOVER_895269403 and FLYOVER_895269405 from pass 2 item 2, not a separate task.
+**Every way is built individually at its own real width** (6.85 m single line) rather than forcing
+a synthetic 12.15 m double-line embankment — a real double track is two adjacent formations with
+their own ballast prisms, not one shared platform, and OSM's own way split already reflects that.
+
 ## 5 · BUILDINGS — about 1000, from about 30 parts
 **Do not model whole buildings.** Model ~30 facade parts — window, shutter, balcony, AC box,
 sign board, awning, drainpipe, grille, staircase, water tank, parapet, door, meter box, dish,

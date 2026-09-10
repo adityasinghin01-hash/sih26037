@@ -78,7 +78,10 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        ("bridge2_side",  ( -861.3,  623.4, 18.0), aim(-18.0, 72.3), 24.0),
        # component 3 pass 2 item 2: the S4 flyover cluster (most of the 9 decks are near here)
        ("s4_flyovers", (  300.0,-1100.0,180.0), aim(-27.0,330.5), 28.0),
-       ("s4_ground",   (  130.0, -900.0,  1.3), aim( -3.0,  0.0), 24.0))
+       ("s4_ground",   (  130.0, -900.0,  1.3), aim( -3.0,  0.0), 24.0),
+       # component 3 pass 2 item 3: the railway yard + station (NBD)
+       ("rail_yard", ( -900.0, -700.0,150.0), aim(-18.0,200.0), 26.0),
+       ("rail_station",(-650.0, -940.0, 20.0), aim( -8.0,110.0), 30.0))
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))
