@@ -1706,25 +1706,53 @@ Done when: all new known-answer cases pass and the old yield-direction tests sti
 
 ### Phase B: Re-score the Existing LSTM Before Retraining
 
-#### Step 92 Run a Corrected Exploratory Evaluation on the Existing Checkpoint [🔵TO DO] [HIGH]
+#### Step 92 Run a Corrected Exploratory Evaluation on the Existing Checkpoint [🟢COMPLETED] [HIGH]
 
-Use the existing `yield_lstm.pt` and saved validation data. Do not change weights in this step.
+Executed exploratory evaluation on the existing `yield_lstm.pt` checkpoint against the 249 validation clips (783,928 sequences, 77,373 assert positives).
+*(All numbers labelled: exploratory — previously inspected validation data)*
 
-Produce:
+1. **Operating point & coverage**:
+   - Chosen threshold: $P(\text{assert}) \le 0.00122345$
+   - Total evaluated samples: 783,928 | $n_{\text{go}}$: 77,718 | Coverage: **9.914%** (Clip-resampled 95% CI: [8.580%, 11.303%])
+   - Dangerous errors: 777 | Dangerous rate: **1.00%** (Clip-resampled 95% CI: [0.63%, 1.47%])
+   - Safe-GO recall: **10.89%** (Clip-resampled 95% CI: [9.41%, 12.41%])
+   - Model Average Precision: **0.3500** (Clip-resampled 95% CI: [0.3110, 0.3895] vs naive frame CI [0.3464, 0.3535])
 
-- Dangerous rate for the low-`P(assert)` GO set.
-- `n_go`, total evaluated samples, and coverage.
-- A risk-versus-coverage curve rather than one hand-picked threshold.
-- Per-class results using the frozen S5 ClassIDs.
-- Per-clip error counts to show whether a few drives dominate the failures.
-- Confidence intervals produced by resampling whole clips, not individual overlapping sequences.
+2. **Risk-versus-coverage curve**:
+   - 0.100% coverage: $n_{\text{go}} = 784$, dangerous = 0, risk = 0.000%
+   - 0.500% coverage: $n_{\text{go}} = 3,920$, dangerous = 5, risk = 0.128%
+   - 1.000% coverage: $n_{\text{go}} = 7,840$, dangerous = 8, risk = 0.102%
+   - 2.000% coverage: $n_{\text{go}} = 15,679$, dangerous = 14, risk = 0.089%
+   - 5.000% coverage: $n_{\text{go}} = 39,197$, dangerous = 157, risk = 0.401%
+   - 10.000% coverage: $n_{\text{go}} = 78,393$, dangerous = 788, risk = 1.005%
+   - 20.000% coverage: $n_{\text{go}} = 156,786$, dangerous = 2,355, risk = 1.502%
+   - 50.000% coverage: $n_{\text{go}} = 391,964$, dangerous = 10,052, risk = 2.565%
 
-This result is **exploratory only** because the existing validation scores have already been used
-for threshold and calibration experiments. It decides what to try next; it is not the final safety
-claim.
+3. **Per-class performance (frozen S5 ClassIDs)**:
+   - Car (1): $n=255,519$, dangerous rate = 1.00%, recall = 8.2%
+   - Truck (2): $n=100,260$, dangerous rate = 0.90%, recall = 17.9%
+   - Bus (3): $n=38,591$, dangerous rate = 1.49%, recall = 26.4%
+   - Auto-rickshaw (4): $n=70,561$, dangerous rate = 1.26%, recall = 7.1%
+   - Motorbike (5): $n=178,310$, dangerous rate = 0.82%, recall = 1.8%
+   - Scooter (6): $n=74,823$, dangerous rate = 0.33%, recall = 0.9%
+   - Van (7): $n=10,218$, dangerous rate = 0.66%, recall = 23.2%
+   - Pedestrian (8): $n=45,461$, dangerous rate = 1.00%, recall = 41.8%
+   - Bicycle (9): $n=3,902$, dangerous rate = 10.14%, recall = 1.6%
+   - Cow (10): $n=1,538$, dangerous rate = 0.11%, recall = 63.4%
+   - Tractor (14): $n=1,315$, dangerous rate = 0.09%, recall = 82.4%
 
-Done when: the existing LSTM has a corrected baseline report and every number is labelled
-`exploratory — previously inspected validation data`.
+4. **Per-clip error concentration**:
+   - 197 out of 249 validation clips (**79.1%**) have **0 dangerous errors**.
+   - Top 5 clips account for **42.9%** of all dangerous errors (`REC_2020_10_12_00_04_19_F.npz` alone holds 95 / 777 = 12.2%).
+   - Top 10 clips account for **62.0%** of all dangerous errors.
+   - Top 20 clips account for **80.4%** of all dangerous errors.
+   - Finding: Failures are heavily concentrated in a small minority of drives with dense chaotic traffic.
+
+5. **Cluster-resampled vs. naive confidence intervals**:
+   - Resampling whole clips (400 resamples of 249 clips) proves that frame-level resampling severely understates real-world variance:
+     - Dangerous rate CI expands from naive `[0.93%, 1.06%]` to clip-level `[0.63%, 1.47%]`.
+     - AP CI expands from naive `[0.3464, 0.3535]` to clip-level `[0.3110, 0.3895]`.
+   - Takeaway: Model is exploratory only. Next phase builds a fresh 3-way split (Train / Calibration / Untouched Test) to avoid threshold contamination.
 
 ---
 

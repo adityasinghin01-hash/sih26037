@@ -571,3 +571,14 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     6. S3 identity verified: $P_{\text{yield}} = 1 - P(\text{assert})$ maps assert-mode scores to frozen contract requirements without modifying ONNX output tensor names (`yield_logits`).
   * **Outcome:** All 6 known-answer test cases passed (`python ml/python/tests/test_metrics.py`). Regression checks verified: `test_parity.py` passed all 11 tests; `test_contract.py` passed 15 of 16 tests (single existing float precision mismatch noted). `GUIDE.md` updated to mark Step 91 as `[🟢COMPLETED]`. Step 92 remains `[🔵TO DO]`.
 
+* **[10-Sept-2026 19:05 IST] Step 92: Exploratory Evaluation on Existing Checkpoint — COMPLETED**
+  * **Scope:** Re-scored the existing `yield_lstm.pt` checkpoint on the 249 validation clips (783,928 samples, 77,373 assert positives). All numbers are labelled `exploratory — previously inspected validation data`.
+  * **Verified findings:**
+    - Operating threshold: $P(\text{assert}) \le 0.00122345$ gives $n_{\text{go}} = 77,718$ (**9.914% coverage**).
+    - Dangerous error rate: **1.00%** (777 errors out of 77,718 GO decisions).
+    - Safe-GO recall: **10.89%**. Model Average Precision: **0.3500**.
+    - Per-class breakdown: Car (1.00% dangerous, 8.2% recall), Truck (0.90% dangerous, 17.9% recall), Bus (1.49% dangerous, 26.4% recall), Auto-rickshaw (1.26% dangerous, 7.1% recall), Cow (0.11% dangerous, 63.4% recall), Bicycle (10.14% dangerous, 1.6% recall).
+    - Per-clip failure distribution: 197 / 249 clips (**79.1%**) have 0 dangerous errors. Just 10 clips account for **62.0%** of all dangerous errors (top clip `REC_2020_10_12_00_04_19_F.npz` alone holds 12.2%). Failures are heavily concentrated in a small minority of drives.
+    - Cluster bootstrap vs naive resampling (400 resamples of 249 whole clips): Naive frame resampling severely understates variance. Clip-resampled 95% CI for dangerous rate is `[0.63%, 1.47%]` (vs naive `[0.93%, 1.06%]`) and for AP is `[0.3110, 0.3895]` (vs naive `[0.3464, 0.3535]`).
+  * **Outcome:** Step 92 is `[🟢COMPLETED]`. Establishes the baseline ahead of Step 93's fresh 3-way split protocol.
+
