@@ -7,10 +7,10 @@ human will do next and humans are not consistent. The point is to know exactly h
 make sure it fails in the safe direction, and to refuse to let a number that means nothing reach
 a slide.
 
-THE TWO MISTAKES ARE NOT EQUAL:
+THE TWO MISTAKES ARE NOT EQUAL. The direction depends on what class 1 means:
 
-    says "they will let me in", they do not   ->  we pull out in front of someone.  DANGEROUS
-    says "they will not", they would have     ->  we wait a few seconds longer.     harmless
+    yield label : high P(yield), but they do not yield  -> DANGEROUS
+    assert label: low P(assert), but they assert         -> DANGEROUS
 
 So the operating point is chosen to make the dangerous mistake rare and the harmless one is
 accepted. A cautious honest model beats an accurate average one.
@@ -41,9 +41,10 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-TARGET_DANGEROUS_RATE = 0.01     # at most 1% of "will yield" calls may be wrong
+TARGET_DANGEROUS_RATE = 0.01     # at most 1% of planner GO calls may be wrong
 MIN_POSITIVES = 50               # below this, no metric on the set is trustworthy
 N_BOOTSTRAP = 400
+LABEL_MODES = {"yield", "assert"}
 
 # S2 feature groups, 1-indexed as in AGENTS.md, for permutation importance
 GROUPS = {
@@ -57,22 +58,39 @@ GROUPS = {
 
 # ---------------------------------------------------------------- pure numpy, testable
 
-def confusion(p_yield: np.ndarray, truth: np.ndarray, thr: float) -> dict:
-    """At threshold thr, how often is each mistake made?"""
-    said_yield = p_yield >= thr
-    tp = int((said_yield & (truth == 1)).sum())
-    fp = int((said_yield & (truth == 0)).sum())     # DANGEROUS: we go, they do not yield
-    fn = int((~said_yield & (truth == 1)).sum())    # harmless: we wait unnecessarily
-    tn = int((~said_yield & (truth == 0)).sum())
+def confusion(score: np.ndarray, truth: np.ndarray, thr: float,
+              label_mode: str = "yield") -> dict:
+    """At threshold ``thr``, count planner GO decisions and their two kinds of error.
+
+    ``score`` is always the probability of class 1. For a yield-trained dataset, class 1
+    means yield and a high score permits GO. For an assert-trained dataset, class 1 means
+    assert and a low score permits GO. This distinction changes which tail is safety-critical.
+    """
+    if label_mode not in LABEL_MODES:
+        raise ValueError(f"unknown label_mode {label_mode!r}; expected one of {sorted(LABEL_MODES)}")
+
+    if label_mode == "yield":
+        said_go = score >= thr
+        safe_truth = truth == 1
+    else:
+        said_go = score <= thr
+        safe_truth = truth == 0
+
+    correct_go = int((said_go & safe_truth).sum())
+    dangerous = int((said_go & ~safe_truth).sum())
+    harmless = int((~said_go & safe_truth).sum())
+    correct_wait = int((~said_go & ~safe_truth).sum())
+    n_go = correct_go + dangerous
     return {
         "threshold": float(thr),
-        "dangerous_errors": fp, "harmless_errors": fn,
-        "correct_go": tp, "correct_wait": tn,
+        "label_mode": label_mode,
+        "dangerous_errors": dangerous, "harmless_errors": harmless,
+        "correct_go": correct_go, "correct_wait": correct_wait,
         # of every time we said "go", how often were we wrong? This is the number that matters.
-        "dangerous_rate": fp / (tp + fp) if (tp + fp) else 0.0,
-        "precision": tp / (tp + fp) if (tp + fp) else 0.0,
-        "recall": tp / (tp + fn) if (tp + fn) else 0.0,
-        "n_go": tp + fp,
+        "dangerous_rate": dangerous / n_go if n_go else 0.0,
+        "precision": correct_go / n_go if n_go else 0.0,
+        "recall": correct_go / (correct_go + harmless) if (correct_go + harmless) else 0.0,
+        "n_go": n_go,
     }
 
 
@@ -126,35 +144,98 @@ def bootstrap_ci(fn, score: np.ndarray, truth: np.ndarray,
     return (float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5)))
 
 
-def pick_threshold(p_yield: np.ndarray, truth: np.ndarray,
-                   target: float = TARGET_DANGEROUS_RATE) -> tuple[float, dict]:
-    """Lowest threshold whose dangerous-error rate is within target, so we stay as useful as
-    possible while staying safe. Falls back to the safest available point."""
-    best = None
-    for thr in np.linspace(0.05, 0.99, 95):
-        c = confusion(p_yield, truth, thr)
-        if c["n_go"] == 0:
-            continue
-        if c["dangerous_rate"] <= target:
-            return float(thr), c
-        if best is None or c["dangerous_rate"] < best[1]["dangerous_rate"]:
-            best = (float(thr), c)
-    return best if best else (0.99, confusion(p_yield, truth, 0.99))
+def pick_threshold(score: np.ndarray, truth: np.ndarray,
+                   target: float = TARGET_DANGEROUS_RATE,
+                   label_mode: str = "yield") -> tuple[float, dict]:
+    """Return the largest empirical GO set within ``target``, including all score ties.
+
+    Yield ranks high scores first; assert ranks low scores first. If no non-empty GO set meets
+    the target, return the observed threshold with the lowest dangerous rate, breaking ties in
+    favour of greater coverage.
+    """
+    if label_mode not in LABEL_MODES:
+        raise ValueError(f"unknown label_mode {label_mode!r}; expected one of {sorted(LABEL_MODES)}")
+    if len(score) == 0:
+        fallback = 1.0 if label_mode == "yield" else 0.0
+        return fallback, confusion(score, truth, fallback, label_mode)
+
+    order = np.argsort(-score if label_mode == "yield" else score, kind="stable")
+    ranked_score = score[order]
+    safe_truth = (truth == 1) if label_mode == "yield" else (truth == 0)
+    ranked_safe = safe_truth[order]
+    cumulative_safe = np.cumsum(ranked_safe, dtype=np.int64)
+    # Only evaluate a threshold after the last member of a tie, so identical probabilities
+    # can never be split between GO and WAIT.
+    ends = np.r_[np.flatnonzero(np.diff(ranked_score)) + 1, len(ranked_score)]
+    correct_go = cumulative_safe[ends - 1]
+    dangerous = ends - correct_go
+    rates = dangerous / ends
+    safe_idx = np.flatnonzero(rates <= target)
+    if len(safe_idx):
+        chosen = int(safe_idx[-1])       # ends is ascending: greatest safe coverage
+    else:
+        minimum = rates.min()
+        chosen = int(np.flatnonzero(np.isclose(rates, minimum))[-1])
+    thr = float(ranked_score[ends[chosen] - 1])
+    return thr, confusion(score, truth, thr, label_mode)
 
 
-def calibration(p_yield: np.ndarray, truth: np.ndarray, bins: int = 10) -> list[dict]:
+def risk_coverage(score: np.ndarray, truth: np.ndarray, label_mode: str,
+                  coverage_points: tuple[float, ...] =
+                  (0.001, 0.005, 0.01, 0.02, 0.05, 0.10, 0.20, 0.50)) -> list[dict]:
+    """Planner risk at fixed approximate coverage points, with score ties kept together."""
+    if len(score) == 0:
+        return []
+    order = np.argsort(-score if label_mode == "yield" else score, kind="stable")
+    rows = []
+    for coverage in coverage_points:
+        rank = min(max(int(np.ceil(coverage * len(score))), 1), len(score))
+        thr = float(score[order[rank - 1]])
+        c = confusion(score, truth, thr, label_mode)
+        c["coverage"] = c["n_go"] / len(score)
+        rows.append(c)
+    return rows
+
+
+def calibration(score: np.ndarray, truth: np.ndarray, bins: int = 10) -> list[dict]:
     """When it says 80%, does it happen 80% of the time? An overconfident model is worse than a
     weak one, because the planner trusts the number."""
     out = []
     edges = np.linspace(0.0, 1.0, bins + 1)
     for lo, hi in zip(edges[:-1], edges[1:]):
-        m = (p_yield >= lo) & (p_yield < hi)
+        m = (score >= lo) & (score < hi)
         n = int(m.sum())
         if n == 0:
             continue
         out.append({"bin": f"{lo:.1f}-{hi:.1f}", "n": n,
-                    "said": float(p_yield[m].mean()), "actual": float(truth[m].mean())})
+                    "said": float(score[m].mean()), "actual": float(truth[m].mean())})
     return out
+
+
+def read_label_mode(features: Path) -> tuple[str, int]:
+    """Verify that every feature archive declares the same class-1 label meaning."""
+    files = sorted(features.glob("*.npz"))
+    if not files:
+        raise ValueError(f"no .npz feature files found in {features}")
+    counts: dict[str, int] = {}
+    missing: list[str] = []
+    for path in files:
+        with np.load(path) as data:
+            if "label_mode" not in data.files:
+                missing.append(path.name)
+                continue
+            mode = str(data["label_mode"].item())
+        counts[mode] = counts.get(mode, 0) + 1
+    if missing:
+        preview = ", ".join(missing[:3])
+        suffix = " ..." if len(missing) > 3 else ""
+        raise ValueError(f"{len(missing)} feature file(s) have no label_mode: {preview}{suffix}")
+    unknown = sorted(set(counts) - LABEL_MODES)
+    if unknown:
+        raise ValueError(f"unknown label mode(s) in feature files: {unknown}")
+    if len(counts) != 1:
+        raise ValueError(f"mixed label modes in feature files: {counts}")
+    return next(iter(counts)), len(files)
 
 
 def single_feature_baselines(x_last: np.ndarray, truth: np.ndarray) -> tuple[str, float, int, int]:
@@ -202,6 +283,12 @@ def main() -> int:
     ap.add_argument("--onnx", type=Path, default=None, help="also check the exported file agrees")
     args = ap.parse_args()
 
+    try:
+        label_mode, label_file_count = read_label_mode(args.features)
+    except ValueError as exc:
+        print(f"ERROR: cannot establish class-1 label meaning: {exc}", file=sys.stderr)
+        return 1
+
     ck = torch.load(args.model, map_location="cpu", weights_only=False)
     kind = ck.get("model", "lstm")
     grouped = kind == "attention"
@@ -213,12 +300,12 @@ def main() -> int:
     val_clips = split["val"]
     x, y, adj = load(args.features, val_clips, grouped)
 
-    p_all = _predict(net, x, adj, grouped)
-    t_all = y.numpy().reshape(-1)
-    keep = t_all >= 0
-    p, t = p_all[keep], t_all[keep]
-    n_pos = int(t.sum())
-    base_rate = t.mean() if len(t) else 0.0
+    score_all = _predict(net, x, adj, grouped)
+    truth_all = y.numpy().reshape(-1)
+    keep = truth_all >= 0
+    score, truth = score_all[keep], truth_all[keep]
+    n_pos = int(truth.sum())
+    base_rate = truth.mean() if len(truth) else 0.0
 
     fails: list[str] = []
     warns: list[str] = []
@@ -232,15 +319,27 @@ def main() -> int:
         print(f"  WARN  {msg}")
         warns.append(msg)
 
-    print(f"model={kind}  validation clips={len(val_clips)}  samples={len(t):,}  "
+    print(f"model={kind}  validation clips={len(val_clips)}  samples={len(truth):,}  "
           f"positives={n_pos:,}  base rate={base_rate*100:.3f}%\n")
+    print(f"label_mode={label_mode} verified across {label_file_count:,} feature files")
+    if label_mode == "assert":
+        print("  class 1 score q = P(assert)")
+        print("  GO = q <= threshold")
+        print("  DANGEROUS = GO while truth == assert")
+        print("  dangerous rate = count(GO and assert) / count(GO)")
+        print("  S3 boundary: PYield = 1 - q\n")
+    else:
+        print("  class 1 score q = P(yield)")
+        print("  GO = q >= threshold")
+        print("  DANGEROUS = GO while truth == no-yield")
+        print("  dangerous rate = count(GO and no-yield) / count(GO)\n")
 
     print("1 - outputs are usable numbers")
-    check("all finite", bool(np.isfinite(p).all()))
-    check("all within 0 and 1", bool((p >= 0).all() and (p <= 1).all()))
-    check("not a constant", float(p.std()) > 1e-4, f"std={p.std():.5f}")
-    check("uses more than one value", len(np.unique(np.round(p, 3))) > 5,
-          f"{len(np.unique(np.round(p,3)))} distinct")
+    check("all finite", bool(np.isfinite(score).all()))
+    check("all within 0 and 1", bool((score >= 0).all() and (score <= 1).all()))
+    check("not a constant", float(score.std()) > 1e-4, f"std={score.std():.5f}")
+    check("uses more than one value", len(np.unique(np.round(score, 3))) > 5,
+          f"{len(np.unique(np.round(score,3)))} distinct")
 
     print("\n2 - is there enough to measure")
     check("validation set contains positives", n_pos > 0)
@@ -252,15 +351,15 @@ def main() -> int:
              f"every interval below will be wide, and that is the honest signal, not a defect.")
 
     print("\n3 - does it beat something trivial")
-    ap_model = average_precision(p, t)
-    lo, hi = bootstrap_ci(average_precision, p, t)
+    ap_model = average_precision(score, truth)
+    lo, hi = bootstrap_ci(average_precision, score, truth)
     print(f"  model average precision      {ap_model:.4f}   95% CI [{lo:.4f}, {hi:.4f}]")
     print(f"  always-say-no / base rate    {base_rate:.4f}   <- a useless model scores this")
     rng = np.random.default_rng(0)
-    ap_rand = average_precision(rng.random(len(t)), t)
+    ap_rand = average_precision(rng.random(len(truth)), truth)
     print(f"  random scores                {ap_rand:.4f}")
     x_last = x.reshape(-1, x.shape[-2], x.shape[-1])[:, -1, :].numpy()[keep]
-    fname, ap_feat, _, sign = single_feature_baselines(x_last, t)
+    fname, ap_feat, _, sign = single_feature_baselines(x_last, truth)
     print(f"  best SINGLE feature          {ap_feat:.4f}   ({fname}, sign {sign:+d})")
     check("beats the base rate", ap_model > base_rate,
           f"{ap_model:.4f} vs {base_rate:.4f}")
@@ -271,18 +370,28 @@ def main() -> int:
              "the model beats guessing, whatever the point estimate looks like.")
 
     print("\n4 - the operating point (chosen and reported on the SAME data - optimistic)")
-    thr, c = pick_threshold(p, t, args.target)
-    print(f"  chosen threshold: {thr:.2f}")
+    thr, c = pick_threshold(score, truth, args.target, label_mode)
+    comparator = ">=" if label_mode == "yield" else "<="
+    print(f"  chosen GO rule: class-1 score {comparator} {thr:.8f}")
     print(f"  says GO {c['n_go']:,} times; of those {c['dangerous_errors']:,} are wrong")
+    print(f"  coverage             : {100*c['n_go']/max(len(truth), 1):.3f}%")
     print(f"  DANGEROUS error rate : {c['dangerous_rate']*100:.2f}%   (target <= {args.target*100:.1f}%)")
     print(f"  harmless errors      : {c['harmless_errors']:,}  (waited when we could have gone)")
-    rec_lo, rec_hi = bootstrap_ci(lambda s, u: confusion(s, u, thr)["recall"], p, t)
-    dan_lo, dan_hi = bootstrap_ci(lambda s, u: confusion(s, u, thr)["dangerous_rate"], p, t)
+    rec_lo, rec_hi = bootstrap_ci(
+        lambda s, u: confusion(s, u, thr, label_mode)["recall"], score, truth)
+    dan_lo, dan_hi = bootstrap_ci(
+        lambda s, u: confusion(s, u, thr, label_mode)["dangerous_rate"], score, truth)
     print(f"  recall         {c['recall']*100:>6.2f}%  95% CI [{rec_lo*100:.2f}%, {rec_hi*100:.2f}%]")
     print(f"  dangerous rate {c['dangerous_rate']*100:>6.2f}%  95% CI [{dan_lo*100:.2f}%, {dan_hi*100:.2f}%]")
     check("dangerous error rate within target", c["dangerous_rate"] <= args.target,
           f"{c['dangerous_rate']*100:.2f}%")
     check("still useful - says GO sometimes", c["n_go"] > 0)
+
+    print("\n  risk versus coverage (same validation data - descriptive only)")
+    print("  coverage     n_go    dangerous    risk")
+    for row in risk_coverage(score, truth, label_mode):
+        print(f"  {row['coverage']*100:>7.3f}%  {row['n_go']:>8,}  "
+              f"{row['dangerous_errors']:>9,}  {row['dangerous_rate']*100:>6.3f}%")
 
     print("\n5 - the honest operating point (threshold from one half, reported on the other)")
     half = max(1, len(val_clips) // 2)
@@ -301,9 +410,11 @@ def main() -> int:
             warn(f"one half has no positives ({int(ta.sum())} / {int(tb.sum())}) - cannot "
                  f"separate threshold choice from reporting. Section 4 stands, optimistically.")
         else:
-            thr_a, _ = pick_threshold(pa, ta, args.target)
-            cb = confusion(pb, tb, thr_a)
-            print(f"  threshold {thr_a:.2f} chosen on {len(a_clips)} clips, reported on {len(b_clips)}")
+            thr_a, _ = pick_threshold(pa, ta, args.target, label_mode)
+            cb = confusion(pb, tb, thr_a, label_mode)
+            print(f"  GO score {comparator} {thr_a:.8f} chosen on {len(a_clips)} clips, "
+                  f"reported on {len(b_clips)}")
+            print(f"  n_go {cb['n_go']:,} of {len(tb):,}  coverage {100*cb['n_go']/len(tb):.3f}%")
             print(f"  dangerous rate {cb['dangerous_rate']*100:>6.2f}%   recall {cb['recall']*100:>5.1f}%")
             drift = abs(cb["dangerous_rate"] - c["dangerous_rate"])
             print(f"  gap vs section 4: {drift*100:.2f} points")
@@ -312,12 +423,12 @@ def main() -> int:
                      "not to a property of the data.")
 
     print("\n6 - is it honest about its own confidence")
-    rows = calibration(p, t)
+    rows = calibration(score, truth)
     worst = 0.0
     for r in rows:
         worst = max(worst, abs(r["said"] - r["actual"]))
         print(f"  {r['bin']}  n={r['n']:>7,}  said {r['said']*100:>5.1f}%  actually {r['actual']*100:>5.1f}%")
-    ece = expected_calibration_error(p, t)
+    ece = expected_calibration_error(score, truth)
     print(f"  expected calibration error (population weighted): {ece:.4f}")
     check("never overconfident by more than 20 points", worst <= 0.20, f"worst gap {worst*100:.1f}")
     check("expected calibration error under 0.10", ece <= 0.10, f"{ece:.4f}")
@@ -330,7 +441,7 @@ def main() -> int:
         idx = rng.permutation(len(xs))
         cols = list(cols)
         xs[..., cols] = xs[idx][..., cols]
-        ap_s = average_precision(_predict(net, xs, adj, grouped)[keep], t)
+        ap_s = average_precision(_predict(net, xs, adj, grouped)[keep], truth)
         drop = ap_model - ap_s
         flag = "" if abs(drop) > 0.01 * max(ap_model, 1e-9) else "   <- ignored"
         print(f"  {gname:<24} AP {ap_s:.4f}   drop {drop:+.4f}{flag}")
@@ -342,9 +453,9 @@ def main() -> int:
     for frac in (0.05, 0.10, 0.25, 0.50):
         xs = x + torch.randn_like(x) * sd * frac
         pn = _predict(net, xs, adj, grouped)[keep]
-        cn = confusion(pn, t, thr)
+        cn = confusion(pn, truth, thr, label_mode)
         print(f"  noise {frac*100:>3.0f}% of std: dangerous {cn['dangerous_rate']*100:>6.2f}%  "
-              f"recall {cn['recall']*100:>5.1f}%  AP {average_precision(pn, t):.4f}")
+              f"recall {cn['recall']*100:>5.1f}%  AP {average_precision(pn, truth):.4f}")
 
     print("\n9 - per class, where does it fail worst")
     cls = x_last[:, 11:27].argmax(-1)
@@ -352,8 +463,8 @@ def main() -> int:
         m = cls == cid
         if m.sum() < 50:
             continue
-        cc = confusion(p[m], t[m], thr)
-        print(f"  ClassID {cid:>2}: n={int(m.sum()):>7,}  pos={int(t[m].sum()):>4}  "
+        cc = confusion(score[m], truth[m], thr, label_mode)
+        print(f"  ClassID {cid:>2}: n={int(m.sum()):>7,}  pos={int(truth[m].sum()):>4}  "
               f"dangerous {cc['dangerous_rate']*100:>6.2f}%  recall {cc['recall']*100:>5.1f}%")
 
     print("\n10 - is the score driven by a single clip")
@@ -408,8 +519,10 @@ def main() -> int:
         print("Fix these before exporting. Report the whole output.")
         return 1
     print("READY FOR MATLAB.")
-    print(f"Use threshold {thr:.2f}. Below it the planner should treat the prediction as")
-    print("unusable and fall back to geometry alone - S3 says never 0.5.")
+    print(f"Use the tested GO rule: class-1 score {comparator} {thr:.8f}.")
+    if label_mode == "assert":
+        print("At the S3 boundary compute PYield = 1 - P(assert) exactly once.")
+    print("Outside the validated gate, emit Valid=false and fall back to geometry alone.")
     print("Quote the CONFIDENCE INTERVALS on the slide, not the point estimates, and quote the")
     print("dangerous error rate. Those are the honest numbers.")
     return 0

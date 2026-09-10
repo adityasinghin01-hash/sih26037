@@ -518,3 +518,44 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
 ### Applied Decision Rule (Decision 2):
 * `assert` rate is 1 in 12 (> 1 in 50) and `yield` is 1 in 301 (< 1 in 200).
 * As defined in `ml/ReadThis.md`, we train on `assert` and report `yield` as a documented data-limitation finding.
+
+---
+
+## 5. Dated Change Log
+
+* **[10-Sep-2026 04:58 IST] Part 17 LSTM Corrective Plan Added to `GUIDE.md` — PLANNING COMPLETE**
+  * **Change:** Appended `GUIDE.md` Part 17, Steps 90–100, using the existing phase structure and
+    `[🔵TO DO]` status tags.
+  * **Reason:** The current feature dataset was built with `label_mode = assert`, while the existing
+    evaluator still interprets class 1 and the high-score tail as yield. The implementation plan
+    therefore corrects the measurement before any further LSTM training.
+  * **Planned sequence:** Make evaluation label-aware; add known-answer tests; re-score the existing
+    checkpoint; create train/calibration/untouched-test partitions; freeze the safety gate; retrain
+    an unchanged LSTM baseline; fine-tune only if needed; audit prediction lead time; run the final
+    test; export and document the decision.
+  * **Outcome:** Documentation only. No evaluator, training code, feature files, split manifests,
+    checkpoints, ONNX files, MATLAB integration, frozen contract fields, or baseline files changed.
+    All Part 17 implementation steps remain `[🔵TO DO]`. The immediate next action is Step 90.
+  * **Documentation rule adopted:** From this entry forward, every repository change must also add
+    a `PROGRESS.md` entry containing the actual date and time, what changed, and the verified outcome.
+
+* **[10-Sept-2026 05:12 IST] Step 90: Assert-Aware Evaluator — COMPLETED**
+  * **Change:** Updated `ml/python/model/evaluate.py` to read `label_mode` from every feature archive,
+    reject missing/mixed/unknown modes, and evaluate the correct score tail for either `yield` or
+    `assert`. Added a risk-versus-coverage table and explicit output showing the formula in use.
+  * **Verified dataset meaning:** All **1,248** current feature archives declare
+    `label_mode = assert`. Class 1 is therefore `P(assert)`, GO is `P(assert) <= threshold`, and a
+    dangerous error is a real assertion inside that GO set. The S3 conversion remains
+    `PYield = 1 - P(assert)`; no frozen interface changed.
+  * **Existing-checkpoint diagnostic:** On the full previously inspected validation set, the
+    empirical operating point was threshold `0.00122345`, **77,718 GO decisions**, **777 dangerous
+    errors**, **9.914% coverage**, and **1.00% dangerous rate** with a sample-level 95% bootstrap
+    interval of **[0.93%, 1.06%]**.
+  * **Split-half check:** A threshold of `0.00276329` selected on 124 clips produced **62,179 GO
+    decisions out of 404,470 samples** on the other 125 clips (**15.373% coverage**) with a
+    **1.74% dangerous rate** and **16.8% safe-GO recall**. This exceeds the `<= 1.0%` target.
+  * **Outcome:** `NOT READY FOR MATLAB`. The two failing checks were
+    `never overconfident by more than 20 points` (worst gap **57.1 points**) and
+    `expected calibration error under 0.10` (measured **0.2079**). Existing metric tests passed;
+    `evaluate.py` compiled successfully. No model was retrained and no checkpoint/data file changed.
+    Step 90 is `[🟢COMPLETED]`; Step 91 remains `[🔵TO DO]`.

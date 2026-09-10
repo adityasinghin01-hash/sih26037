@@ -1629,4 +1629,298 @@ Done when: The commit is on `stream-ml` and `PROGRESS.md` contains the verified 
 
 ---
 
-
+
+## Part 17: LSTM Safety Evaluation Correction and Controlled Retraining
+
+> **Why this part exists.** The predictor dataset was built with `label_mode = assert`, so class
+> 1 means that the other road user takes the gap. The current evaluator still treats class 1 as
+> `yield` and checks the high-score end of the output. For an assert-trained model, the dangerous
+> case is on the opposite end: the model gives a very low `P(assert)`, the ego treats the gap as
+> available, and the other road user asserts anyway.
+>
+> The previously reported dangerous rates remain historical results, but they do not answer the
+> planner's safety question for an assert-trained model. We correct the measurement first, test the
+> existing LSTM again, and retrain only after the corrected baseline is known.
+
+### The Seven Hard Rules for This Phase
+
+1. **Do not retrain first.** Correct and test the evaluator before spending compute.
+2. **Keep the frozen interfaces unchanged.** S2 stays `[20,31]`; ONNX output stays
+   `yield_logits [1,2]`; S3 stays `PYield` plus `Valid`.
+3. **Use the label meaning explicitly.** For this dataset, model class 1 is `P(assert)` and the S3
+   boundary computes `PYield = 1 - P(assert)`.
+4. **A dangerous mistake is an assertion inside the GO set.** If `q = P(assert)`, GO means
+   `q <= threshold`; dangerous rate is `count(y=1 and GO) / count(GO)`.
+5. **Split by independent clips, never frames.** Calibration chooses the gate; the test split is
+   opened once for the final report.
+6. **Report safety and usefulness together.** Every result includes dangerous rate, confidence
+   interval, `n_go`, total samples, and coverage. A model that never says GO is not useful.
+7. **Keep `Valid = false` unless the corrected test passes.** A promising exploratory number does
+   not authorize the predictor to influence planning.
+
+---
+
+### Phase A: Correct What “Dangerous” Means
+
+#### Step 90 Make the Evaluator Label-Aware [🟢COMPLETED] [CRITICAL / HIGHEST PRIORITY]
+
+Update `ml/python/model/evaluate.py` so it reads and verifies the dataset's `label_mode` instead of
+assuming class 1 always means yield.
+
+For `label_mode = assert`:
+
+```text
+q = model probability for class 1 = P(assert)
+GO = q <= threshold
+dangerous error = GO and truth == assert
+dangerous rate = dangerous errors / all GO decisions
+PYield = 1 - q
+```
+
+The evaluator must refuse to continue if feature files contain mixed label modes or if the label
+meaning cannot be established. Internal variable names and printed output must say `assert` or
+`yield` accurately. The frozen ONNX tensor name `yield_logits` is not renamed.
+
+The output must include a risk-versus-coverage table, showing how safety changes as the model is
+allowed to say GO more often.
+
+Done when: `evaluate.py` identifies all 1,248 current feature files as `assert`, evaluates the
+low-`P(assert)` tail, and prints the formula it used before printing any dangerous-rate number.
+
+---
+
+#### Step 91 Add Known-Answer Tests for Both Label Directions [🔵TO DO] [CRITICAL]
+
+Extend `ml/python/tests/test_metrics.py` with small examples whose answers can be calculated by
+hand.
+
+The tests must prove:
+
+1. A high `P(yield)` that is wrong counts as dangerous for a yield-trained model.
+2. A low `P(assert)` followed by a real assertion counts as dangerous for an assert-trained model.
+3. A high `P(assert)` followed by no assertion is conservative for the planner, not the dangerous
+   GO mistake.
+4. Threshold equality is handled consistently.
+5. `n_go = 0` is reported as no coverage, not as a successful zero-percent dangerous rate.
+6. `PYield = 1 - P(assert)` is checked without changing the ONNX output tensor.
+
+Also run the existing contract and parity tests. If an unrelated test fails, report the complete
+output and do not hide it behind the evaluator work.
+
+Done when: all new known-answer cases pass and the old yield-direction tests still pass.
+
+---
+
+### Phase B: Re-score the Existing LSTM Before Retraining
+
+#### Step 92 Run a Corrected Exploratory Evaluation on the Existing Checkpoint [🔵TO DO] [HIGH]
+
+Use the existing `yield_lstm.pt` and saved validation data. Do not change weights in this step.
+
+Produce:
+
+- Dangerous rate for the low-`P(assert)` GO set.
+- `n_go`, total evaluated samples, and coverage.
+- A risk-versus-coverage curve rather than one hand-picked threshold.
+- Per-class results using the frozen S5 ClassIDs.
+- Per-clip error counts to show whether a few drives dominate the failures.
+- Confidence intervals produced by resampling whole clips, not individual overlapping sequences.
+
+This result is **exploratory only** because the existing validation scores have already been used
+for threshold and calibration experiments. It decides what to try next; it is not the final safety
+claim.
+
+Done when: the existing LSTM has a corrected baseline report and every number is labelled
+`exploratory — previously inspected validation data`.
+
+---
+
+### Phase C: Build a Clean Evaluation Protocol
+
+#### Step 93 Create Train, Calibration, and Untouched Test Partitions [🔵TO DO] [HIGH]
+
+Create a new deterministic split manifest outside the model checkpoint:
+
+```text
+train        fits model weights and feature normalisation
+calibration  fits probability calibration and selects the GO threshold
+test         final report only; never used to choose a model or threshold
+```
+
+All frames from one clip stay together. Before writing the split, inspect whether nearby clip names
+belong to the same recording session; where they do, keep the whole session in one partition to
+avoid a stronger form of leakage. Record the random seed and report clip, sample, and positive
+counts for all three partitions.
+
+Do not repeatedly change the seed to obtain a favourable test set. If any partition has too few
+assertion events, stop and report the counts before training.
+
+Done when: the new manifest is reproducible, has no clip/session overlap, and its counts are printed
+and saved with the run configuration.
+
+---
+
+#### Step 94 Define the Safety Gate Before Seeing Test Results [🔵TO DO] [HIGH]
+
+On calibration clips only:
+
+1. Correct the weighted-cross-entropy probability using the recorded training `pos_weight`.
+2. Compare raw scores, Platt scaling, and isotonic calibration.
+3. For each method, build the low-`P(assert)` risk-versus-coverage curve.
+4. Select the largest GO region whose **clip-level 95% upper confidence bound** satisfies the
+   dangerous-rate target of `<= 1.0%`.
+5. Freeze the calibration method and threshold before opening the test partition.
+6. Define `Valid = false` for unsupported classes, insufficient history, out-of-range features,
+   model disagreement, or any group whose risk bound does not pass.
+
+No threshold is accepted merely because it produces zero observed errors on a tiny number of GO
+samples. Coverage and `n_go` are always displayed beside risk.
+
+Done when: the calibration method, threshold, abstention rules, and test command are frozen in a
+config file before test inference begins.
+
+---
+
+### Phase D: Retrain the LSTM Under the Clean Protocol
+
+#### Step 95 Retrain an Unchanged LSTM Baseline [🔵TO DO] [HIGH]
+
+Retrain the current one-layer LSTM first, using the new training partition and the existing
+architecture and feature contract. This is required to obtain a genuinely untouched final test;
+it is not an architecture experiment.
+
+The run must:
+
+- Fit normalisation on training clips only and keep it inside the checkpoint.
+- Record `label_mode = assert`, split manifest, random seed, `pos_weight`, learning rate, epoch
+  count, and checkpoint hash.
+- Select epochs using calibration data only.
+- Leave the test partition unopened until the calibration and threshold are frozen.
+- Save checkpoints outside the repository.
+
+Done when: a reproducible baseline checkpoint exists and no test result influenced its training or
+selection.
+
+---
+
+#### Step 96 Run a Small Safety-Focused LSTM Sweep [🔵TO DO] [HIGH]
+
+Only if the unchanged baseline does not provide enough safe coverage, run a bounded set of LSTM
+experiments. Keep the 31-feature input and the same small architecture family.
+
+Compare:
+
+1. Different positive-class weights, with every probability recalibrated afterwards.
+2. Training batches balanced by clip and assertion event so long repeated events do not dominate.
+3. Hard-positive mining focused on real assertions that received dangerously low `P(assert)`.
+4. Several random seeds to measure stability.
+5. A conservative seed ensemble using the **maximum** `P(assert)` across members; disagreement
+   therefore makes the vehicle wait instead of making it go.
+
+Choose the winner by calibration-set safe coverage subject to the 1% risk bound—not by training
+loss, accuracy, or average precision alone. Do not increase model size merely because a larger
+network is available.
+
+Done when: one table compares every run using the same calibration clips and lists dangerous rate,
+upper confidence bound, `n_go`, coverage, AP, and checkpoint/config identifier.
+
+---
+
+### Phase E: Decide Whether the Label Itself Must Change
+
+#### Step 97 Audit Current-Frame Classification Versus Future Prediction [🔵TO DO] [HIGH]
+
+The current dataset builder labels a sequence using the behaviour flag at its final/current frame.
+Before claiming that the LSTM predicts future intent, inspect the annotation timing around assertion
+starts and answer:
+
+> Does the present target identify behaviour already happening, or does it provide useful warning
+> before the assertion begins?
+
+If the warning is not early enough, stop for a human decision on the future horizon. A future label
+would mean “does this agent assert within the next chosen time window?” and requires rebuilding all
+features with `--force` followed by retraining. Do not choose the horizon silently and do not report
+future-prediction performance from current-frame labels.
+
+Done when: measured lead-time evidence is recorded and the existing label is either retained with
+an honest claim or a human-approved future horizon is documented.
+
+---
+
+### Phase F: Final Test, MATLAB Export, and Handoff
+
+#### Step 98 Open the Untouched Test Set Once [🔵TO DO] [CRITICAL]
+
+Run the frozen model, calibrator, threshold, and abstention rules on the untouched test clips.
+
+Report:
+
+- Dangerous errors and dangerous rate.
+- Clip-level 95% confidence interval.
+- `n_go`, total samples, and coverage.
+- Per-class and per-clip results.
+- Performance under the existing sensor-noise degradation test.
+- How often `Valid = false` and why.
+
+**Pass:** the upper confidence bound is at or below 1%, with non-zero useful coverage.
+
+**Fail:** keep `Valid = false`, report the full result, and do not tune against the test set. Any
+further attempt begins with a new test partition or an approved cross-validation protocol.
+
+Done when: exactly one final test report is saved with the model and configuration identifiers.
+
+---
+
+#### Step 99 Export and Verify the Selected LSTM [🔵TO DO] [HIGH]
+
+If Step 98 passes, export the selected checkpoint through the existing ONNX exporter and verify:
+
+1. Opset 18 is actually written in the file.
+2. No `Gather` or `Scatter` operator appears.
+3. ONNX Runtime matches PyTorch numerically.
+4. MATLAB imports with zero placeholder layers.
+5. The MATLAB boundary computes `PYield = 1 - P(assert)` exactly once.
+6. MATLAB emits `Valid = false` outside the approved gate.
+
+If Step 98 fails, export may still be used for integration testing, but it must be clearly marked
+unsafe for behavioural weighting and must always emit `Valid = false`.
+
+Done when: the exported file, calibration configuration, threshold, and `Valid` rules reproduce the
+Python test decisions in MATLAB.
+
+---
+
+#### Step 100 Record the Corrected Result and Decision [🔵TO DO] [LOW]
+
+Append the measured results to `PROGRESS.md` without deleting the historical evaluation. Clearly
+state that the earlier numbers measured the high-`P(assert)` error and Part 17 measures the
+planner-relevant low-`P(assert)` GO risk.
+
+Record one final decision:
+
+- **Deploy selectively:** corrected test passes; use the frozen gate and `Valid` rules.
+- **Keep gated off:** corrected test fails; planner uses geometric role alone.
+- **Change the prediction target:** current-frame labels do not provide sufficient warning; begin a
+  separately approved future-horizon dataset run.
+
+Done when: another team member can reproduce the result from the recorded split, config,
+checkpoint hash, calibration method, and exact commands without asking a question.
+
+---
+
+### Part 17 Execution Order
+
+| Order | Step | Action | Retraining? |
+|---:|---:|---|:---:|
+| 1 | 90 | Correct assert-versus-yield evaluation semantics | No |
+| 2 | 91 | Add known-answer metric tests | No |
+| 3 | 92 | Re-score the existing LSTM as an exploratory baseline | No |
+| 4 | 93–94 | Create the clean split and freeze the safety gate | No |
+| 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** |
+| 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
+| 7 | 97 | Verify that the target predicts early enough | Maybe |
+| 8 | 98–100 | Final test, export, MATLAB verification, and documentation | No |
+
+**Immediate next action:** Step 91 only. Do not start training until Steps 90–94 are complete.
+
+---
