@@ -81,7 +81,10 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        ("s4_ground",   (  130.0, -900.0,  1.3), aim( -3.0,  0.0), 24.0),
        # component 3 pass 2 item 3: the railway yard + station (NBD)
        ("rail_yard", ( -900.0, -700.0,150.0), aim(-18.0,200.0), 26.0),
-       ("rail_station",(-650.0, -940.0, 20.0), aim( -8.0,110.0), 30.0))
+       ("rail_station",(-650.0, -940.0, 20.0), aim( -8.0,110.0), 30.0),
+       # close-up on the rails/sleepers material + OHE masts, near the NBD main line
+       # aimed at the measured position of an actual OHE mast (-485.4,-906.6), not guessed
+       ("rail_close", (-500.0, -930.0,  4.0), aim( -8.0, 32.0), 24.0))
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))
