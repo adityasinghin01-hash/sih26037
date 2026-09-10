@@ -11,14 +11,14 @@ need it, but it is no longer the current state and this page no longer repeats i
 
 ---
 
-## TODO(unverified) — the chat structure
+## The chat structure — resolved 10 September 2026
 
-The old version of this page described **three chats**: CITY (the 3D Blender world, a separate
-chat), BACKUP (a fallback demo), INTEGRATOR (this repo). Aditya has said the 3D city and game
-build now happen in a genuinely separate chat from this one. Whether BACKUP is still a distinct
-third chat, or has folded into one of the other two, was not confirmed when this page was
-rewritten — say so here rather than guess. **Aditya: correct this section the next time you touch
-this file.**
+**Two chats, not three.** CITY (the 3D Blender world) is its own separate chat. BACKUP, as
+originally conceived — a separate fallback build — was tried and dropped: it "was not
+good-looking," in Aditya's own words, so the team is not building it. **The live 2D demo
+(`demo_play.m`, this repo) is now the fallback/demo path in BACKUP's place**, not a third,
+separate effort — its own scope is growing to match (see the current build queue below and
+`HANDOFF.md`).
 
 What's not in question: **this repo (the "INTEGRATOR" role) owns the MATLAB planner, the ML
 pipeline, the baseline, the evidence, and the live 2D demo (`demo_play.m`).**
