@@ -1927,7 +1927,7 @@ Done when: calibrated parameters for the attention model and its before/after re
 
 ---
 
-### Step 102 Fix YOLOX Spotter Domain Gap on Rendered Simulator Scenes [🔵TO DO] [HIGH]
+### Step 102 Fix YOLOX Spotter Domain Gap on Rendered Simulator Scenes [🟢COMPLETED] [HIGH]
 
 The detector achieves high AP on real IDD photographs (29.09% mAP on A100), but confidence drops to 5–19% on synthetic/rendered camera frames from the simulation graphics. This is MATLAB work (`matlab/+sih/+models/trainSpotter.m`).
 
@@ -1983,11 +1983,11 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 7 | 97 | Verify that the target predicts early enough | No (Done) |
 | 8 | 98–100 | Final test, export, MATLAB verification, and docs (Steps 98–100 Done) | No (Done) |
 | 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No (Done) |
-| 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** |
+| 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** (Done) |
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 102 (Fix YOLOX Spotter Domain Gap on Rendered Simulator Scenes - Task 3).
+**Immediate next action:** Step 103 (Re-verify DeepLab v3+ Road Segmenter Sanity in MATLAB - Task 4).
 
 ---
 

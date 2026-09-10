@@ -40,6 +40,9 @@ arguments
     opts.Execution     (1,1) string {mustBeMember(opts.Execution, ["auto","gpu","cpu"])} = "auto"
     opts.CheckpointPath string = ""
     opts.InitialDetector = []
+    opts.InitialLearnRate (1,1) double {mustBePositive} = 1e-3
+    opts.DomainAugment (1,1) logical = false
+    opts.MaxImages (1,1) double = Inf
 end
 
 %% Preflight - fail with an instruction, never with a missing-function error
@@ -90,12 +93,20 @@ end
 
 rng(0);                                     % a split you can reproduce
 idx = randperm(n);
+if isfinite(opts.MaxImages) && opts.MaxImages < n
+    idx = idx(1:opts.MaxImages);
+    n = numel(idx);
+end
 nVal = max(1, round(opts.ValFraction * n));
 valIdx = idx(1:nVal);
 trainIdx = idx(nVal+1:end);
 fprintf('Split: %d train, %d validation\n', numel(trainIdx), numel(valIdx));
 
 dsTrain = combine(subset(imds, trainIdx), subset(blds, trainIdx));
+if opts.DomainAugment
+    fprintf('Applying domain augmentation to mimic synthetic/rendered graphics...\n');
+    dsTrain = transform(dsTrain, @iDomainAugment);
+end
 dsVal   = combine(subset(imds, valIdx),   subset(blds, valIdx));
 
 %% Train
@@ -110,7 +121,7 @@ optArgs = { ...
     "adam", ...
     "MaxEpochs", opts.MaxEpochs, ...
     "MiniBatchSize", opts.MiniBatchSize, ...
-    "InitialLearnRate", 1e-3, ...
+    "InitialLearnRate", opts.InitialLearnRate, ...
     "ValidationData", dsVal, ...
     "ExecutionEnvironment", opts.Execution, ...
     "ResetInputNormalization", false, ...
@@ -161,3 +172,22 @@ if startsWith(string(fullfile(outFile)), string(here))
          'and .gitignore blocks .mat - write it somewhere else.'], outFile);
 end
 end
+
+
+function dataOut = iDomainAugment(data)
+% IDOMAINAUGMENT  Simulate synthetic 3D rendering pipeline characteristics.
+%   1. Gaussian filter to eliminate natural CMOS camera sensor noise/grain.
+%   2. Dynamic range expansion and contrast stretching matching Cycles rendering.
+%   3. Color saturation boost in HSV space matching CAD/CGI surface materials.
+I = data{1};
+if size(I, 3) == 3
+    I_smooth = imgaussfilt(I, 0.6);
+    I_adj = imadjust(I_smooth, stretchlim(I_smooth, [0.02 0.98]), []);
+    hsv = rgb2hsv(I_adj);
+    hsv(:, :, 2) = min(1.0, hsv(:, :, 2) * 1.25);
+    I = im2uint8(hsv2rgb(hsv));
+end
+dataOut = data;
+dataOut{1} = I;
+end
+

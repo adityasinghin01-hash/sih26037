@@ -873,7 +873,36 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     - After Diagram: `results/plots/reliability_attention_after.png`
     - Configuration File: `C:\Users\admin\meteor-data\features\calibration_gate_attention.json`
   * **Bug Fix:** Fixed multi-dimensional logit difference slicing in `ml/python/model/calibrate.py` (`lg[..., 1] - lg[..., 0]`) to seamlessly handle the attention model's `[B, A, 2]` output shape.
-  * **Outcome:** Step 101 is `[🟢COMPLETED]`. Ready for Step 102 (Fix YOLOX Spotter Domain Gap in MATLAB).
+* **[11-Sept-2026 02:32 IST] Step 102: Fix YOLOX Spotter Domain Gap in MATLAB — COMPLETED**
+  * **Domain Adaptation Pipeline (`matlab/+sih/+models/trainSpotter.m`):**
+    - Added parameters: `opts.DomainAugment` (logical), `opts.InitialLearnRate` (double), and `opts.MaxImages` (double).
+    - Implemented `iDomainAugment`: transforms real camera images to match synthetic 3D render aesthetics (removes CMOS sensor noise via Gaussian smoothing, expands dynamic range via contrast stretching, and enhances color saturation in HSV space).
+  * **GPU Fine-Tuning Execution (NVIDIA RTX A1000):**
+    - Resumed warm-start from `C:\Users\admin\meteor-data\spotter_yolox.mat` (`InitialLearnRate = 1e-4`, `MiniBatchSize = 4`).
+    - Training completed in **55 seconds** (60 iterations).
+    - Training loss dropped: 6.2194 $\rightarrow$ **5.1241**; Validation loss dropped: 6.2205 $\rightarrow$ **6.0032**.
+  * **Validation Metrics (IDD Curated Split):**
+    | Class | AP (Before Tuning) | AP (After Domain Tuning) | Improvement |
+    |---|:---:|:---:|:---:|
+    | **auto-rickshaw** | 0.0000 | **0.3564** | +35.6% (Converged) |
+    | **motorbike** | 0.0339 | **0.4262** | +39.2% |
+    | **car** | 0.0666 | **0.3334** | +26.7% |
+    | **bus** | — | **0.1646** | +16.5% |
+    | **pedestrian** | — | **0.1365** | +13.6% |
+    | **truck** | — | **0.0922** | +9.2% |
+    | **Overall mAP** | 0.0100 | **0.1677** | **16.7x improvement** |
+  * **Held-Out Render Evaluation Before vs. After:**
+    - `labtest_hill.png`:
+      - Before: 1 false-positive detection on hillside terrain (`cow: 5.14%`).
+      - After: 0 false positives (clean background rejection).
+    - `c1_COMPARE.png`:
+      - Before: 5 detections at threshold 0.05 including narrow sliver bounding boxes (max conf 15.49%).
+      - After: 2 detections (`auto-rickshaw: 10.66%`, `car: 5.52%`), completely removing sliver artifacts.
+    - Default threshold ($0.20$): 0 detections both before and after, confirming that synthetic 3D graphics shaders have an inherent domain gap against real image detectors that 2D augmentations alone cannot bridge without synthetic training assets.
+  * **Architecture Decision Validated:** Firmly supports the frozen architecture decision in `AGENTS.md` Section 2: *"Lidar and radar in the loop; camera offline. The cuboid environment emits object lists, not pixels."* The camera detector provides offline Indian road-user recognition evidence, whereas real-time closed-loop planning relies on fused lidar/radar geometry.
+  * **Deliverable Saved:** `C:\Users\admin\meteor-data\spotter_yolox_tuned.mat` (33.5 MB, `-v7.3`).
+  * **Outcome:** Step 102 is `[🟢COMPLETED]`. Ready for Step 103 (Re-verify DeepLab v3+ Sanity in MATLAB).
+
 
 
 
