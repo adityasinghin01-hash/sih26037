@@ -821,7 +821,39 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     2. **Failsafe Gate Triggered:** Because the upper confidence bound (2.854%) exceeds 1.00%, the safety gate enters **terminal failsafe mode**.
     3. **Enforcement:** Per `AGENTS.md` Section 3 and `GUIDE.md` Step 99, the yield predictor model must be exported with **`Valid = false`** hard-coded for autonomous deployment, forcing the planner to fall back entirely onto the geometric velocity obstacle and barrier guarantees ($h = \lambda - \beta \ge 0$).
     4. **Result Quality:** This is a mathematically honest, unvarnished scientific result demonstrating why autonomous driving in unstructured traffic requires formal geometric control barriers rather than blind reliance on learned neural network predictions.
-  * **Outcome:** Step 98 is `[🟢COMPLETED]`. Final report frozen in `results/step98_test_report.json`. Immediate next action is Step 99 (Export ONNX model with `Valid = false` failsafe enforcement).
+  * **Outcome:** Step 98 is `[🟢COMPLETED]`. Final report frozen in `results/step98_test_report.json`.
+
+* **[11-Sept-2026 01:25 IST] Step 99: Export ONNX Baseline & MATLAB Bridge Verification — COMPLETED**
+  * **Objective & Implementation:** Export the retrained baseline LSTM checkpoint (`yield_lstm.pt`) to ONNX across opsets 17, 18, and 20 using `ml/python/export/to_onnx.py`, eliminate compiler-generated `Gather` operators, verify numerical parity with PyTorch, test native execution in MATLAB R2024b, and implement the MATLAB S3 prediction boundary (`sih.prediction.predictYield`) with `Valid = false` failsafe gating.
+  * **ONNX Export Artifacts & Operator Verification:**
+    - Exported Models: `ml/python/export/yield_lstm_opset17.onnx`, `ml/python/export/yield_lstm_opset18.onnx`, `ml/python/export/yield_lstm_opset20.onnx`.
+    - Opset in File: Exactly verified as **18** for R2024b/R2026a target compatibility.
+    - Operator Whitelist: `['Concat', 'Constant', 'Div', 'Flatten', 'Gemm', 'LSTM', 'LayerNormalization', 'Slice', 'Squeeze', 'Sub', 'Transpose', 'Unsqueeze']`.
+    - Forbidden Operators Check: **`Gather: 0`, `Scatter: 0`** (strictly zero forbidden operators).
+    - Numerical Parity vs PyTorch: **Max absolute difference = $8.94 \times 10^{-8}$** (near-zero machine precision agreement).
+  * **MATLAB R2024b Native Execution Verification:**
+    - Imported cleanly via `importONNXFunction('ml/python/export/yield_lstm_opset18.onnx', ...)` with 0 errors.
+    - Executed live forward pass: input `dlarray(1, 20, 31, 'single')` $\rightarrow$ output `2x1 single dlarray` `[-2.5748; 2.6541]`.
+  * **MATLAB S3 Prediction Boundary & Unit Test Suite:**
+    - Created `matlab/+sih/+prediction/predictYield.m`:
+      - Implements Contract S3 YieldPrediction: `.TrackIDs [N x 1 uint32]`, `.PYield [N x 1 double]`, `.Valid [N x 1 logical]`.
+      - Computes $P_{\text{yield}} = 1 - P(\text{assert})$ exactly once at the boundary.
+      - **Default Failsafe Gating:** Because Step 98 tripped the 1.00% safety bound on the untouched test partition, `predictYield` defaults to **`Valid = false`** for all tracks, ensuring the vehicle planner never trusts statistical predictions and relies 100% on the geometric velocity obstacle barrier $h = \lambda - \beta \ge 0$.
+    - Added comprehensive unit tests in `matlab/tests/testPredictYield.m`:
+      - `testEmptyInput`: PASS.
+      - `testPYieldComputation`: PASS ($P_{\text{yield}} = 1 - P_{\text{assert}}$).
+      - `testStep98FailsafeDefault`: PASS (`Valid = false` enforced).
+      - `testDimensionMismatchErrors`: PASS.
+    - MATLAB R2024b Test Suite Execution:
+      - `testPredictYield.m`: **4 Passed, 0 Failed, 0 Incomplete** (0.36 s).
+      - `testFeatureParity.m`: **3 Passed, 0 Failed, 0 Incomplete** (0.20 s).
+  * **Outcome:** Step 99 is `[🟢COMPLETED]`. Task 1 (Steps 90–100) is fully completed and verified in both Python and MATLAB.
+
+* **[11-Sept-2026 01:28 IST] Step 100: Final Scientific Result & Architecture Decision — COMPLETED**
+  * **Core Engineering Finding:** The empirical test across 233 unseen clips (694,864 samples) demonstrated an honest 2.089% dangerous error rate (95% upper bound 2.854%), confirming that machine learning predictions alone cannot provide a 99% safety guarantee in unstructured traffic.
+  * **Architecture Decision:** **Keep Gated Off (`Valid = false`)**. The autonomous vehicle uses the learned yield prediction for behavioral observation and dashboard telemetry, but the planning trunk is constrained exclusively by geometric barriers ($h \ge 0$) and COLREGs priority rules.
+  * **Outcome:** Step 100 is `[🟢COMPLETED]`. All Task 1 goals achieved. Ready for Part 18 / Task 2 (Step 101: Attention/GNN Calibration).
+
 
 
 

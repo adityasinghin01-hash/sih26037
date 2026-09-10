@@ -1874,7 +1874,7 @@ Done when: exactly one final test report is saved with the model and configurati
 
 ---
 
-#### Step 99 Export and Verify the Selected LSTM [🔵TO DO] [HIGH]
+#### Step 99 Export and Verify the Selected LSTM [🟢COMPLETED] [HIGH]
 
 If Step 98 passes, export the selected checkpoint through the existing ONNX exporter and verify:
 
@@ -1893,7 +1893,7 @@ Python test decisions in MATLAB.
 
 ---
 
-#### Step 100 Record the Corrected Result and Decision [🔵TO DO] [LOW]
+#### Step 100 Record the Corrected Result and Decision [🟢COMPLETED] [LOW]
 
 Append the measured results to `PROGRESS.md` without deleting the historical evaluation. Clearly
 state that the earlier numbers measured the high-`P(assert)` error and Part 17 measures the
@@ -1981,13 +1981,13 @@ Done when: all handoff artifacts are delivered in writing and acknowledged.
 | 5 | 95 | Retrain the unchanged LSTM for a clean final experiment | **Yes** (Done) |
 | 6 | 96 | Fine-tune only if the clean baseline needs improvement | Maybe |
 | 7 | 97 | Verify that the target predicts early enough | No (Done) |
-| 8 | 98–100 | Final test (Step 98 Done), export, MATLAB verification, and docs | No |
+| 8 | 98–100 | Final test, export, MATLAB verification, and docs (Steps 98–100 Done) | No (Done) |
 | 9 | 101 | Calibrate Yield-Attention/GNN model (Task 2) | No |
 | 10 | 102 | Fix YOLOX spotter domain gap in MATLAB (Task 3) | **Yes (MATLAB)** |
 | 11 | 103 | Re-verify DeepLab v3+ sanity in MATLAB (Task 4) | No |
 | 12 | 104 | Package team handoffs for Kishan, Aditya B., and Aditya | No |
 
-**Immediate next action:** Step 99 (Export and Verify the Selected LSTM with Valid=false safety enforcement).
+**Immediate next action:** Step 101 (Calibrate Yield-Attention/GNN Model - Task 2).
 
 ---
 
