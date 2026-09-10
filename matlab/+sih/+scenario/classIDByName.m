@@ -27,6 +27,7 @@ function cid = classIDByName(tag)
 %                                 to "truck", which better fits S1's own
 %                                 full-size tractor-trailer-adjacent traffic)
 %     dog            -> 11 dog                  (demo3Route.m's dog in the squeeze)
+%     child          -> 8  pedestrian            (demo3Route.m's crossing child)
 %
 %   Returns NaN (not an error) for an unrecognised tag, so a caller can drop
 %   the actor rather than crash - matching the S1 guarantee that perception
@@ -37,8 +38,8 @@ arguments
 end
 
 MAP = containers.Map( ...
-    {'cow', 'car', 'auto', 'moto_wrong', 'moto_over', 'wrong', 'tractor', 'trolley', 'bus', 'ace', 'dog'}, ...
-    {10,     1,     4,       5,            5,           5,       14,        13,       3,     7,    11});
+    {'cow', 'car', 'auto', 'moto_wrong', 'moto_over', 'wrong', 'tractor', 'trolley', 'bus', 'ace', 'dog', 'child'}, ...
+    {10,     1,     4,       5,            5,           5,       14,        13,       3,     7,    11,    8});
 
 t = char(tag);
 if isKey(MAP, t)

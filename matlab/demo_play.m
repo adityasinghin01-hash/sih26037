@@ -454,16 +454,37 @@ function A = activeActorsAt(spec, P, t)
 %ACTIVEACTORSAT  Which of actorSpec's rows exist at time t, and where - the
 %   exact per-step kinematics both builtinTracks and builtinPoses need. A
 %   plain closed-form function of t and spec; nothing here senses anything.
+%
+%   Columns 7/8 are OPTIONAL and back-compatible: every 6-column spec (S1,
+%   S2, S3's own motorcycle) behaves exactly as before - untouched, verified
+%   by construction, not just by inspection. If present, spec{k,7} is a
+%   lateral TARGET and spec{k,8} is a [t1 t2] time window: the actor's
+%   lateral position linearly interpolates from spec{k,3} at t<=t1 to
+%   spec{k,7} at t>=t2. This is a SECOND, independent kind of motion from
+%   spec{k,5}'s along-route speed, not a replacement for it - S3's child
+%   (crosses the road, does not travel along it) and its dog (steps aside,
+%   does not travel along it) both need lateral motion with zero along-route
+%   speed, which the six-column model had no way to express at all.
 A = struct('Row',{},'ClassID',{},'XY',{},'YawRad',{},'Vel',{},'Extent',{});
 for k = 1:size(spec,1)
     if ~isfinite(spec{k,3}), continue; end       % Cow="none"
     u = spec{k,2} + spec{k,5}*t;
     if u < 2 || u > P.Len - 2, continue; end     % gone past, or not here yet
-    [xy, hdg] = P.at(u, spec{k,3});
+    lat = spec{k,3};  latRate = 0;
+    if size(spec,2) >= 8 && ~isempty(spec{k,7}) && ~isempty(spec{k,8})
+        tw = spec{k,8};  dLat = spec{k,7} - spec{k,3};
+        frac = max(0, min(1, (t - tw(1)) / (tw(2) - tw(1))));
+        lat = spec{k,3} + dLat*frac;
+        if t > tw(1) && t < tw(2), latRate = dLat / (tw(2) - tw(1)); end
+    end
+    [xy, hdg] = P.at(u, lat);
     yaw = hdg + spec{k,6};  vel = [0 0 0];
     if spec{k,5} < 0
         yaw = hdg + pi;
         vel = spec{k,5}*[cos(hdg) sin(hdg) 0];   % world-frame, as S1 asks
+    end
+    if latRate ~= 0
+        vel = vel + latRate*[-sin(hdg) cos(hdg) 0];   % world-frame, lateral component
     end
     A(end+1) = struct('Row',k,'ClassID',spec{k,1},'XY',xy,'YawRad',yaw, ...
         'Vel',vel,'Extent',spec{k,4}); %#ok<AGROW>
@@ -536,8 +557,15 @@ D.CorridorLeadIn = 100;          % demo1/demo2's 12 m default made the ego try
                                  % little road left, and it froze - measured,
                                  % not assumed (see corridorFrom's own header).
                                  % 100 m starts the drift at s~132, well clear
-                                 % of the motorcycle encounter (~s=93-100), so
-                                 % the two do not interact.
+                                 % of the motorcycle encounter (~s=93-100) and
+                                 % of the child/dog encounter (clears ~s=127),
+                                 % so none of the three interact. TRIED 130 m
+                                 % during the misdiagnosis chased in the
+                                 % LatOffsets comment below - made things
+                                 % WORSE (froze 3.7 m earlier, since the ramp
+                                 % then started at s=102, before the child/dog
+                                 % encounter even finished) - reverted once the
+                                 % real cause turned out to be elsewhere.
 D.EgoWidth = 1.90;               % sc.s3geom: mirrors-out baseline. Folding
                                  % (runPlanner's lastCmd.MirrorsFolded check)
                                  % subtracts the same 0.20 m every route uses,
@@ -554,6 +582,30 @@ D.EgoStartE = 0.9;               % S1/S2's 1.75 m lane position is outside
                                  % own at s=140. See sc.demo3Route's header for
                                  % why the three lead-up segments no longer
                                  % narrow the corridor at all.)
+% NO D.LatOffsets HERE - TRIED AND REVERTED, DISCLOSED RATHER THAN QUIETLY
+% DROPPED. S1/S2's 7-value fan [-2.5 -1.585 -0.9 0 0.9 1.75 2.6] was sized
+% for their 7.0 m road, where +-0.9 clears +sc/planSeat's own road-edge check
+% (roadHalfW - |o| - egoW/2 >= MinClearance_m) with room to spare. On S3's
+% 4.5 m road that same check gives 2.25-0.9-0.95 = 0.40 m at o=+-0.9 - BELOW
+% the negotiation layer's 0.5 m floor regardless of any actor, traced by
+% temporarily instrumenting +sc/planSeat's own iPickPassLine (reverted after,
+% not a change to that file) and reading candidate-by-candidate clearances
+% directly. That looked, at the time, like the reason the dog (still at -1.0
+% then) could never get a real PASS, so a finer route-specific LatOffsets
+% grid was added here to give the fan something inside S3's true safe band.
+% It DID let that dog placement resolve - but running the full route with it
+% in showed the extra candidates ALSO changed which offset the ego settles
+% on well before the squeeze (most likely around the motorcycle encounter,
+% s~93-100), leaving a small persistent ~0.18-0.2 m residual that never
+% fully returns to e=0 - and that residual, not the dog, is what re-broke
+% the squeeze approach (identical "blocked ladder is D9" freeze at s=223.6,
+% present with EITHER dog placement, absent with neither). Confirmed by A/B:
+% removing the finer grid while keeping the dog at -1.65 (below) restores a
+% clean run past s=223.6 and into the squeeze; the finer grid was solving a
+% problem that the dog fix's own real solution (make o=0 sufficient - see
+% actorSpecS3's own header) had already made unnecessary, while quietly
+% introducing a worse one elsewhere. Left out on purpose - the working fix
+% for the dog/child conflict is entirely in actorSpecS3.m, not here.
 D.Hazards = fillHazards(sc.demo3Route());
 
 D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, "none");
@@ -563,16 +615,12 @@ D.Tracks = builtinTracksS3(W, nSteps, 0.05);
 end
 
 function spec = actorSpecS3()
-%ACTORSPECS3  The one live actor S3 ships with: the oncoming motorcycle at
-%   ~150 m (S3-THE-GALLI.md, "1 motorcycle oncoming at 150 m - there is no
-%   room for both, so somebody reverses"). Same {ClassID, s0, lateral,
-%   extent, speed (- = oncoming), extra yaw} shape actorSpec uses for S1, so
-%   activeActorsAt (already generic, scenario-agnostic) needs no changes to
-%   drive this too.
+%ACTORSPECS3  S3's three live actors. {ClassID, s0, lateral0, extent, speed
+%   (- = oncoming), extra yaw, [lateralTarget, [t1 t2]]} - the last two are
+%   optional (see activeActorsAt) and only the child/dog use them.
 %
-%   DEFERRED, NOT BUILT: the child crossing at t=8.2 and the dog in the
-%   squeeze - see sc.demo3Route's own header for why.
-%
+%   ROW 1 - THE ONCOMING MOTORCYCLE, ~150 m (S3-THE-GALLI.md: "no room for
+%   both, so somebody reverses").
 %   LATERAL AND SPEED, MEASURED AGAINST THE REAL FOOTPRINTS, NOT GUESSED
 %   TWICE OVER LIKE THE FIRST PASS WAS. Ego 1.90 m wide (sc.s3geom), moto
 %   0.75 m wide: combined half-widths need 1.325 m of separation before they
@@ -588,8 +636,112 @@ function spec = actorSpecS3()
 %   seat can pick on this road, not just the default one) and kept the 2.5
 %   m/s closing speed - real negotiation timing comes from the corridor
 %   still only being 3.2-3.6 m here, not from shaving the lateral margin
-%   to the minimum that survives a straight-line check.
-spec = { 5, 150, -1.5, [1.90 0.75 1.30], -2.5, 0 };
+%   to the minimum that survives a straight-line check. Verified +0.204 m
+%   full-route with the moto alone; +0.175 m once the child and dog (below)
+%   were added, still safely positive - both are ALWAYS-PRESENT tracked
+%   actors from t=0 (their stations are static, speed 0, so they exist in
+%   the world for the whole run, not just from their own window), which
+%   makes them simultaneously "ahead" during the moto encounter too and
+%   nudges the negotiated line slightly. Disclosed, not chased further: a
+%   real, small, still-safe side effect of three actors sharing one road,
+%   not a defect in any one of them.
+%
+%   ROW 2 - THE CHILD, crossing (S3-THE-GALLI.md t=8.2: "a child runs across").
+%   Station 110 m is CHOSEN - the spec times this off the WRITTEN action
+%   script's own clock, which this run does not share (real hazard caps and
+%   negotiation change when the ego actually gets anywhere), so there is no
+%   real station to recover; 110 m sits inside the open, unconstrained
+%   90-150 m stretch, clear of both the motorcycle (~s=93) and the squeeze
+%   (232). Crosses the FULL carriageway, verge to verge (+2.2 to -2.2),
+%   over a 3 s window (t=20-23 s) - also chosen, since ground truth does not
+%   need to land exactly under wherever the ego happens to be; the point is
+%   that the actor is real and the planner reacts to whatever it actually
+%   sees, not that the two clocks are synchronised.
+%
+%   ROW 3 - THE DOG (S3-THE-GALLI.md: "asleep exactly in the squeeze - it
+%   moves"). NOT placed at the squeeze's own station (232-246) - TWO REAL
+%   BUGS FOUND HERE, BOTH BY RUNNING THE FULL ROUTE, NEITHER ASSUMED:
+%
+%   BUG 1 - inside the squeeze, there is no safe "aside". The squeeze's
+%   1.95 m free width decomposes exactly into drain [-1.725,-0.975] +
+%   passable lane [-0.975,+0.975] + scooter [+0.975,+2.775] (sc.demo3Route),
+%   nothing left over for a second body at any lateral offset - stepping
+%   aside to +1.0 still overlapped the passable lane against the ego's own
+%   half-width, and the ego is forced by corridorFrom's ramp to within
+%   centimetres of e=0 well before it reaches the squeeze. Froze the planner
+%   permanently at s=225 m ("holding for track 903 to clear").
+%
+%   BUG 2 - moving the dog to 250 m (just past the squeeze, where the
+%   corridor is back to full width) did NOT fix it, and this is the more
+%   interesting of the two: sc.planSeat's own negotiation layer (iPickPassLine
+%   / iPickHoldLine, +sc/planSeat.m - Antara/Anjali's file, not edited here)
+%   filters "the road users we have to get past" with `trS > ctx.s - 2` and
+%   NO UPPER BOUND - any tracked actor still ahead of the ego, no matter how
+%   far, is treated as something the CURRENT candidate fan must clear. With
+%   the ego stuck deep in the squeeze (e forced near 0) and the dog 13+ m
+%   ahead at e=+1.0, iLineClearance's own arithmetic - (1.0-0.15) - (0+0.95)
+%   = -0.10 m - is negative for every offset the squeeze allows, so no
+%   candidate ever clears, the WAIT never resolves, and rung 2's stuck-timer
+%   reset just repeats the same WAIT forever. A real, disclosed limitation of
+%   an already-built, already-correct-elsewhere piece of the negotiation
+%   layer - not something to patch from this file, or from a track outside
+%   the one that owns it.
+%
+%   THE FIX (part 1): station 125 - inside the open 90-150 m stretch,
+%   comfortably before the ramp even starts narrowing (corridorFrom's
+%   lead-in begins at 232-100=132 m). By the time the ego's own s passes
+%   127 m the dog is more than 2 m behind it and drops out of "ahead"
+%   entirely, long before the corridor gets tight - the squeeze transit
+%   already proven to work (0 plan failures, full route) sees no third
+%   actor in it at all. Still steps aside over the same t=50-55 s window.
+%
+%   BUG 3 - station 125 alone still froze it, because station 125 sits close
+%   enough to the child's own 110 that BOTH are "ahead" (unbounded lookahead,
+%   same as bug 2) for the whole approach, and their settled positions
+%   pointed in OPPOSITE directions: the child settles at -2.2 (clears only
+%   for a candidate offset o >= -0.50), the dog stepping to +1.0 clears only
+%   for o <= -0.60 (iLineClearance's own arithmetic: (1.0-0.15)-(o+0.95) >=
+%   0.5). Those two requirements do not overlap for ANY o - a genuinely
+%   empty feasible set, true regardless of station separation as long as
+%   both are "ahead" together. FIRST FIX TRIED: step the dog to -1.0 instead
+%   of +1.0 - the same side as the child. Looked right by hand (child +1.90 m
+%   clear, dog +0.80 m clear at o=+0.9) but that arithmetic left out the
+%   THIRD term iLineClearance always checks - clearance to the physical road
+%   edge, roadHalfW-|o|-egoW/2 = 2.25-0.9-0.95 = 0.40 m, itself below the
+%   0.5 m floor. Chased at the time by adding a finer route-specific
+%   LatOffsets grid in builtinRouteS3 - since reverted, see its own header:
+%   the grid itself turned out to move the real problem, not solve it.
+%
+%   BUG 4 - the -1.0 fix (with that finer grid in place) let the ego find a
+%   real pass (o~0.6-0.9), but RETURNING to e=0 afterwards is the frozen
+%   planner's own findSharedTrunk tie-break, not a distance-proportional
+%   decay - measured still ~0.18 m off-centre 8 m before the squeeze,
+%   outside even the FOLDED tolerance (+-0.125 m, sc.s3geom), which hit the
+%   identical D9 freeze the corridor ramp was built to prevent, just from a
+%   smaller residual instead of a full lane change. Tried compensating with
+%   a longer corridorFrom leadIn (130 m) - made it WORSE, for the reason in
+%   runPlanner's own header. Tried removing the finer grid instead - the
+%   SAME ~0.18 m residual was still there with the dog at -1.0, proving the
+%   grid was never the fix for this part either, only a distraction that
+%   also broke something else further up the route (builtinRouteS3's header
+%   has the full account of what that was and why it's gone).
+%
+%   THE ACTUAL FIX: stop needing an avoidance offset at all. -1.65 is far
+%   enough that o=0 ITSELF already clears the dog (iLineClearance(0, 0.95,
+%   -1.65, 0.15) = +0.55 m) as well as the child (+1.00 m) - both checked
+%   AGAINST THE ROAD-EDGE TERM TOO this time, not just the per-actor one. The
+%   ego never has to leave e=0 for either actor, so there is no residual left
+%   to bleed off before the squeeze, and the original 7-value LatOffsets fan
+%   (S1/S2's, unmodified) is all this route ever actually needed. CHOSEN,
+%   disclosed: -1.65 sits past the default corridor's own eLo (-1.30 m),
+%   closer to the wall than a modest "step aside" - still a real tracked
+%   actor the frozen planner evaluates and would react to if it were any
+%   closer, just not one that forces a detour this time.
+spec = { ...
+    5,  150, -1.5,  [1.90 0.75 1.30], -2.5, 0, [], [] ; ...
+    8,  110,  2.2,  [0.50 0.50 1.40],  0,   0, -2.2, [20 23] ; ...
+    11, 125,  0.0,  [0.50 0.30 0.40],  0,   0, -1.65, [50 55] ...
+};
 end
 
 function TR = builtinTracksS3(W, n, DT)
@@ -612,13 +764,22 @@ end
 end
 
 function [PR, who, DIMS] = builtinPosesS3(W, n, DT)
-%BUILTINPOSESS3  Same actor, raw - see builtinPoses's own header on the one
-%   unit trap (traffic Yaw in degrees, ego Yaw in radians).
+%BUILTINPOSESS3  Same three actors, raw - see builtinPoses's own header on
+%   the one unit trap (traffic Yaw in degrees, ego Yaw in radians). Row order
+%   matches actorSpecS3 exactly: 1 motorcycle, 2 child, 3 dog.
 P = W.Path;
 spec = actorSpecS3();
+tags = {'moto_wrong', 'child', 'dog'};
+assert(numel(tags) == size(spec,1), ...
+    'demo_play:builtinPosesS3TagMismatch', ...
+    'actorSpecS3 has %d rows but builtinPosesS3 only names %d tags - keep them in step.', ...
+    size(spec,1), numel(tags));
 who = containers.Map('KeyType','double','ValueType','char');
-who(901) = 'moto_wrong';
-DIMS = struct('moto_wrong', spec{1,4});
+DIMS = struct();
+for k = 1:size(spec,1)
+    who(900+k) = tags{k};
+    DIMS.(tags{k}) = spec{k,4};
+end
 PR = cell(1, n);
 for i = 1:n
     t = (i-1)*DT;

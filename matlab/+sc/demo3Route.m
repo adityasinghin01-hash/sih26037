@@ -37,14 +37,59 @@ function hz = demo3Route()
 %     - THE 300-382 m TAIL IS FORESHORTENED FROM THE SPEC'S WRITTEN 300-416 m
 %       - see sc.s3world's own header for why
 %
-%   DEFERRED, NOT BUILT (disclosed, not silently dropped): the child crossing
-%   at t=8.2 and the dog asleep in the squeeze. Both need either lateral
-%   crossing motion or a triggered-at-a-timestamp state change that
-%   demo_play's activeActorsAt (constant-velocity-along-route only) does not
-%   support, and the dog's exact position within an already-1.95 m gap is not
-%   specified precisely enough to place without inventing a number. The
-%   squeeze and the motorcycle give-way - the two things S3's own "WHAT THIS
-%   TESTS" section names - are both real here.
+%   THE CHILD AND THE DOG ARE NOW BUILT (both were deferred in an earlier
+%   pass - see actorSpecS3.m in demo_play.m for both, and the real
+%   simplifications each one still carries, disclosed there rather than
+%   silently dropped): activeActorsAt gained an optional lateral-transition
+%   window, back-compatible with every existing spec row. The squeeze, the
+%   motorcycle give-way, the child's crossing and the dog's presence - all
+%   four of S3's real elements - are live in this file's traffic.
+%
+%   THE DOG IS NOT AT THE SQUEEZE'S OWN STATION, AND NOT AT +1.0, AND
+%   corridorFrom's leadIn IS BACK AT 100 M NOT 130 - FOUR real bugs, all
+%   found by running the full route, none assumed:
+%
+%   1. Inside the squeeze (232-246 m), the drain + passable lane + scooter
+%      already cover the entire free width edge to edge - no lateral pocket
+%      left for a second body at any offset. Froze the planner at s=225 m.
+%   2. Moving the dog just past the squeeze (250 m) still froze it: sc.
+%      planSeat's own negotiation layer (+sc/planSeat.m, Antara/Anjali's
+%      file, not edited here) treats ANY tracked actor still ahead of the
+%      ego - no distance limit - as one the current candidate fan must
+%      clear, and the ego is still deep in the squeeze's forced near-zero
+%      corridor when the dog first comes "ahead".
+%   3. Relocating the dog to 125 m (before the lead-in starts at 132 m)
+%      fixed that, but exposed a THIRD actor conflict: the child (110 m) is
+%      "ahead" for the same stretch, settles at -2.2 (clears only for offset
+%      >= -0.50), and the dog stepping to +1.0 cleared only for offset <=
+%      -0.60 - an empty overlap for any candidate, station separation
+%      irrelevant, as long as both are "ahead" together.
+%   4. Stepping the dog to -1.0 instead (same side as the child) looked
+%      right by hand, but needed a real ~0.6-0.9 m avoidance offset. Bug 3's
+%      hand arithmetic had missed the ROAD-EDGE term iLineClearance always
+%      checks too (roadHalfW-|o|-egoW/2 = 2.25-0.9-0.95 = 0.40 m at o=+-0.9,
+%      already below the 0.5 m floor on this narrow road regardless of any
+%      actor) - traced by temporarily instrumenting +sc/planSeat's own
+%      iPickPassLine (reverted after, not a change to that file). Chased at
+%      the time by adding a finer route-specific LatOffsets grid so SOME
+%      candidate existed inside the true safe band. That let the dog-at--1.0
+%      fix find a pass, but returning to e=0 afterwards is the frozen
+%      planner's own findSharedTrunk tie-break, not a distance-proportional
+%      decay - still ~0.18 m off-centre 8 m before the squeeze, outside even
+%      the folded tolerance (+-0.125 m), hitting the identical D9 freeze the
+%      corridor ramp exists to prevent. A compensating longer leadIn (130 m)
+%      made it worse. Removing the finer grid again, keeping dog-at--1.0,
+%      left the SAME ~0.18 m residual - proving the grid was never actually
+%      the fix for this, only something that had also broken the motorcycle
+%      encounter's own settling behaviour further up the route.
+%
+%   THE ACTUAL FIX: the dog now steps to -1.65, not -1.0 or +1.0 - far
+%   enough that offset o=0 ITSELF already clears both the dog and the child
+%   (checked against the road-edge term too this time - actorSpecS3.m's own
+%   header has the arithmetic). The ego never leaves e=0 for either actor,
+%   so there is no residual to bleed off before the squeeze, and the finer
+%   LatOffsets grid is gone entirely - S1/S2's original 7-value fan is all
+%   this route ever needed once the real source of the residual was found.
 %
 %   STATION/ZONE CONVENTION - same as every other route file: Station is the
 %   leading edge, Zone is the length forward from it. "barrier" entries here
