@@ -87,7 +87,16 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        ("rail_close", (-500.0, -930.0,  4.0), aim( -8.0, 32.0), 24.0),
        # component 3 pass 2 item 5: the S5 hill switchback, viewed from further out along its
        # own approach bearing (110 deg from hill centre) so the whole zigzag is visible
-       ("s5_switchback", (-627.0, 746.0, 150.0), aim(-18.0, 290.0), 28.0))
+       ("s5_switchback", (-627.0, 746.0, 150.0), aim(-18.0, 290.0), 28.0),
+       # component 3 pass 2 item 6: the S1 through-road's potholes/speed-breaker/culvert-stain.
+       # position+heading measured off the road's own tangent at chainage 100 m (interpolated
+       # from road_surface_features.json's own chainage-100 bracket), looking forward along the
+       # road toward the 141/158/196/240-268/302 feature cluster.
+       ("s1_road", (-313.48, 570.81, 1.3), aim(-1.0, 132.2), 28.0),
+       # close range on the pothole cluster itself (chainage 240/241/243) with the speed
+       # breaker just beyond it at 268 m - the S-scale distance these features are meant to
+       # be seen at, not a wide establishing shot.
+       ("s1_potholes", (-218.77, 490.28, 1.3), aim(-2.0, 132.2), 40.0))
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))

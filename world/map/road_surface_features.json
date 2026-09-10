@@ -190,5 +190,136 @@
    "depth": 0.0
   }
  ],
- "BRIDGE_2": []
+ "BRIDGE_2": [],
+ "S1_through_road": [
+  {
+   "kind": "pothole",
+   "chainage_m": 34,
+   "xy": [
+    -370.5751953125,
+    598.427490234375
+   ],
+   "diameter": 0.7615500000000001,
+   "depth": 0.07050000000000001,
+   "patched": false
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 88,
+   "xy": [
+    -323.04638671875,
+    577.3322143554688
+   ],
+   "diameter": 0.6315500000000001,
+   "depth": 0.036,
+   "patched": false
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 89,
+   "xy": [
+    -323.04638671875,
+    577.3322143554688
+   ],
+   "diameter": 0.81485,
+   "depth": 0.06066,
+   "patched": false
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 141,
+   "xy": [
+    -280.6896057128906,
+    548.5015258789062
+   ],
+   "diameter": 0.56785,
+   "depth": 0.04194,
+   "patched": true
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 196,
+   "xy": [
+    -240.13673400878906,
+    509.88201904296875
+   ],
+   "diameter": 0.85775,
+   "depth": 0.08693999999999999,
+   "patched": true
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 240,
+   "xy": [
+    -207.6593017578125,
+    480.19940185546875
+   ],
+   "diameter": 0.5451,
+   "depth": 0.0375,
+   "patched": false
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 241,
+   "xy": [
+    -207.6593017578125,
+    480.19940185546875
+   ],
+   "diameter": 0.6556,
+   "depth": 0.04158,
+   "patched": true
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 243,
+   "xy": [
+    -204.69595336914062,
+    477.5126647949219
+   ],
+   "diameter": 0.289,
+   "depth": 0.07674,
+   "patched": false
+  },
+  {
+   "kind": "pothole",
+   "chainage_m": 302,
+   "xy": [
+    -163.0706329345703,
+    439.77386474609375
+   ],
+   "diameter": 0.30785,
+   "depth": 0.0561,
+   "patched": false
+  },
+  {
+   "kind": "speed_breaker",
+   "chainage_m": 268,
+   "xy": [
+    -186.9158935546875,
+    461.3921813964844
+   ],
+   "tangent": [
+    0.7408345767546348,
+    -0.6716875239907177
+   ],
+   "length": 3.7,
+   "height": 0.1,
+   "irc": "IRC 99"
+  },
+  {
+   "kind": "culvert_stain",
+   "chainage_m": 158,
+   "xy": [
+    -266.2064514160156,
+    534.7088623046875
+   ],
+   "tangent": [
+    0.7241613359621027,
+    -0.6896305964047582
+   ],
+   "along_extent": 2.0,
+   "pipe_dia": 0.9,
+   "geometry_deferred": true
+  }
+ ]
 }

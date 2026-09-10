@@ -635,6 +635,27 @@ S5's "180 m" mark, where the climb begins after the bridge) · the 5-stretch sur
 individual culverts as pipe objects, the landslide JCB/equipment (Life/set-dressing, Component 7),
 and the temple + parking loop + hillside settlement (Component 4's buildings).
 
+**COMPONENT 3 PASS 2 · ITEM 6 — S-SCALE ROAD MATERIALS, written 10 Sep 2026 before building, per
+Rule 1.** Closes Component 3. Material only, per PLAN §3 method 2 and REF-11 §6 (a mask ribbon,
+not cut geometry) — sourced from IRC 35:2015 (REF-01 §2), never invented.
+**Network-wide, every paved (non-kaccha) `ROAD_*` object:**
+- **Edge line: 150 mm white**, 150 mm in from the carriageway edge (100 mm where paved width <7 m).
+- **Centre line only where width ≥5.5 m** (IRC Table 4.3 — a two-way road under 5.5 m gets NO
+  centre line): open-country dash, 3 m mark + 6 m gap, at 100 mm.
+- **Crumbling edge**: a soft, noise-masked darkening/roughening band **100–300 mm** at the very
+  pavement edge before the shoulder — a mask blend, never a hard line (REF-11 §6's own point).
+**S1's own located features** (S1-CATTLE-CROSSING.md, measured chainage along the through road
+`ROAD_48_1_tertiary`→`ROAD_49_0_tertiary`, chainage 0 = where this combined path crosses the S1
+circle boundary, r=205 from (−280,450) — S1's own "209 m" figure is the within-circle length,
+matching the S2/S0 convention elsewhere):
+- **9 potholes at 34, 88, 89, 141, 196, 240, 241, 243, 302 m**, 0.25–0.9 m diameter, 30–90 mm deep,
+  3 patched darker.
+- **Speed breaker at 268 m** (IRC 99): 3.7 m long, 100 mm high, black-and-white 300 mm bands.
+- **Hume pipe culvert at 158 m**, 900 mm — geometry deferred (a real pipe object), the visible
+  water-stain/silting is this item's job as a material mark only.
+Positions saved to `map/road_surface_features.json` (the same file bridges already write to), so
+Component 7's vehicle-offset system reads one source for every located road-surface feature.
+
 **COMPONENT 3 PASS 2 · ITEM 3 — THE RAILWAY, written 10 Sep 2026 before building, per Rule 1.**
 Full numbers already exist in `S0b-THE-RAILWAY.md` — this item is Rule 1 by reference, not a
 duplicate. Built from `map/najibabad_rail.json` (22 real rail ways, pulled and saved 3 Sep,
