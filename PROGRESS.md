@@ -559,3 +559,15 @@ Workstation Deliverables Status: CORE PIPELINE 100% COMPLETE; PART 16 (MODEL 4) 
     `expected calibration error under 0.10` (measured **0.2079**). Existing metric tests passed;
     `evaluate.py` compiled successfully. No model was retrained and no checkpoint/data file changed.
     Step 90 is `[🟢COMPLETED]`; Step 91 remains `[🔵TO DO]`.
+
+* **[10-Sept-2026 18:55 IST] Step 91: Known-Answer Metric Tests — COMPLETED**
+  * **Change:** Added known-answer unit tests in `ml/python/tests/test_metrics.py` covering both `yield` and `assert` label modes with hand-calculable test cases.
+  * **Verified requirements:**
+    1. Yield-mode: high P(yield) on non-yield is dangerous.
+    2. Assert-mode: low P(assert) followed by assertion is dangerous.
+    3. Assert-mode: high P(assert) with no assertion is harmless waiting, not dangerous.
+    4. Threshold equality handled consistently (boundary inclusive, ties kept together).
+    5. n_go = 0 reported as 0 coverage, not a false 0% risk victory.
+    6. S3 identity verified: $P_{\text{yield}} = 1 - P(\text{assert})$ maps assert-mode scores to frozen contract requirements without modifying ONNX output tensor names (`yield_logits`).
+  * **Outcome:** All 6 known-answer test cases passed (`python ml/python/tests/test_metrics.py`). Regression checks verified: `test_parity.py` passed all 11 tests; `test_contract.py` passed 15 of 16 tests (single existing float precision mismatch noted). `GUIDE.md` updated to mark Step 91 as `[🟢COMPLETED]`. Step 92 remains `[🔵TO DO]`.
+

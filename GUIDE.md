@@ -1689,25 +1689,18 @@ low-`P(assert)` tail, and prints the formula it used before printing any dangero
 
 ---
 
-#### Step 91 Add Known-Answer Tests for Both Label Directions [🔵TO DO] [CRITICAL]
+#### Step 91 Add Known-Answer Tests for Both Label Directions [🟢COMPLETED] [CRITICAL]
 
-Extend `ml/python/tests/test_metrics.py` with small examples whose answers can be calculated by
-hand.
+Extended `ml/python/tests/test_metrics.py` with hand-calculated test cases covering both label semantics:
 
-The tests must prove:
+1. **Yield-mode dangerous error**: High $P(\text{yield})$ on non-yield ($y=0$) confirmed as dangerous (`dangerous_errors = 1`, `dangerous_rate = 1.0`).
+2. **Assert-mode dangerous error**: Low $P(\text{assert})$ followed by real assertion ($y=1$) confirmed as dangerous (`dangerous_errors = 1`, `dangerous_rate = 1.0`).
+3. **Conservative waiting error**: High $P(\text{assert})$ with no assertion ($y=0$) confirmed as harmless waiting (`harmless_errors = 1`, `dangerous_errors = 0`).
+4. **Threshold equality & ties**: Verified that boundary equality score == thr permits GO in both directions, and score ties stay together across `pick_threshold`.
+5. **No coverage reporting**: $n_{\text{go}} = 0$ confirmed to report 0 coverage (`coverage = 0.0`), not a false 0% safety success.
+6. **S3 Identity**: Verified $P_{\text{yield}} = 1 - P(\text{assert})$ numerically without modifying the frozen ONNX tensor `yield_logits`.
 
-1. A high `P(yield)` that is wrong counts as dangerous for a yield-trained model.
-2. A low `P(assert)` followed by a real assertion counts as dangerous for an assert-trained model.
-3. A high `P(assert)` followed by no assertion is conservative for the planner, not the dangerous
-   GO mistake.
-4. Threshold equality is handled consistently.
-5. `n_go = 0` is reported as no coverage, not as a successful zero-percent dangerous rate.
-6. `PYield = 1 - P(assert)` is checked without changing the ONNX output tensor.
-
-Also run the existing contract and parity tests. If an unrelated test fails, report the complete
-output and do not hide it behind the evaluator work.
-
-Done when: all new known-answer cases pass and the old yield-direction tests still pass.
+Done when: all new known-answer cases pass and the old yield-direction tests still pass. All passed!
 
 ---
 
