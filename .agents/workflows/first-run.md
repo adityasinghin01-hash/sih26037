@@ -32,7 +32,8 @@ cd derisk
 check01_environment
 ```
 **Nine** `[ OK ]` lines under REQUIRED PRODUCTS. **If any says MISSING, stop** — except
-`no ONNX import`, which blocks only step 3 and Stream C's handoff. Everything else can proceed.
+`no ONNX import`, which blocks only step 3 and the ML track's handoff to the planner. Everything
+else can proceed.
 The two free add-ons the product installer does NOT provide, both from
 **Home -> Add-Ons -> Get Add-Ons**:
 - **"Deep Learning Toolbox Converter for ONNX Model Format"** — step 3 fails without it
@@ -69,7 +70,7 @@ check04_onnx_lstm
 cannot convert does not throw — it arrives as a custom layer holding a function a human has to
 write. A network full of placeholders imported "successfully" and is useless.
 
-**Send Stream D the opset number the moment you have it. It is the one thing blocking them.**
+**Send the Planner track the opset number the moment you have it. It is the one thing blocking them.**
 
 ### 4 · The planner tests
 ```matlab
@@ -80,9 +81,10 @@ runtests('matlab/tests/testNegotiatingStrategy.m')  %  9 - the OpenTrafficLab su
 **The `.m` is not optional** — without it MATLAB reads the path as a folder and errors with
 `MATLAB:unittest:TestSuite:UnrecognizedSuite`.
 
-**42 tests, all passing on R2026a as of 4 September 2026.** These are the oldest and
-best-verified code in the repo. If they fail, the problem is probably the MATLAB path — make
-sure you are at the repository root.
+**These 42 are part of the full 344-test suite (335 pass, 0 fail, 9 incomplete as of
+10 September 2026).** They're the oldest and best-verified code in the repo. If they fail, the
+problem is probably the MATLAB path — make sure you are at the repository root. Re-run the full
+count before quoting it; it's been wrong in these docs before.
 
 `testNegotiatingStrategy` needs OpenTrafficLab
 (`git clone https://github.com/mathworks/OpenTrafficLab.git`). Without it those 9 report
@@ -121,7 +123,7 @@ screenshot of part of it, never "it says something about a null value".
 ## What to do when something breaks
 
 1. **Report it in full and stop.** Do not try three fixes and report the third.
-2. **Do not edit `AGENTS.md` section 3** to make an error go away. Four people build against it.
+2. **Do not edit `AGENTS.md` section 3** to make an error go away. Six people build against it.
 3. **Do not touch `matlab/baseline/`.** It is MathWorks' shipped planner, unmodified, and it is
    our experimental control. Editing it makes every result we have worthless.
 4. If the fix is obvious and confined to one file the operator named, say what you would change

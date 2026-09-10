@@ -6,13 +6,13 @@ description: Prove the Python feature builder and its MATLAB twin still produce 
 stream. Point them at it rather than re-explaining. `ml/TROUBLESHOOTING.md` has every error we
 have already hit, with its real cause.
 
-## Stay inside the ML stream
+## Stay inside the ML track
 
 | Yours | NOT yours — say so in one sentence and stop |
 |---|---|
-| `ml/` and everything in it | `matlab/+sih/+planner/` and the Simulink model — Stream D |
-| `matlab/+sih/+prediction/` — the feature twin | `plan/` and `plan/CONTRACT-AB.md` — Stream D's roadmap |
-| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `ml/` and everything in it | `matlab/+sih/+planner/`, `matlab/+sc/`, and the Simulink model — the Planner track |
+| `matlab/+sih/+prediction/` — the feature twin | `plan/` — the Planner track's roadmap |
+| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | `ml/python/tests/` | `matlab/baseline/` — the competitor. **Never** |
 
 **You produce `S3 PYield`. You never consume it.** The planner reads it through the contract and
@@ -84,7 +84,7 @@ why. The two most likely causes:
 ## When to run this
 
 - After **any** edit to `ml/python/meteor/features.py` or `buildFeatureFrame.m`.
-- Before exporting a model that will be handed to the planner stream.
+- Before exporting a model that will be handed to the Planner track.
 - After a merge that touched either file.
 
 Finish with the section 7 report from `ml/ML.md`.

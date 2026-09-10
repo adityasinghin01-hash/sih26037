@@ -1,22 +1,26 @@
-# Stream C — Prediction
+# The ML track's task list (formerly "Stream C — Prediction")
 
+> **Retired framing, kept as reference, not a live assignment sheet.** This file predates the
+> 10 September restructure — check `HANDOFF.md` at the repo root for what Shourya and Kishan are
+> actually doing right now, and `TEAM.md` for the current org. What's below (the models, the
+> decisions, the fence boundary) is still technically accurate; the "one stream, one job" framing
+> around it is not — Shourya and Kishan work independently, not as one shared assignment.
+>
 > ## Read [`ml/ReadThis.md`](ReadThis.md) first.
 >
-> `ml/` is your folder. It holds the whole roadmap in plain language: what you are building,
-> which decisions are yours and how to make them, how the data works and what is wrong with it,
-> every step in order, and what "done" means.
+> `ml/` is the ML track's folder. It holds the whole roadmap in plain language: what you are
+> building, which decisions are yours and how to make them, how the data works and what is wrong
+> with it, every step in order, and what "done" means.
 >
 > - **[`ml/ReadThis.md`](ReadThis.md)** — the roadmap. Read once, top to bottom
 > - **[`ml/CHEATSHEET.md`](CHEATSHEET.md)** — every command, keep it open
 > - **[`ml/TROUBLESHOOTING.md`](TROUBLESHOOTING.md)** — errors we already hit
->
-> **This file is your task list and who is waiting on you.** The roadmap is how to do the work.
 
-> ### Stay inside the ML stream
+> ### Stay inside the ML track
 >
 > **Yours:** `ml/`, `matlab/+sih/+prediction/`, `matlab/+sih/+models/`.
-> **Not yours, and you must not open them:** `matlab/+sih/+planner/`, the Simulink model, `plan/`,
-> `matlab/+sih/+scenario/`, `+perception/`, and `matlab/baseline/`.
+> **Not yours, and you must not open them:** `matlab/+sih/+planner/`, `matlab/+sc/`, the Simulink
+> model if it's still live, `plan/`, `matlab/+sih/+scenario/`, `+perception/`, and `matlab/baseline/`.
 >
 > You produce `S3 PYield`. The planner consumes it through the frozen contract and never opens
 > your model — and you never open theirs. If the planner looks like it is misusing your output,

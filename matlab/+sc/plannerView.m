@@ -121,6 +121,8 @@ case 'init'
     % tried and the ego was too small to read.
     S.span = getf(d,'ViewSpan',60);          % m, half-span of the follow camera
     S.interactive = getf(d,'Interactive',true);
+    S.sensed = getf(d,'Sensed',false);       % demo_play's Sensed= - see the ground-truth
+                                              % notice below, which reads this
     % See demo_play's own note: feature('ShowFigureWindows') is TRUE under
     % `matlab -batch` on this machine, so it cannot detect "nobody is
     % watching". batchStartupOptionUsed is true for exactly that case.
@@ -269,10 +271,21 @@ case 'init'
     % the point of writing it. The second line is what lets the answer to
     % "so it cannot see?" be a real one - the perception work exists and is
     % tested, it is simply not in this loop.
-    text(S.axMdl, 0.0, 0.905, ...
-         sprintf('ROAD USERS: GROUND TRUTH, NOT DETECTED\nperception is real and tested separately -\nit is not in this loop'), ...
+    % Sensed=true (demo_play) swaps this notice: the road users are now run
+    % through sc.senseRig/senseStep - simulated lidar/radar/near-field-ring and
+    % a real trackerGNN - not handed over exactly. Said just as flatly as the
+    % ground-truth line above: real noise, real missed detections and the real
+    % bearing blind spot now apply, on purpose, and are not hidden either.
+    if S.sensed
+        gtMsg = 'ROAD USERS: SENSED, NOT GROUND TRUTH\nlidar+radar+ring -> trackerGNN -\nreal noise, dropout, blind spot apply';
+        gtColor = [.10 .30 .50];
+    else
+        gtMsg = 'ROAD USERS: GROUND TRUTH, NOT DETECTED\nperception is real and tested separately -\nit is not in this loop';
+        gtColor = [.62 .32 .05];
+    end
+    text(S.axMdl, 0.0, 0.905, sprintf(gtMsg), ...
          'VerticalAlignment','top', 'FontName','Menlo','FontSize',8.5, ...
-         'Color',[.62 .32 .05], 'Interpreter','none');
+         'Color',gtColor, 'Interpreter','none');
     S.NM = 6;                                  % 4 models + planner + slack
     S.mdlDot  = gobjects(1,S.NM);
     S.mdlName = gobjects(1,S.NM);

@@ -12,9 +12,9 @@ function gt = groundTruthTrack(poses, who, DIMS)
 %   geometry alone is exactly sih.perception.trackObjects's job, and handing
 %   it the ActorID here would let it cheat.
 %
-%   Same poses/who/DIMS shape sc.buildTrackList (the OTHER repo,
-%   ~/Desktop/SIH26037-Reference/matlab/+sc) already consumes, so this drops
-%   straight into both s1_action_run.m's and s2_action_run.m's poses{i}.
+%   Same poses/who/DIMS shape sc.buildTrackList (matlab/+sc/ in this repo,
+%   since the two-repo merge) already consumes, so this drops straight into
+%   both s1_action_run.m's and s2_action_run.m's poses{i}.
 %
 %   INPUTS
 %     poses  struct array from actorPoses(S): .ActorID .Position(1x3,m)

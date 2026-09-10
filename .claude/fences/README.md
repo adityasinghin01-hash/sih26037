@@ -1,18 +1,18 @@
-# The fences — how to make the stream boundary real
+# The fences — how to make the track boundary real
 
-`CLAUDE.md` and `AGENTS.md` **ask** an agent to stay inside its stream. These two files **stop
-it**. Pick the one for your stream, copy it, and the boundary stops depending on anyone reading
+`CLAUDE.md` and `AGENTS.md` **ask** an agent to stay inside its track. These two files **stop
+it**. Pick the one for your track, copy it, and the boundary stops depending on anyone reading
 a document carefully.
 
 ## Install yours — one command, once
 
-**Stream C (ML — METEOR, the yield models, ONNX):**
+**ML track (Shourya, Kishan — METEOR, the yield models, ONNX):**
 
 ```bash
 cp .claude/fences/ml.settings.local.json .claude/settings.local.json
 ```
 
-**Stream D (planner — Person A and Person B both):**
+**Planner track (Antara, Anjali):**
 
 ```bash
 cp .claude/fences/planner.settings.local.json .claude/settings.local.json
@@ -21,7 +21,7 @@ cp .claude/fences/planner.settings.local.json .claude/settings.local.json
 Restart Claude Code. That is all. **Do not commit `.claude/settings.local.json`** — it is
 personal, and it is already in `.gitignore`.
 
-Streams A, B, E and Aditya install neither. Integration has to read everything.
+Aditya and Aditya B. install neither. Integration and the bridge role have to read everything.
 
 ## What it actually does
 

@@ -19,13 +19,13 @@ re-deriving them wastes a day each.
 
 They live in `.agents/workflows/`. Open the file and follow it if a slash command does not resolve.
 
-## Stay inside the ML stream
+## Stay inside the ML track
 
 | Yours | NOT yours — say so and stop |
 |---|---|
-| `ml/` and everything in it | `matlab/+sih/+planner/` and the Simulink model — Stream D |
-| `matlab/+sih/+prediction/` — the feature twin | `plan/` — Stream D's roadmap |
-| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `ml/` and everything in it | `matlab/+sih/+planner/`, `matlab/+sc/`, and the Simulink model — the Planner track |
+| `matlab/+sih/+prediction/` — the feature twin | `plan/` — the Planner track's roadmap |
+| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | | `matlab/baseline/` — the competitor. **Never** |
 
 **You produce `S3 PYield`. You never consume it.** If the planner looks like it is misusing your
@@ -36,11 +36,11 @@ output, that is a message to a human — not a reason to read `matlab/+sih/+plan
 - **There is no per-agent 3-D in METEOR.** The `x-axis/y-axis/z-axis` fields are the ego vehicle's
   own position repeated on every object. Never build 3-D positions from them.
 - **The feature vector is 31 values in a fixed order.** Positions 1-31 never move. Append only at
-  32+, and only with a changelog row. Stream D reads them by position.
+  32+, and only with a changelog row. The planner reads them by position.
 - **`Gather` is not only a message-passing problem.** `out[:, -1, :]` and reading `x.shape` at
   runtime both emit it. Use `torch.flatten(out[:, -1:, :], 1)` and compile-time constants.
 - **torch lies about the opset.** Requesting 9, 11 or 13 writes a file stamped 18. Always read the
-  opset back out of the file before reporting it — that number unblocks the planner stream.
+  opset back out of the file before reporting it — that number unblocks the Planner track.
 - **The label is far too rare to train on as it stands**: 109 positives in 68,011 samples, 6 of
   them in validation, measured over 39 of METEOR's 1,251 clips. Reporting a precision or recall
   from a set that size without saying so is misleading, not merely incomplete.

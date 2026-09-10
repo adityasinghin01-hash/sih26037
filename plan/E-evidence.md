@@ -1,18 +1,18 @@
-# Stream E — Evidence
+# The evidence/metrics task list (formerly "Stream E — Evidence")
 
-> ## You are **Role 2 · The Driver**, working with Stream D.
+> **Retired framing, and a real open gap, not just a stale label.** This file predates the
+> 10 September restructure. **E1 and the baseline run described below are both done** — see
+> `HANDOFF.md`'s "already true today" list: the baseline has been run, it fails at 19.7s, that's
+> the recorded result. But **nobody in the current 6-person roster is explicitly assigned the
+> rest of this file's job** (real M1-M10 numbers for `matlab/+sih/runExperiment.m`'s
+> OpenTrafficLab T-junction harness — it currently writes every M-key as a literal
+> `"TODO(unverified)"` string, per its own header). The old `stream-e-evidence` branch was
+> dormant as of the last check. This is a genuine unclaimed piece of work, not a doc-freshness
+> issue — flagging it for Aditya rather than silently leaving it. It's adjacent to but distinct
+> from Aditya's own current work wiring `demo_play.m` (a different scenario) into the same
+> `results/<run>/` format.
 >
-> You cannot measure a planner you do not understand, so you sit with the planner pair rather
-> than alone. Read [`plan/ReadThis.md`](ReadThis.md) — the mechanism you are measuring is
-> explained there.
->
-> ### Your first task needs nobody, and it is blocking everyone
->
-> **E1 IS DONE — `matlab/baseline/` is filled** (4 Sep 2026), unmodified and checksummed.
-> **Your task is now to RUN it once, unmodified, and record exactly what happens.**
-> `checkcode` passes on all 7 files, but that is not a run — so there is still no comparison.
-> Read `matlab/baseline/BASELINE.md` first. If it errors on R2026a the way OpenTrafficLab did,
-> **that is a finding: write it down, do not fix it.**
+> Read [`plan/ReadThis.md`](ReadThis.md) — the mechanism you'd be measuring is explained there.
 >
 > ```bash
 > # from the repo root, and then CHANGE NOTHING inside it
