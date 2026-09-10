@@ -65,7 +65,17 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        # matlab_roads.csv at the S2/S3/S4 centres, not guessed. z<=3 is made ground-relative.
        ("s2road",  (  340.1, -579.9,  1.3),  aim( -1.0,232.2), 28.0),
        ("s3galli", ( -154.6, -475.7,  1.3),  aim( -1.0,118.6), 24.0),
-       ("s4trunk", (  140.6, -818.6,  1.3),  aim( -1.0,168.7), 35.0))
+       ("s4trunk", (  140.6, -818.6,  1.3),  aim( -1.0,168.7), 35.0),
+       # component 3 pass 2: the two real river bridges (S0 s4 PASS2 ITEM1). S5's own "near
+       # (x,y)" figures turned out to be an END of each span, not its middle - the drive
+       # cameras below use the ACTUAL built deck midpoint/heading, measured off the mesh
+       # (diag_deck_pos.py), not the approximate scenario-doc coordinate. Drive shots sit on
+       # the deck itself (z<=3 makes them deck-relative); side shots are offset+elevated from
+       # the true midpoint so the whole span, piers and water are framed.
+       ("bridge1_drive", ( -673.1,  773.4,  1.3), aim( -1.0,132.3), 28.0),
+       ("bridge1_side",  ( -703.4,  740.1, 20.0), aim(-20.0, 42.3), 24.0),
+       ("bridge2_drive", ( -827.9,  634.1,  1.3), aim( -1.0,162.3), 28.0),
+       ("bridge2_side",  ( -861.3,  623.4, 18.0), aim(-18.0, 72.3), 24.0))
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))

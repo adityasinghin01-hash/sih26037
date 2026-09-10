@@ -508,6 +508,30 @@ follow the S0 §4 table exactly.
 flyover decks and piers, the railway, the S2 gyratory island and the S5 hill road are **pass 2**.
 Pass 1 is every one of the 213 roads, at its real width, cut into the real ground.
 
+**COMPONENT 3 PASS 2 · ITEM 1 — THE TWO RIVER BRIDGES, written 9 Sep 2026 before building, per Rule 1.**
+Both real Malin crossings sit inside S5's circle (S5 §1 — "only two bridges in the entire 2 km box
+cross water, and both of them are here").
+- **BRIDGE 1, tertiary, near (−640, 740).** 89 m span at 132°, 46 m from the Malin centreline.
+  Fully specified in S5: carriageway **7.5 m** (IRC 5, two lanes) · footpath **1.5 m clear, WEST
+  side only** · safety kerb **750 mm, EAST side only** — deliberately asymmetric · railings
+  **1.1 m** above the deck, bottom gap **≤150 mm**, steel tube + vertical bar panels, white and
+  blue paint, rust bleeding at every weld, **3 panels bent**. Deck surface (S-scale, material not
+  geometry, PLAN §3 method 2): **16 patches, 11 open potholes 0.2–0.7 m**. Approach embankments
+  **90 m each side**, already carried by pass 1's gradient-limited profile.
+- **BRIDGE 2, residential, near (−822, 609).** 46 m span at 162°, 21 m from the Malin centreline.
+  **S5 does not separately describe this one** — built by IRC 5 class rule, stated as inference,
+  not measurement: single-lane carriageway **4.25 m** (IRC 5, narrower than the 4.5 m residential
+  road approaching it — a real, common rural detail, not an error) · safety kerb **750 mm both
+  sides**, no footpath · railings matching Bridge 1's family, **1.1 m**, ≤150 mm bottom gap.
+- **PIERS — a design decision, not a measurement**, because no REF source gives a span/pier
+  figure for a MINOR river bridge (only the flyovers have one, REF-01 §11's 22 m spans, sized for
+  highway load). Chosen as a realistic RCC slab-on-pier minor-bridge span: **piers at ~15–18 m
+  centres**, cross-section **900×900 mm on Bridge 1, 700×700 mm on Bridge 2** (lighter deck,
+  shorter span), founded in the riverbed, one pair per pier line under the two kerb lines.
+- Both decks **replace the pass-1 flat ribbon exactly over their span** and are held level (or
+  near-level) across the water crossing rather than following the conformed ground, which is what
+  makes it read as a bridge and not a paved dip.
+
 ## 5 · BUILDINGS — about 1000, from about 30 parts
 **Do not model whole buildings.** Model ~30 facade parts — window, shutter, balcony, AC box,
 sign board, awning, drainpipe, grille, staircase, water tank, parapet, door, meter box, dish,
