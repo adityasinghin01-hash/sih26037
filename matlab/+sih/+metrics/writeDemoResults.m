@@ -102,6 +102,14 @@ function M = computeM1toM10(D, LOG, DT)
 %   file's own top-of-file header for why that reuse is a disclosed decision,
 %   not a verified one.
 egoWidth = 1.8; egoLen = 4.7;   % TUNE.EgoWidth/EgoLength in demo_play's runPlanner
+% A REAL BUG, FOUND PREPARING THIS SESSION'S CASE STUDY: egoWidth used to be
+% this hardcoded default unconditionally, even though runPlanner itself reads
+% D.EgoWidth when the route sets one (S3's is 1.90 m, not 1.8 - sc.s3geom).
+% M6_minClearance_m below used the wrong, narrower ego for every S3 run,
+% UNDERSTATING how tight its clearances really are - the unsafe direction of
+% error. EgoLength has no such route override anywhere in demo_play.m (grep
+% confirms every TUNE.EgoLength is the same 4.7), so it needs none here either.
+if isfield(D, 'EgoWidth'), egoWidth = D.EgoWidth; end
 
 x = LOG.x(:); y = LOG.y(:); v = LOG.v(:); t = LOG.t(:);
 d = [0; cumsum(vecnorm(diff([x y]), 2, 2))];
@@ -116,8 +124,14 @@ M.M4_maxSpeed_kmh  = 3.6*max(v);
 % own reasoning: NaN < 0 is false, so a NaN run of steps can never masquerade
 % as a clean EMERGENCY-free stretch.
 H = nan(numel(LOG.t), 1);
+imminent = false(numel(LOG.t), 1);
 for i = 1:numel(LOG.cmd)
     if isfield(LOG.cmd{i}, 'H'), H(i) = LOG.cmd{i}.H; end
+    % RawState is +sc/planSeat's own un-held label, set the same step h is -
+    % it is "EMERGENCY" exactly when h<0 AND within the planner's own 4 s
+    % contingency horizon (its EmergencyTCPA_s gate), which is the precise,
+    % already-built answer to "was this h<0 actually imminent" - see below.
+    if isfield(LOG.cmd{i}, 'RawState'), imminent(i) = (LOG.cmd{i}.RawState == "EMERGENCY"); end
 end
 mh = min(H, [], 'omitnan');
 if isempty(mh), mh = NaN; end
@@ -141,6 +155,20 @@ M.RouteLength_m     = D.W.Path.Len;
 M.EgoWidth_m        = egoWidth;
 M.EgoLength_m       = egoLen;
 M.BarrierViolations = sum(H < 0, 'omitnan');
+% A REAL, DISCLOSED CAVEAT ON THE ABOVE, found preparing this session's case
+% study. Raw h<0 is true of ANY stationary object anywhere ahead in the ego's
+% own lane, at any distance - that is what the velocity-obstacle definition of
+% h actually answers ("would these paths ever intersect at present velocity"),
+% not "is this close." +sc/planSeat.m's own header documents this exact
+% false-positive (measured there at 99.5% of defined steps in one run) and
+% already carries the fix: EMERGENCY is only DISPLAYED when h<0 falls inside
+% the planner's own 4 s contingency horizon too. BarrierViolations above is
+% the raw count and on its own overstates real safety concern for exactly
+% that reason - it is kept, unclipped, per this project's own rule never to
+% hide a negative h. BarrierViolations_Imminent reuses the SAME gate the live
+% HUD already computes (RawState=="EMERGENCY") rather than re-deriving a
+% second, worse answer to a question planSeat.m already answered.
+M.BarrierViolations_Imminent = sum(imminent);
 end
 
 function sep = minClearanceToActors(D, LOG, egoWidth, egoLen)
