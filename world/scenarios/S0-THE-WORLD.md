@@ -532,6 +532,48 @@ cross water, and both of them are here").
   near-level) across the water crossing rather than following the conformed ground, which is what
   makes it read as a bridge and not a paved dip.
 
+**COMPONENT 3 PASS 2 · ITEM 2 — THE 9 FLYOVER DECKS, written 10 Sep 2026 before building, per Rule 1.**
+The 11 bridge-tagged OSM ways minus the 2 real river bridges (item 1) leave exactly 9 — REF-05 §1's
+"the other nine are highway flyovers 1.5 km from any water," now individually identified and
+measured, not guessed:
+| way id | class | length | centre | note |
+|---|---|---|---|---|
+| 895269398 | trunk NH534 | 538.4 m | (608,−385) | the "outside S4" NH534 bridge S0b names at (655,−341) — far from every scenario circle |
+| 895269401 | trunk NH534;NH734 | 186.4 m | (10,−706) | near S4, 58 m from the rail corridor |
+| 895269402 | trunk NH534 | 237.2 m | (197,−656) | the bridge-tagged way closest to S2 (161 m from its centre) |
+| 895269403 | trunk NH734 | 259.4 m | (147,−927) | **RAILWAY CROSSING** — 19 m from S0b's rail-crossing point (118,−748) |
+| 895269404 | secondary | 69.3 m | (185,−963) | the one non-trunk flyover |
+| 895269405 | trunk NH734 | 87.5 m | (106,−719) | **RAILWAY CROSSING** — 13 m from S0b's rail-crossing point (125,−737) |
+| 1090943854 | trunk | 350.8 m | (138,−840) | 41 m from S4's own centre — the highway-merge complex deck |
+| 1090943857 | trunk_link | 34.3 m | (126,−695) | one of S4's 2 slip roads (S0's own count) |
+| 1097355586 | trunk NH534 | 15.8 m | (94,−692) | a short connecting span near S4 |
+
+**A spec correction, same class as several this project has already made:** S2's illustrative text
+("NH534 trunk, 2 lanes, on BRIDGES — 124 m at 239°, 121 m at 229°, plus 55 m at grade") does not
+match any single OSM way in the real data at those exact lengths — the nearest bridge-tagged way to
+S2's centre is 895269402 at 237 m. **No arbitrary override is applied**; each flyover deck uses its
+own already-classified pass-1 carriageway width (trunk 14.0 m, trunk_link 7.0 m, secondary 7.0 m)
+rather than guessing which piece S2's text meant.
+
+**CLEARANCE — two classes, both measured against what is actually underneath, not generic ground:**
+- **The 2 railway crossings** (895269403, 895269405) target a soffit **~7.9 m above local ground**
+  — S0b's own derived figure (6.25 m clearance above rail level + ~1.0 m formation + ~0.68 m
+  ballast/sleeper/rail). The railway itself (item 3) is not built yet, so this is measured against
+  the ground at the crossing today and will still be correct once the formation exists, because
+  S0b's figure is already ground-relative. Approach ramp **≤3.5%** (IRC:SP:90 §6.14).
+- **The other 7** clear **5.5 m** (IRC:86, minimum vertical clearance on urban roads) above the
+  HIGHEST surface actually beneath the span at each sampled point — ground, or another road's own
+  deck where one flyover crosses a second road. Approach ramp **≤6%**, the same plain limit as pass 1.
+
+**PIERS — 1800×1800 mm square RCC (REF-01 §11), on piles, at ~22 m spacing (REF-08 §5)** along each
+deck's own measured length, same construction as the river bridges' piers but at the flyover's own
+(bigger) cross-section. Pier count follows directly from length: 1 on the 15.8 m piece, ~24 on the
+538.4 m one.
+
+**BARRIER — not the two river bridges' pedestrian railing.** A crash barrier: **W-beam profile, top
+of beam 700–750 mm, posts at 2.0 m** (REF-01 §10), the standard approach-barrier detail, run the
+full deck length on both edges.
+
 ## 5 · BUILDINGS — about 1000, from about 30 parts
 **Do not model whole buildings.** Model ~30 facade parts — window, shutter, balcony, AC box,
 sign board, awning, drainpipe, grille, staircase, water tank, parapet, door, meter box, dish,
