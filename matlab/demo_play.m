@@ -100,13 +100,14 @@ function R = demo_play(route, opts)
 %   spends the night on it again.
 %
 %   =====================================================================
-%   WHAT THIS DEMO DOES NOT DO - AND THE NAMED NEXT STEP
+%   GROUND TRUTH BY DEFAULT - REAL SENSING IS Sensed=true, NOT YET THE DEFAULT
 %   =====================================================================
-%   THE ROAD USERS HANDED TO THE PLANNER ARE GROUND TRUTH. builtinTracks below
-%   writes exact poses: no sensor noise, no dropout, no bearing blind spot, no
-%   tracker. The planner's DECISIONS are real; what it is deciding ABOUT is
-%   given to it. sc.plannerView states this on screen, in the model panel, so
-%   it is disclosed to an audience rather than only to whoever thinks to ask.
+%   BY DEFAULT THE ROAD USERS HANDED TO THE PLANNER ARE GROUND TRUTH.
+%   builtinTracks below writes exact poses: no sensor noise, no dropout, no
+%   bearing blind spot, no tracker. The planner's DECISIONS are real; what it
+%   is deciding ABOUT is given to it. sc.plannerView states this on screen, in
+%   the model panel, so it is disclosed to an audience rather than only to
+%   whoever thinks to ask.
 %
 %   Worth recording, because the defect was severe enough elsewhere that this
 %   will be doubted later: THIS FILE NEVER TOUCHES sc.buildTrackListSensed.
@@ -117,15 +118,20 @@ function R = demo_play(route, opts)
 %   any demo1/demo2 figure. Those numbers came through builtinTracks, which
 %   that path does not reach. Verified by grep, not assumed.
 %
-%   NEXT STEP, NAMED SO NOBODY HAS TO REDISCOVER IT: sc.senseRig / sc.senseStep
-%   (Chat 4, 7 Sep) sense from the EGO'S OWN pose each step, which is exactly
-%   the property this needs and the property the old batch path lacked. Wiring
-%   them in here in place of builtinTracks is what would make this demo
-%   genuinely perception-driven. It was deliberately NOT done on the night of
-%   the internal round: it introduces noise, dropout and the blind spot into a
-%   run that currently completes cleanly, hours before presenting, with no
-%   time to find out what that does to the cow pass. Upside a truer demo,
-%   downside no demo. That trade changes completely with a day to test it.
+%   Sensed=true WIRES IN sc.senseRig / sc.senseStep (Chat 4, 7 Sep) instead -
+%   simulated lidar/radar/near-field-ring + a real trackerGNN, sensing from
+%   the EGO'S OWN pose each step inside this loop (builtinPoses supplies the
+%   same raw ground truth builtinTracks does, just not yet packaged as a
+%   TrackList). It introduces real noise, real dropout and the real bearing
+%   blind spot - Phase 5/D9's own finding was that this can turn a structural
+%   "frozen but safe" freeze into "makes progress but occasionally misses a
+%   hazard and collides", in both S1 and S2's own harnesses, for a genuine,
+%   disclosed reason (a track intermittently dropping out mid-maneuver), not a
+%   bug. This demo's own traffic/route differ from those harnesses, so its own
+%   Sensed=true numbers have to be measured here, not assumed from there.
+%   Still false by default: the ground-truth run is the one rehearsed and
+%   known-good ahead of presenting; Sensed=true is the honest upgrade path,
+%   run and disclosed deliberately, not silently swapped in.
 %
 %   =====================================================================
 %   OWNERSHIP
@@ -143,9 +149,16 @@ arguments
     opts.ViewSpan   (1,1) double  = 60       % m, half-span of the follow camera
     opts.PlanEvery  (1,1) double  = 1
     opts.TEnd       (1,1) double  = NaN      % s, override the route's own length
+    opts.Sensed     (1,1) logical = false    % sense the traffic via sc.senseRig/senseStep
+                                              % (lidar+radar+ring, trackerGNN) instead of
+                                              % handing the planner exact ground truth
     opts.Interactive(1,1) logical = true
     opts.Snap       (1,1) string  = ""       % write a frame here and exit
     opts.Cow        (1,1) string  = "blocking" % "blocking" | "verge" | "none"
+    opts.WriteResults(1,1) logical = true    % write results/<run>/{trajectories.csv,
+                                              % metrics.json, config.json} - AGENTS.md
+                                              % section 3. Skipped under Live=true, where
+                                              % LOG is never a single reproducible record.
 end
 
 here = fileparts(mfilename('fullpath'));
@@ -157,6 +170,10 @@ DT = 0.05;                                    % s, the seat's own step (20 Hz)
 
 % ================================================================= the route
 D = loadRoute(route, opts.Cow);
+D.Sensed = opts.Sensed;              % must be set before the cache tag/stamp below -
+                                      % it changes what the planner sees every step, so a
+                                      % Sensed run must never load or overwrite an exact-
+                                      % ground-truth cache (or the reverse) - see routeStamp.
 if isfinite(opts.TEnd), D.TEnd = opts.TEnd; end
 fprintf('\n================ %s ================\n', D.Title);
 fprintf('route  %.0f m,  %d hazards,  %.0f s of driving\n', ...
@@ -169,6 +186,7 @@ fprintf('route  %.0f m,  %d hazards,  %.0f s of driving\n', ...
 % next time - which is exactly the wrong thing to discover at 5am.
 tag = route;
 if opts.Cow ~= "verge", tag = route + "-cow" + opts.Cow; end
+if opts.Sensed, tag = tag + "-sensed"; end
 cacheFile = fullfile(here, 'renders', sprintf('demo_%s.mat', tag));
 if opts.Live
     LOG = [];                                  % computed inside the draw loop
@@ -189,6 +207,15 @@ else
     saveCache(cacheFile, LOG);
 end
 
+% ================================================================= the evidence
+% "A number without its config is not a result" - AGENTS.md section 3. Written
+% for every run that has a real LOG, cache hit or not - a cached run is still a
+% real, reproducible result, not merely a demo convenience.
+if opts.WriteResults && ~opts.Live
+    runName = tag + "_" + string(datetime('now','TimeZone','UTC','Format','yyyyMMdd-HHmmss'));
+    sih.metrics.writeDemoResults(runName, D, LOG, opts);
+end
+
 % ================================================================= play it
 R = play(D, LOG, DT, opts);
 end
@@ -197,10 +224,11 @@ end
 %                             ROUTE LOADING
 % =========================================================================
 function D = loadRoute(route, cowMode)
-%LOADROUTE  Chat 3 delivers sc.demo1Route / sc.demo2Route. Until they land this
-%   falls back to a route built here, so this file is never blocked waiting.
+%LOADROUTE  Chat 3 delivers sc.demo1Route / sc.demo2Route; sc.demo3Route is
+%   this file's own (10 Sep). Falls back to a route built here if a Route
+%   function is ever absent or errors, so this file is never blocked waiting.
 %   DELIBERATELY LIBERAL about what it accepts back: a struct with .W/.Hazards,
-%   or a bare hazard array, both work, so the two chats cannot deadlock over the
+%   or a bare hazard array, both work, so no two chats can deadlock over the
 %   exact shape of a return value.
 fn = "sc." + route + "Route";
 if ~isempty(which(char(fn)))
@@ -221,13 +249,18 @@ function D = normaliseRoute(got, route, cowMode)
 if isstruct(got) && isfield(got,'W') && isfield(got,'Hazards')
     D = got;
 elseif isstruct(got) && isfield(got,'Type')          % a bare hazard array
-    % Chat 3's sc.demo1Route / sc.demo2Route return exactly this: the hazards
-    % only. The road, the cow and the traffic still come from the built-in
+    % sc.demo1Route / sc.demo2Route / sc.demo3Route all return exactly this:
+    % the hazards only. The road and the traffic still come from the built-in
     % route - but the title must say so honestly rather than keep calling
     % itself a stand-in when the real hazards are in fact loaded.
-    D = builtinRoute(route, cowMode);  D.Hazards = got;
-    D.Title = sprintf('SIH26037  %s - hazards from %sRoute, road from sc.s1world', ...
-                      upper(route), route);
+    if route == "demo3"
+        D = builtinRouteS3();  D.Hazards = got;
+        D.Title = 'SIH26037  DEMO3 - hazards from demo3Route, road from sc.s3world';
+    else
+        D = builtinRoute(route, cowMode);  D.Hazards = got;
+        D.Title = sprintf('SIH26037  %s - hazards from %sRoute, road from sc.s1world', ...
+                          upper(route), route);
+    end
 else
     error('demo_play:badRoute','%s returned something this cannot read', route);
 end
@@ -297,7 +330,14 @@ D.Hazards = fillHazards(D.Hazards);
 % costs nothing, because runPlanner stops itself the moment it runs out of
 % road and truncates the log to what it actually drove.
 D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, cowMode);
-D.Tracks = builtinTracks(W, D.CS, cowMode, ceil(D.TEnd/0.05), 0.05);
+nSteps = ceil(D.TEnd/0.05);
+D.Tracks = builtinTracks(W, D.CS, cowMode, nSteps, 0.05);
+% D.Poses/D.Who/D.DIMS: the SAME three actors, raw (unsensed) - built off the
+% identical per-step kinematics as D.Tracks above (see actorSpec/activeActorsAt),
+% so the two can never silently disagree about where anything is. Built
+% unconditionally, whether or not this run ever uses Sensed=true - it is cheap
+% closed-form kinematics, no sensing happens here.
+[D.Poses, D.Who, D.DIMS] = builtinPoses(W, D.CS, cowMode, nSteps, 0.05);
 end
 
 function h = hz(type, station, lateral, label, radius, cap, zone)
@@ -370,6 +410,27 @@ P = W.Path;
 %       demo-content decision for the hub chat, not this file's to take:
 %       Cow="blocking" is now the better scenario AND it works. Flip it if
 %       you want the real S1 encounter on screen.
+spec = actorSpec(W, CS, cowMode);
+TR = cell(1, n);
+for i = 1:n
+    t = (i-1)*DT;
+    A = activeActorsAt(spec, P, t);
+    Ti = emptyTrackList();
+    for a = 1:numel(A)
+        Ti(end+1) = struct('TrackID',uint32(900+A(a).Row),'ClassID',uint8(A(a).ClassID), ...
+            'Position',[A(a).XY 0],'Velocity',A(a).Vel,'Extent',A(a).Extent, ...
+            'Yaw',A(a).YawRad,'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
+    end
+    TR{i} = Ti;
+end
+end
+
+function spec = actorSpec(W, CS, cowMode)
+%ACTORSPEC  The three demo actors (cow/oncoming car/motorcycle) as the
+%   {ClassID, s0, lateral, extent, speed along the route (- = oncoming), extra
+%   yaw} rows builtinTracks always used - pulled out here so builtinTracks
+%   (exact ground truth) and builtinPoses (raw poses for sc.senseStep) read
+%   the identical geometry and can never silently disagree about the world.
 G = sc.s1geom(W);
 switch cowMode
 case "blocking"
@@ -381,32 +442,193 @@ otherwise
     % she is genuinely off the road rather than nudged a little sideways.
     cowE = -(W.Width/2 + G.CowLateral/2 + 0.35);   cowYaw = pi/2;
 end
-% {ClassID, s0, lateral, extent, speed along the route (- = oncoming), extra yaw}
 % The cow's extra yaw is pi/2 - BROADSIDE, which is what makes her LENGTH the
 % thing crossing the road, and that is the assumption sc.s1geom's whole gap
 % arithmetic is built on. Getting it wrong would silently halve her footprint.
 spec = { 10, CS,  cowE, [G.CowLateral 0.55 1.35],   0, cowYaw ; ...
           1, 260, -2.0, [4.20 1.75 1.50],       -11.0, 0 ; ...
           5, 610, -1.9, [1.90 0.75 1.30],        -9.0, 0 };
+end
+
+function A = activeActorsAt(spec, P, t)
+%ACTIVEACTORSAT  Which of actorSpec's rows exist at time t, and where - the
+%   exact per-step kinematics both builtinTracks and builtinPoses need. A
+%   plain closed-form function of t and spec; nothing here senses anything.
+A = struct('Row',{},'ClassID',{},'XY',{},'YawRad',{},'Vel',{},'Extent',{});
+for k = 1:size(spec,1)
+    if ~isfinite(spec{k,3}), continue; end       % Cow="none"
+    u = spec{k,2} + spec{k,5}*t;
+    if u < 2 || u > P.Len - 2, continue; end     % gone past, or not here yet
+    [xy, hdg] = P.at(u, spec{k,3});
+    yaw = hdg + spec{k,6};  vel = [0 0 0];
+    if spec{k,5} < 0
+        yaw = hdg + pi;
+        vel = spec{k,5}*[cos(hdg) sin(hdg) 0];   % world-frame, as S1 asks
+    end
+    A(end+1) = struct('Row',k,'ClassID',spec{k,1},'XY',xy,'YawRad',yaw, ...
+        'Vel',vel,'Extent',spec{k,4}); %#ok<AGROW>
+end
+end
+
+function [PR, who, DIMS] = builtinPoses(W, CS, cowMode, n, DT)
+%BUILTINPOSES  The SAME three actors as builtinTracks, raw - actorPoses(S)-
+%   shaped poses for sc.senseStep, not a pre-built S1 TrackList. Nothing here
+%   is sensed; this is ground truth, packaged the way sih.scenario.
+%   groundTruthTrack/sc.senseStep expect it - the same poses/who/DIMS shape
+%   s1_action_run.m already builds off a real actorPoses(S), just built here
+%   in closed form since this demo's traffic never used a drivingScenario.
+%
+%   THE ONE UNIT TRAP: traffic Yaw goes out in DEGREES - groundTruthTrack does
+%   its own deg2rad, matching what actorPoses(S) really returns. The ego pose
+%   passed separately to sc.senseStep stays in RADIANS (senseStep's own
+%   contract). These are NOT interchangeable, and getting it backwards is
+%   silent, not an error - the sensed track just carries the wrong heading.
+P = W.Path;
+spec = actorSpec(W, CS, cowMode);
+
+tags = {'cow','car','moto_wrong'};           % row order matches actorSpec exactly
+assert(numel(tags) == size(spec,1), ...
+    'demo_play:builtinPosesTagMismatch', ...
+    'actorSpec has %d rows but builtinPoses only names %d tags - keep them in step.', ...
+    size(spec,1), numel(tags));
+who = containers.Map('KeyType','double','ValueType','char');
+DIMS = struct();
+for k = 1:size(spec,1)
+    who(900+k) = tags{k};
+    DIMS.(tags{k}) = spec{k,4};
+end
+
+PR = cell(1, n);
+for i = 1:n
+    t = (i-1)*DT;
+    A = activeActorsAt(spec, P, t);
+    Pi = struct('ActorID',{},'Position',{},'Velocity',{},'Yaw',{});
+    for a = 1:numel(A)
+        Pi(end+1) = struct('ActorID',900+A(a).Row,'Position',[A(a).XY 0], ...
+            'Velocity',A(a).Vel,'Yaw',rad2deg(A(a).YawRad)); %#ok<AGROW>
+    end
+    PR{i} = Pi;
+end
+end
+
+% =========================================================================
+%                    DEMO 3 - THE GALLI, ITS OWN WORLD AND ACTORS
+% =========================================================================
+function D = builtinRouteS3()
+%BUILTINROUTES3  Demo 3's own route builder - sc.s3world instead of s1world,
+%   the oncoming motorcycle instead of the cow/car/moto trio. No dedicated
+%   fallback content is needed the way demo1/demo2's builtinRoute has, since
+%   sc.demo3Route already exists (this is the loadRoute error-fallback path,
+%   only reached if that file is ever missing or errors).
+W = sc.s3world();
+D.W = W;
+D.SStart  = 5;
+D.CruiseV = 14/3.6;             % 14 km/h - S3-THE-GALLI.md's own t=0 speed
+D.Title   = 'SIH26037  DEMO 3 - THE GALLI (temporary stand-in)';
+D.MinCorridor = 0.10;            % this is centreline SLACK, not free width -
+                                 % the squeeze's real slack is 0.05 m unfolded
+                                 % (1.95 free width - 1.90 m ego) and 0.25 m
+                                 % folded (1.95 - 1.70) - 0.10 sits between
+                                 % them so unfolded correctly rejects (forcing
+                                 % the fold check) and folded correctly passes
+D.CorridorLeadIn = 100;          % demo1/demo2's 12 m default made the ego try
+                                 % to complete a large lateral move with too
+                                 % little road left, and it froze - measured,
+                                 % not assumed (see corridorFrom's own header).
+                                 % 100 m starts the drift at s~132, well clear
+                                 % of the motorcycle encounter (~s=93-100), so
+                                 % the two do not interact.
+D.EgoWidth = 1.90;               % sc.s3geom: mirrors-out baseline. Folding
+                                 % (runPlanner's lastCmd.MirrorsFolded check)
+                                 % subtracts the same 0.20 m every route uses,
+                                 % landing exactly on s3geom's real 1.70 m.
+D.EgoStartE = 0.9;               % S1/S2's 1.75 m lane position is outside
+                                 % this road's own narrower default corridor
+                                 % (measured: [-1.30, 1.65] here vs [-2.55,
+                                 % 2.90] on S1's 7.0 m road) - 0.9 is already
+                                 % one of runPlanner's own LatOffsets samples,
+                                 % comfortably inside. (Tried -0.9 instead, to
+                                 % pre-position for the squeeze - that broke
+                                 % the motorcycle fix, which was tuned against
+                                 % +0.9, and introduced a SECOND freeze of its
+                                 % own at s=140. See sc.demo3Route's header for
+                                 % why the three lead-up segments no longer
+                                 % narrow the corridor at all.)
+D.Hazards = fillHazards(sc.demo3Route());
+
+D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, "none");
+nSteps = ceil(D.TEnd/0.05);
+D.Tracks = builtinTracksS3(W, nSteps, 0.05);
+[D.Poses, D.Who, D.DIMS] = builtinPosesS3(W, nSteps, 0.05);
+end
+
+function spec = actorSpecS3()
+%ACTORSPECS3  The one live actor S3 ships with: the oncoming motorcycle at
+%   ~150 m (S3-THE-GALLI.md, "1 motorcycle oncoming at 150 m - there is no
+%   room for both, so somebody reverses"). Same {ClassID, s0, lateral,
+%   extent, speed (- = oncoming), extra yaw} shape actorSpec uses for S1, so
+%   activeActorsAt (already generic, scenario-agnostic) needs no changes to
+%   drive this too.
+%
+%   DEFERRED, NOT BUILT: the child crossing at t=8.2 and the dog in the
+%   squeeze - see sc.demo3Route's own header for why.
+%
+%   LATERAL AND SPEED, MEASURED AGAINST THE REAL FOOTPRINTS, NOT GUESSED
+%   TWICE OVER LIKE THE FIRST PASS WAS. Ego 1.90 m wide (sc.s3geom), moto
+%   0.75 m wide: combined half-widths need 1.325 m of separation before they
+%   ever have to negotiate anything. The first version placed the ego's own
+%   start (0.9) and the moto (-0.3) only 1.2 m apart - LESS than what their
+%   bodies need even standing still, so it was never a negotiation, it was a
+%   guaranteed graze, measured as a real -0.372 m collision at t=20.2 s.
+%   -1.0 STILL collided (-0.299 m, measured) - the ego moves toward the
+%   moto's side during its own stop-and-resume maneuver, so "far enough at
+%   the ego's start" is not the same as "far enough for wherever the seat's
+%   own candidate search actually puts it mid-maneuver." Moved to -1.5 (2.4 m
+%   from the ego's start, clear of every in-bounds LatOffset candidate the
+%   seat can pick on this road, not just the default one) and kept the 2.5
+%   m/s closing speed - real negotiation timing comes from the corridor
+%   still only being 3.2-3.6 m here, not from shaving the lateral margin
+%   to the minimum that survives a straight-line check.
+spec = { 5, 150, -1.5, [1.90 0.75 1.30], -2.5, 0 };
+end
+
+function TR = builtinTracksS3(W, n, DT)
+%BUILTINTRACKSS3  Exact ground truth for S3's one actor - same construction
+%   as builtinTracks, just off actorSpecS3 instead of actorSpec.
+P = W.Path;
+spec = actorSpecS3();
 TR = cell(1, n);
 for i = 1:n
-    t  = (i-1)*DT;
+    t = (i-1)*DT;
+    A = activeActorsAt(spec, P, t);
     Ti = emptyTrackList();
-    for k = 1:size(spec,1)
-        if ~isfinite(spec{k,3}), continue; end       % Cow="none"
-        u = spec{k,2} + spec{k,5}*t;
-        if u < 2 || u > P.Len - 2, continue; end     % gone past, or not here yet
-        [xy, hdg] = P.at(u, spec{k,3});
-        yaw = hdg + spec{k,6};  vel = [0 0 0];
-        if spec{k,5} < 0
-            yaw = hdg + pi;
-            vel = spec{k,5}*[cos(hdg) sin(hdg) 0];   % world-frame, as S1 asks
-        end
-        Ti(end+1) = struct('TrackID',uint32(900+k),'ClassID',uint8(spec{k,1}), ...
-            'Position',[xy 0],'Velocity',vel,'Extent',spec{k,4}, ...
-            'Yaw', yaw, 'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
+    for a = 1:numel(A)
+        Ti(end+1) = struct('TrackID',uint32(900+A(a).Row),'ClassID',uint8(A(a).ClassID), ...
+            'Position',[A(a).XY 0],'Velocity',A(a).Vel,'Extent',A(a).Extent, ...
+            'Yaw',A(a).YawRad,'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
     end
     TR{i} = Ti;
+end
+end
+
+function [PR, who, DIMS] = builtinPosesS3(W, n, DT)
+%BUILTINPOSESS3  Same actor, raw - see builtinPoses's own header on the one
+%   unit trap (traffic Yaw in degrees, ego Yaw in radians).
+P = W.Path;
+spec = actorSpecS3();
+who = containers.Map('KeyType','double','ValueType','char');
+who(901) = 'moto_wrong';
+DIMS = struct('moto_wrong', spec{1,4});
+PR = cell(1, n);
+for i = 1:n
+    t = (i-1)*DT;
+    A = activeActorsAt(spec, P, t);
+    Pi = struct('ActorID',{},'Position',{},'Velocity',{},'Yaw',{});
+    for a = 1:numel(A)
+        Pi(end+1) = struct('ActorID',900+A(a).Row,'Position',[A(a).XY 0], ...
+            'Velocity',A(a).Vel,'Yaw',rad2deg(A(a).YawRad)); %#ok<AGROW>
+    end
+    PR{i} = Pi;
 end
 end
 
@@ -418,11 +640,13 @@ function LOG = runPlanner(D, DT, planEvery)
 W = D.W;  P = W.Path;
 RefPath = referencePathFrenet(P.P);
 kappaV  = P.curvature();
+egoWidth0 = 1.8;
+if isfield(D, 'EgoWidth'), egoWidth0 = D.EgoWidth; end
 TUNE = struct( ...
     'TermSpeeds',   [0 4 8 11 14.4], ...
     'LatOffsets',   [-2.5 -1.585 -0.9 0 0.9 1.75 2.6], ...
     'Horizon',      4.0, 'TimeRes', 0.1, 'Inflation', 0.0, ...
-    'EgoWidth',     1.8, 'EgoLength', 4.7, 'Wheelbase', 2.7, ...
+    'EgoWidth',     egoWidth0, 'EgoLength', 4.7, 'Wheelbase', 2.7, ...
     'LookaheadT',   0.6, 'MinLookahead', 2.0, 'DMin', 2.5);
 A_LON = 1.5;  D_LON = 3.0;  R_LAT = 0.9;      % the same seat limits every runner uses
 
@@ -445,17 +669,47 @@ if v < D.CruiseV - 0.05
     fprintf('opening speed held to %.2f m/s (cruise %.2f) - a capped hazard sits too close to the start line\n', ...
             v, D.CruiseV);
 end
-st = struct();  s = D.SStart;  e = 1.75;  ev = 0;
+% e0 = 1.75 is S1/S2's own lane-position convention on their 7.0 m road -
+% comfortably inside that road's own default corridor ([-2.55, 2.90]). It is
+% NOT a universal constant: on S3's narrower 4.5 m road the default corridor
+% is only [-1.30, 1.65], so 1.75 starts the ego already outside it, and the
+% planner correctly reports no safe trunk from step 1 - found by running
+% demo3, not assumed. Route-specific, defaulting to 1.75 so S1/S2 are
+% byte-identical to before.
+e0 = 1.75;
+if isfield(D, 'EgoStartE'), e0 = D.EgoStartE; end
+st = struct();  s = D.SStart;  e = e0;  ev = 0;
 lastCmd = struct('v',v,'e',e);
 tRun = tic;  nFail = 0;  reachedEnd = false;
 fprintf('running the real planner over %d steps (this is the slow part - it is\n', n);
 fprintf('cached afterwards so the demo itself never waits for it)\n');
+% sc.senseRig carries live tracker/RandStream state (Chat 4, 7 Sep - see its own
+% header) - build ONE per run, reused every step, never copied. D.Sensed is set
+% unconditionally in demo_play before this is ever called.
+rig = [];
+if D.Sensed
+    rig = sc.senseRig();
+    fprintf('SENSING IN-LOOP from the ego''s own pose each step (sc.senseRig/senseStep)\n');
+end
 for i = 1:n
     t = (i-1)*DT;
     [xy, hdg] = P.at(s, e);
     ki = min(numel(kappaV), max(1, round(s/P.Step)+1));
+    % ---- the one place ground truth vs sensed diverges -------------------
+    % D.Tracks/tracksAt is exact ground truth, precomputed before this loop
+    % ever runs (traffic position is a pure function of t, nothing to sense
+    % against yet). D.Poses is the SAME raw ground truth, packaged for
+    % sc.senseStep instead - which needs the ego's REAL pose (xy/hdg, just
+    % computed above), not a fictitious one. That is the whole reason sensing
+    % happens HERE, inside the loop, and not folded into D.Tracks up front.
+    if D.Sensed
+        tracksNow = sc.senseStep(rig, D.Poses{min(i,numel(D.Poses))}, D.Who, D.DIMS, ...
+            struct('Position',[xy 0],'Yaw',hdg), t);
+    else
+        tracksNow = tracksAt(D,i);
+    end
     ctx = struct('s',s,'e',e,'v',v,'t',t, ...
-        'W',W,'Path',P,'RefPath',RefPath,'Tracks',tracksAt(D,i), ...
+        'W',W,'Path',P,'RefPath',RefPath,'Tracks',tracksNow, ...
         'EgoXY',xy,'EgoYaw',hdg,'Kappa',kappaV(ki),'CruiseV',D.CruiseV);
     fn = fieldnames(TUNE);
     for f = 1:numel(fn), ctx.(fn{f}) = TUNE.(fn{f}); end
@@ -464,16 +718,53 @@ for i = 1:n
     % planSeat reads ctx.ELo/ctx.EHi as supported overrides of its lateral
     % clamp, so a barrier standing in part of the carriageway genuinely takes
     % that band away from the real planner rather than being drawn on top of it.
-    [eLoH, eHiH] = corridorFrom(D.Hazards, s, W, TUNE.EgoWidth);
+    %
+    % MIRRORSFOLDED IS DECIDED HERE, NOT READ FROM THE PLANNER - checked by
+    % grep, not assumed: chooseVelocity.m, followTrunk.m, planTurn.m and
+    % roadBarrier.m all say explicitly that Signal/Gear/Committed/MirrorsFolded
+    % are "not set here" - that decision was always meant to live in the
+    % Simulink/Stateflow chart. demo_play never runs through Stateflow at all
+    % (sc.planSeat is called directly), so nothing else in this pipeline was
+    % ever going to fold the mirrors. Decided the same way a driver would: try
+    % the full-width corridor first, fold only if that's rejected or too tight
+    % AND folding actually opens up a real corridor. 0.20 m is AGENTS.md S4's
+    % own figure ("folding narrows the ego footprint ~20 cm").
+    % minCorridorNow is deliberately NOT compared against ego width anywhere
+    % below - eHi-eLo, once a hazard has touched it, is already centerline
+    % SLACK (corridorFrom's blockLo/blockHi bake egoW/2 in on each side), not
+    % raw free width. Comparing slack against a whole ego-width-sized number
+    % again was the original bug: it made the fold-acceptance check
+    % impossible to satisfy (a 0.25 m folded slack can never be >= 1.72 m).
+    % minCorridorNow is just "how little slack is still drivable" - 0.10 m
+    % sits between the squeeze's real unfolded slack (0.05 m - correctly
+    % rejects) and its real folded slack (0.25 m - correctly accepts).
+    minCorridorNow = 2.2;
+    if isfield(D, 'MinCorridor'), minCorridorNow = D.MinCorridor; end
+    leadInNow = 12;
+    if isfield(D, 'CorridorLeadIn'), leadInNow = D.CorridorLeadIn; end
+    fullEgoWidth   = TUNE.EgoWidth;
+    foldedEgoWidth = TUNE.EgoWidth - 0.20;
+    [eLoH, eHiH] = corridorFrom(D.Hazards, s, W, fullEgoWidth, minCorridorNow, leadInNow);
+    mirrorsFoldedNow = false;
+    if isnan(eLoH)
+        [eLoTry, eHiTry] = corridorFrom(D.Hazards, s, W, foldedEgoWidth, minCorridorNow, leadInNow);
+        if ~isnan(eLoTry)
+            mirrorsFoldedNow = true;
+            eLoH = eLoTry;  eHiH = eHiTry;
+        end
+    end
     if isfinite(eLoH), ctx.ELo = eLoH; end
     if isfinite(eHiH), ctx.EHi = eHiH; end
 
     if mod(i-1, planEvery) == 0
         [cmd, st] = sc.planSeat(st, ctx);
+        cmd.MirrorsFolded = mirrorsFoldedNow;
         lastCmd = cmd;
         if isfield(cmd,'PlanFailed') && strlength(cmd.PlanFailed) > 0, nFail = nFail + 1; end
     else
         cmd = lastCmd;  cmd.State = st.State;  cmd.Note = st.Note;
+        cmd.MirrorsFolded = mirrorsFoldedNow;   % cheap, computed every step
+                                                 % regardless of planEvery
     end
 
     % ---- TIER 2: the hazard speed cap, beside speedLimit, never inside it --
@@ -533,7 +824,7 @@ function c = slimCmd(cmd)
 %   the point of watching) - just as single precision, which is well past the
 %   precision of a 1600-pixel-wide axes.
 keep = {'State','Note','v','e','H','HLabel','Look','Blocked','TrunkMode', ...
-        'Creeping','VCap'};
+        'Creeping','VCap','MirrorsFolded'};
 c = struct();
 for k = 1:numel(keep)
     if isfield(cmd, keep{k}), c.(keep{k}) = cmd.(keep{k}); end
@@ -679,18 +970,45 @@ end
 if ~isfinite(cap), why = "clear"; end
 end
 
-function [eLo, eHi] = corridorFrom(H, s, W, egoW)
+function [eLo, eHi] = corridorFrom(H, s, W, egoW, minCorridor, leadIn)
 %CORRIDORFROM  A hazard standing IN the carriageway takes that lateral band
 %   away. Returns NaN when no hazard narrows anything, so the caller leaves
 %   planSeat's own Phase-6 bounds alone rather than re-deriving them here.
 %   Only ever NARROWS - a hazard can never widen the road.
+%
+%   minCorridor (optional, default 2.2 m - demo1/demo2's unchanged behavior)
+%   is the sanity floor below which a "corridor" is treated as a wall instead.
+%   2.2 m was never a physical law, just headroom past demo1/demo2's 1.8 m
+%   ego - S3's squeeze is a genuine, measured 1.95 m free width (sc.s3geom),
+%   which needs its own, smaller floor to be representable at all.
+%
+%   leadIn (optional, default 12 m - demo1/demo2's unchanged behavior) is how
+%   far ahead of a hazard its narrowing starts applying. 12 m was tuned for
+%   demo1/demo2's hazards, which only ever need a small nudge off-centre.
+%   MEASURED, NOT ASSUMED: asking the ego to complete a large lateral move
+%   (~0.8-1.4 m) inside a 12 m window repeatedly produced a genuine freeze -
+%   findSharedTrunk's own tie-break prefers the smallest lateral offset until
+%   a move is forced, and 12 m is not enough distance left once it is. A
+%   longer leadIn does not change WHAT the corridor is, only how early the
+%   planner is given the chance to drift toward it gradually instead of late.
+if nargin < 6, leadIn = 12; end
+if nargin < 5, minCorridor = 2.2; end
 hw   = W.Width/2;
 eLo0 = -(hw - 0.95);  eHi0 = (hw - 0.95) + 0.35;    % planSeat's own defaults
 eLo  = eLo0;  eHi = eHi0;  touched = false;
 for k = 1:numel(H)
     if ~ismember(string(H(k).Type), ["barrier","damage"]), continue; end
     [lo, hi] = stretch(H(k));
-    if s < lo - 12 || s > hi, continue; end          % 12 m of approach to plan in
+    if s < lo - leadIn || s > hi, continue; end      % leadIn m of approach to plan in
+    % RAMPED, NOT A STEP FUNCTION - progress 0 at s=lo-leadIn (no effect yet)
+    % to 1 at s=lo and for the hazard's own physical extent (full effect).
+    % A step function was the real bug behind a genuine freeze: with the
+    % full narrowing switching on all at once, a large lateral move (~1.4 m)
+    % had to be completed from a standing start in whatever the planner's own
+    % Horizon actually reaches - MEASURED to fail regardless of how far back
+    % leadIn started, because a longer leadIn only moved where the step was,
+    % it never let the ego drift into position gradually. This does.
+    progress = max(0, min(1, (s - (lo - leadIn)) / leadIn));
     % FULL-WIDTH SURFACE DAMAGE IS NOT A THING TO DODGE, AND SAYING SO HERE
     % MATTERS. Read sc.demo2Route's own labels: every damage entry on the
     % centreline describes the WHOLE carriageway - "aggregate showing through
@@ -721,20 +1039,20 @@ for k = 1:numel(H)
     blockLo = H(k).Lateral - halfW - egoW/2;
     blockHi = H(k).Lateral + halfW + egoW/2;
     if blockHi >= eHi0 - 0.05                        % it eats the LEFT edge
-        eHi = min(eHi, blockLo);  touched = true;
+        eHi = min(eHi, eHi0 + (blockLo - eHi0)*progress);  touched = true;
     elseif blockLo <= eLo0 + 0.05                    % it eats the RIGHT edge
-        eLo = max(eLo, blockHi);  touched = true;
+        eLo = max(eLo, eLo0 + (blockHi - eLo0)*progress);  touched = true;
     else                                             % mid-carriageway: keep the
         if (eHi0 - blockHi) >= (blockLo - eLo0)      % wider of the two sides
-            eLo = max(eLo, blockHi);
+            eLo = max(eLo, eLo0 + (blockHi - eLo0)*progress);
         else
-            eHi = min(eHi, blockLo);
+            eHi = min(eHi, eHi0 + (blockLo - eHi0)*progress);
         end
         touched = true;
     end
 end
-if ~touched || eHi - eLo < 2.2                       % never squeeze below a car's
-    eLo = NaN;  eHi = NaN;                           % width - that is not a corridor,
+if ~touched || eHi - eLo < minCorridor               % never squeeze below the sanity
+    eLo = NaN;  eHi = NaN;                           % floor - that is not a corridor,
 end                                                  % it is a wall, and planSeat's
 end                                                  % own bounds are the honest fallback
 
@@ -820,7 +1138,7 @@ function R = play(D, LOG, DT, opts)
 n = numel(LOG.t);
 sc.plannerView('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
     'Hazards',D.Hazards,'Title',D.Title,'ViewSpan',opts.ViewSpan, ...
-    'Interactive',opts.Interactive));
+    'Interactive',opts.Interactive,'Sensed',D.Sensed));
 
 if strlength(opts.Snap) > 0                       % one frame, for a screenshot
     i = max(1, round(n/2));
@@ -1004,8 +1322,8 @@ function k = routeStamp(D)
 % would decide at any station - it only says how long to keep going - so
 % folding it in here made a cache built for 88 s useless to a 64 s request and
 % silently triggered a two-minute recompute. See useCache below.
-h = sprintf('%.3f|%.3f|%d|%.3f|', D.W.Path.Len, D.W.Width, ...
-            numel(D.Hazards), D.SStart);
+h = sprintf('%.3f|%.3f|%d|%.3f|sensed%d|', D.W.Path.Len, D.W.Width, ...
+            numel(D.Hazards), D.SStart, isfield(D,'Sensed') && D.Sensed);
 for k2 = 1:numel(D.Hazards)
     z = D.Hazards(k2);
     h = [h sprintf('%s,%.2f,%.2f,%.2f,%.2f,%.2f;', z.Type, z.Station, z.Lateral, ...
