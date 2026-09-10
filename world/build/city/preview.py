@@ -84,7 +84,10 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        ("rail_station",(-650.0, -940.0, 20.0), aim( -8.0,110.0), 30.0),
        # close-up on the rails/sleepers material + OHE masts, near the NBD main line
        # aimed at the measured position of an actual OHE mast (-485.4,-906.6), not guessed
-       ("rail_close", (-500.0, -930.0,  4.0), aim( -8.0, 32.0), 24.0))
+       ("rail_close", (-500.0, -930.0,  4.0), aim( -8.0, 32.0), 24.0),
+       # component 3 pass 2 item 5: the S5 hill switchback, viewed from further out along its
+       # own approach bearing (110 deg from hill centre) so the whole zigzag is visible
+       ("s5_switchback", (-627.0, 746.0, 150.0), aim(-18.0, 290.0), 28.0))
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))

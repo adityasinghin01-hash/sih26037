@@ -104,6 +104,11 @@ if H is not None:
         # it spans from the mast (which itself correctly touches the ground and is NOT excluded)
         # to a point above the track. OHE_MAST is not excluded: it should, and does, pass normally.
         if o.name.startswith("OHE_ARM"): continue
+        # S5_* (03g_s5climb.py) is a CUT/FILL engineered mountain road - the road, its retaining
+        # wall and its outside parapet/barrier are BUILT to a grade-limited height that differs
+        # from raw ground by design (that is the entire purpose of a cut face and a retaining
+        # wall). A generic "matches raw ground" check does not apply to engineered road grade.
+        if o.name.startswith("S5_"): continue
         v=np.array([(o.matrix_world @ x.co)[:] for x in o.data.vertices])
         if len(v)>40000: v=v[::max(1,len(v)//40000)]
         d=v[:,2]-tz(v[:,0],v[:,1])

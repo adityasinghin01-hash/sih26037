@@ -613,6 +613,28 @@ radius-based trim handles that robustly where hand-picking names would not.
 - NH534's elevated crossing is **already built** (FLYOVER_895269402, pass 2 item 2) — not touched
   here; only the at-grade arms are this item's job.
 
+**COMPONENT 3 PASS 2 · ITEM 5 — THE S5 HILL SWITCHBACK, written 10 Sep 2026 before building, per
+Rule 1.** Full numbers already in `S5-THE-MOUNTAIN-ROAD.md` — this is Rule 1 by reference for the
+climb's own numbers, plus a new design decision for the PATH ITSELF (S5 never gave hairpin
+coordinates, only chainage-based facts along whatever path exists).
+**MEASURED the real built hill first, not assumed:** ray-cast (not the ellipse formula) against
+the actual `HILL` object (a separate mesh from `TERRAIN`, peaks at 183 m) at 15° bearing steps
+around its centre (−1050,900). **The SE-facing flank, bearing ≈90–150°, has the slowest height
+falloff** (still 139–150 m at r=50 even where other bearings have dropped to 100–103) — this is
+the hill's own long axis, and it is where the real approach road (S5's bridge, already built)
+already sits. The climb is designed on this flank, not guessed elsewhere.
+**PATH DESIGN — a decision, stated as one:** 4 hairpins as a radius-decreasing zigzag sweeping
+bearing 90°↔150° each leg (apexes roughly at r≈245/185/125/65, bearing alternating 150°/90°),
+ending near r≈20 (temple parking area — the temple building itself is Component 4's job, not
+built here). Height sampled by ray-cast along the actual path, not assumed from the radial probe.
+**Scope for this build:** the road itself (3.75 m, widening to 9.0 m at each hairpin apex, 1-in-10
+superelevation at hairpins) · retaining wall on the inside (hill side) · parapet/gap/W-beam on the
+outside per S5's own chainage table, mapped onto this path's own chainage starting at 0 (matching
+S5's "180 m" mark, where the climb begins after the bridge) · the 5-stretch surface material
+(good/cracked/washout/patched/good). **Deferred, stated plainly, not a corner cut:** the 5
+individual culverts as pipe objects, the landslide JCB/equipment (Life/set-dressing, Component 7),
+and the temple + parking loop + hillside settlement (Component 4's buildings).
+
 **COMPONENT 3 PASS 2 · ITEM 3 — THE RAILWAY, written 10 Sep 2026 before building, per Rule 1.**
 Full numbers already exist in `S0b-THE-RAILWAY.md` — this item is Rule 1 by reference, not a
 duplicate. Built from `map/najibabad_rail.json` (22 real rail ways, pulled and saved 3 Sep,
