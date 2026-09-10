@@ -1,6 +1,28 @@
-# The claim ledger — what we may say on the 7th, and what we may not
+# The claim ledger — what we may say, and what we may not
 
-**Written 4 September 2026, 20:18 IST. Every row traces to something that was RUN.**
+> ## SUPERSEDED IN PART — 10 September 2026. Do not rehearse a pitch from Part 2 as it stands.
+>
+> This entire ledger was written around a crisis (the probe never fires, S1 collides, the
+> defensive stand-in beats us) that **has since been fixed.** What I can personally confirm as
+> current, verified this session:
+> - **S1 is fully solved**: 610m real route, full route completed, 0.965m clearance each side.
+>   Several of Part 2's "must not say" rows below (S1 safety, "the mechanism doesn't fire",
+>   "defensive beats us on S1") are now **false as written** — the honest claim has gotten
+>   *stronger*, not weaker, and this ledger has not caught up.
+> - **S2 still has one disclosed bug** (−0.909m, a lateral-commit tie-break) — closer to what
+>   Part 2 originally described, but re-verify the exact current number before quoting it; a lot
+>   has changed since 4-5 September.
+> - **Real sensing is now wired into the live demo** (`demo_play.m`, `Sensed=true`) — not
+>   mentioned anywhere below because it didn't exist yet.
+> - I have **not** personally re-verified the ML dangerous-error-rate (20.18% below), the exact
+>   current baseline framing, or most of Part 1/2's other specific numbers this session — do not
+>   treat their absence from my list above as confirmation they're still accurate either way.
+>
+> **Before any pitch rehearsal: re-run the actual measurements this ledger depends on and rewrite
+> it properly.** I'm flagging this rather than silently rewriting a new ledger myself — composing
+> new stage claims from partial knowledge is exactly the mistake this file exists to prevent.
+
+**Original version written 4 September 2026, 20:18 IST. Every row traces to something that was RUN — at that time.**
 
 > ### CORRECTED 4 September 2026, 22:0x IST — read `plan/BACKUP-PROBE-FINDING.md` first
 > The backup demo was run for the first time this evening and it changed three things in this

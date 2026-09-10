@@ -79,7 +79,7 @@ files, one opset, three misleading names. We now write 17, 18 and 20 only.
 **Read the output for PLACEHOLDER layers, not just for "succeeded".** An operator MATLAB cannot
 convert does not throw; it arrives as a custom layer with a function a human must write.
 
-**Send Stream D the opset number immediately.** It is the one thing blocking them.
+**Send the Planner track the opset number immediately.** It is the one thing blocking them.
 
 ---
 
