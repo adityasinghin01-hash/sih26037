@@ -250,6 +250,91 @@ for fl in LIVE:
         obstruction[i] = loc.z if hit else terrain_z(np.array([P[i, 0]]), np.array([P[i, 1]]))[0]
     fl['obstruction'] = obstruction
 
+# ================================================================== PHASE 2.5: EXTEND true dead
+# ends of RAIL pieces into the connecting ordinary road network. MEASURED (not assumed): at the
+# real crossing points, actual clearance came out 4.83-5.85 m against a 7.9 m target - a genuine
+# ~2-3 m shortfall, because 7.9 m at the 3.5% grade limit needs ~226 m of ramp and the 9
+# bridge-tagged pieces alone do not provide that much room. A real elevated corridor's approach
+# embankment extends beyond just the officially "bridge"-tagged segment - this does the same
+# thing, converting a bounded length of the CONNECTING ordinary road into part of the same climb,
+# rather than accepting a short clearance as a fixed limit. Built-space matching (not raw-OSM) is
+# used here and is reliable to within centimetres, because adjacent pass-1 pieces of the same
+# MATLAB segment share a literal shared vertex at their split point (measured: 0.02-0.07 m).
+EXTEND_BUDGET = 400.0   # m - MEASURED: 220 m closed 2 of 3 rail crossings to within 10 cm of the
+                        # 7.9 m target; the third's real crossing point sits on a graph-distant
+                        # part of the corridor a 220 m walk did not reach - widened, not guessed
+linked_ends = set()
+for (i, li, j, lj) in raw_links:
+    linked_ends.add((i, li)); linked_ends.add((j, lj))
+
+def get_road_centre(ob):
+    ov = np.array([v.co[:] for v in ob.data.vertices])
+    if len(ov) % 7 != 0 or len(ov) == 0: return None
+    n_pts = len(ov) // 7
+    centre = ov[3::7][:n_pts]
+    return centre[:, :2], centre[:, 2], n_pts
+
+def find_connecting_object(xy, exclude_names, tol=6.0):
+    best = None; best_d = tol
+    for ob in bpy.data.objects:
+        if ob.name in exclude_names or not ob.name.startswith("ROAD_"): continue
+        c = get_road_centre(ob)
+        if c is None: continue
+        P, Z, n = c
+        for which, e in (('first', P[0]), ('last', P[-1])):
+            d = float(np.linalg.norm(e - xy))
+            if d < best_d:
+                best_d = d; best = (ob, P, Z, n, which)
+    return best
+
+EXT_COUNTER = [0]
+extension_new_flyovers = []
+extension_raw_links = []
+orig_n = len(LIVE)
+for idx in range(orig_n):
+    fl = LIVE[idx]
+    if not fl['is_rail']:
+        continue   # only rail pieces are short of clearance; road pieces already achieve it
+    for loc_i in (0, fl['n_pts'] - 1):
+        if (idx, loc_i) in linked_ends:
+            continue   # already connects to another flyover piece, not a true dead end
+        xy0 = fl['P'][loc_i]
+        used_names = {fl['obj_name']}
+        cur_xy = xy0; total_len = 0.0
+        prev_idx = idx; prev_loc = loc_i
+        while total_len < EXTEND_BUDGET:
+            found = find_connecting_object(cur_xy, used_names)
+            if not found: break
+            ob, P, Z, npt, which = found
+            if which == 'last':
+                P = P[::-1].copy(); Z = Z[::-1].copy()
+            used_names.add(ob.name)
+            L = float(np.linalg.norm(np.diff(P, axis=0), axis=1).sum())
+            obstr = np.empty(npt)
+            for i in range(npt):
+                hit, loc, _, _, _, _ = sc.ray_cast(dg, Vector((P[i, 0], P[i, 1], 3000.0)), Vector((0, 0, -1)))
+                obstr[i] = loc.z if hit else terrain_z(np.array([P[i, 0]]), np.array([P[i, 1]]))[0]
+            EXT_COUNTER[0] += 1
+            new_fl = dict(name=f"EXT_{EXT_COUNTER[0]}_{ob.name}", obj_name=ob.name, cls='extension',
+                          is_rail=True, width=WIDTH.get('trunk', 7.0), drail=0.0, dead=False,
+                          P=P, Zold=Z, n_pts=npt, L=L, obstruction=obstr,
+                          s=np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))])
+            new_idx = orig_n + len(extension_new_flyovers)
+            extension_new_flyovers.append(new_fl)
+            extension_raw_links.append((prev_idx, prev_loc, new_idx, 0))
+            bpy.data.objects.remove(ob, do_unlink=True)
+            print(f"  EXTEND {fl['name']} -> {new_fl['name']} ({L:.1f} m, running total "
+                  f"{total_len + L:.1f} m)")
+            total_len += L
+            cur_xy = P[-1]; prev_idx = new_idx; prev_loc = npt - 1
+        if total_len == 0.0:
+            print(f"  EXTEND {fl['name']} end at ({xy0[0]:.1f},{xy0[1]:.1f}): no connecting "
+                  f"ordinary road found - stays a true anchor")
+LIVE = LIVE + extension_new_flyovers
+raw_links = raw_links + extension_raw_links
+print(f"  {len(extension_new_flyovers)} extension piece(s) added, "
+      f"{sum(f['L'] for f in extension_new_flyovers):.0f} m total")
+
 # ================================================================== PHASE 3: group pieces that
 # share a raw-OSM endpoint (the reliable topology measured above) into one connected corridor.
 n = len(LIVE)
@@ -357,6 +442,12 @@ for g in groups.values():
         anchor_height[k] = float(members[mi]['Zold'][loc_i])
     print(f"  group {[fl['name'] for fl in members]}: {n_nodes} merged nodes, "
           f"{len(anchors)} anchor(s) at {[f'{anchor_height[k]:.2f}m' for k in anchors]}")
+    for k in anchors:
+        mi, loc_i = node_owner[k][0]
+        fl = members[mi]
+        xy = fl['P'][loc_i]
+        print(f"    anchor: {fl['name']} local {loc_i} ({'start' if loc_i==0 else 'end'}), "
+              f"xy=({xy[0]:.1f},{xy[1]:.1f}), height {anchor_height[k]:.2f}m")
 
     # multi-source Dijkstra: reach(node) = min over anchors of (anchor_height + sum of each
     # crossed edge's OWN max_grade * that edge's length) - never a single group-wide constant.
@@ -378,18 +469,34 @@ for g in groups.values():
     # single group-wide constant (a road-only node needs 5.5 m, not the rail pieces' 7.9 m).
     node_clearance = np.array([max(clearance_of(members[mi]) for mi, _ in node_owner[k])
                                 for k in range(n_nodes)])
-    target_node = node_obstruction + node_clearance
-    # graph-smooth: a few rounds of averaging with immediate neighbours (generalises the 1-D
-    # 3-point convolution to a graph, including the junction's branch point)
+    # REAL BUG, found by tracing why FLYOVER_1090943854 would not improve: smoothing the
+    # COMBINED target (obstruction+clearance) blends a ROAD node's lower 5.5 m requirement into
+    # an adjacent RAIL node's 7.9 m one right at their shared junction (this group mixes both),
+    # artificially capping the rail piece's achievable height. Fix: smooth only the noisy
+    # obstruction (terrain), and add each node's OWN clearance requirement AFTER smoothing, so a
+    # node's target is never diluted by a neighbour's different requirement.
+    smoothed_obstr = node_obstruction.copy()
     for _ in range(6):
-        new_t = target_node.copy()
+        new_o = smoothed_obstr.copy()
         for k in range(n_nodes):
             if not adj[k]: continue
-            nbrs = [target_node[v] for v, _, _ in adj[k]]
-            new_t[k] = 0.5 * target_node[k] + 0.5 * float(np.mean(nbrs))
-        target_node = new_t
+            nbrs = [smoothed_obstr[v] for v, _, _ in adj[k]]
+            new_o[k] = 0.5 * smoothed_obstr[k] + 0.5 * float(np.mean(nbrs))
+        smoothed_obstr = new_o
+    target_node = smoothed_obstr + node_clearance
     zdeck_node = np.minimum(target_node, reach)
     zdeck_node = np.maximum(zdeck_node, min(anchor_height.values()))
+    # Standing report: clearance AT the actual rail line for every rail piece in this group, not
+    # just "worst point anywhere" (which is usually the ordinary-connection point by design, per
+    # the plateau/core logic above, and would misreport a fine crossing as a bad one).
+    for mi, fl in enumerate(members):
+        if fl['is_rail']:
+            ids = piece_node_ids[mi]
+            near_rail = min(range(len(ids)),
+                             key=lambda i: min(np.linalg.norm(fl['P'][i] - rp) for rp in RAIL_PTS))
+            k = int(ids[near_rail])
+            print(f"  {fl['name']}: clearance AT the real rail crossing = "
+                  f"{zdeck_node[k]-node_obstruction[k]:.2f} m (target {clearance_of(fl)} m)")
 
     for mi, fl in enumerate(members):
         ids = piece_node_ids[mi]

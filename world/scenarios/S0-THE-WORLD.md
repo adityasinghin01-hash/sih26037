@@ -565,6 +565,22 @@ rather than guessing which piece S2's text meant.
   HIGHEST surface actually beneath the span at each sampled point — ground, or another road's own
   deck where one flyover crosses a second road. Approach ramp **≤6%**, the same plain limit as pass 1.
 
+**UPDATE 10 Sep 2026 — the rail crossings' real shortfall, investigated and partly closed.**
+MEASURED: at the actual crossing points, the first build gave only 4.83–5.85 m against the 7.9 m
+target — 7.9 m at 3.5% grade needs ~226 m of ramp, more than the 9 tagged pieces alone provide.
+**Fix: the elevated profile now extends into the CONNECTING ordinary road** at any true dead end
+of a rail piece (built-space matching, tolerance 6 m — a real elevated corridor's approach
+embankment is not limited to the officially "bridge"-tagged segment). Result: **895269403 and
+895269405 now reach 7.80 m and 7.86 m — within 10 cm of the 7.9 m target.** **895269403's own
+group also picked up 4 more built pieces this way** (`EXT_1..4`, chained through a genuinely
+messy real junction of very short OSM segments) and **1090943857 picked up 5** (`EXT_5..9`).
+**895269854 and the 1090943857 sub-group remain short (4.83 m and 0.14–0.81 m)** — traced to a
+genuine graph-distance limit, not a bug: their governing anchor is far enough away (through
+edges that must also respect a DIFFERENT connecting piece's own grade limit) that even the
+extended corridor's reachability bound caps them below target. Closing this fully would need
+extending the high-value anchor's OWN side further, a different, deeper change from extending
+the low side. Documented so this is a known, explained limit, not a silently accepted miss.
+
 **PIERS — 1800×1800 mm square RCC (REF-01 §11), on piles, at ~22 m spacing (REF-08 §5)** along each
 deck's own measured length, same construction as the river bridges' piers but at the flyover's own
 (bigger) cross-section. Pier count follows directly from length: 1 on the 15.8 m piece, ~24 on the

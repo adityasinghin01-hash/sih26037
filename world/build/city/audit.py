@@ -97,6 +97,9 @@ if H is not None:
         # PIERS still get checked normally (they are founded to the ground, not excluded).
         if o.name.startswith("FLYOVER_") and "_PIER_" not in o.name: continue
         if o.name.startswith("BRIDGE_") and "_PIER_" not in o.name: continue
+        # EXT_* are the flyover corridor's extension pieces into the ordinary road network
+        # (03d_flyovers.py) - same elevated-by-design reasoning, same exclusion.
+        if o.name.startswith("EXT_") and "_PIER_" not in o.name: continue
         v=np.array([(o.matrix_world @ x.co)[:] for x in o.data.vertices])
         if len(v)>40000: v=v[::max(1,len(v)//40000)]
         d=v[:,2]-tz(v[:,0],v[:,1])
