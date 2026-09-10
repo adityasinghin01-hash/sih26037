@@ -89,6 +89,14 @@ if H is not None:
         # a steep, sub-grid-detailed hill face to better than ~2 m - it was reporting them all as
         # "buried -2.1 m", a false FAIL. Their placement is checked where it is actually done.
         if o.name.startswith("ROCK_"): continue
+        # FLYOVER_* decks/kerbs/beams/posts are ELEVATED BY DESIGN (3-10 m above ground, that is
+        # the entire point of a flyover) - their clearance is already measured and asserted,
+        # against what is actually beneath them, in 03d_flyovers.py itself. This generic
+        # ground-relative check has no way to know "beneath" means "beneath a bridge deck", so it
+        # would flag every one as "floating" - a false FAIL, same class as ROCK_ above. Their own
+        # PIERS still get checked normally (they are founded to the ground, not excluded).
+        if o.name.startswith("FLYOVER_") and "_PIER_" not in o.name: continue
+        if o.name.startswith("BRIDGE_") and "_PIER_" not in o.name: continue
         v=np.array([(o.matrix_world @ x.co)[:] for x in o.data.vertices])
         if len(v)>40000: v=v[::max(1,len(v)//40000)]
         d=v[:,2]-tz(v[:,0],v[:,1])

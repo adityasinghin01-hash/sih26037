@@ -9,7 +9,7 @@
 # RUN THIS AFTER 03_roads.py, and RE-RUN IT whenever 03_roads.py is rebuilt (pass 1 has no
 # knowledge of this script and will silently overwrite its own file without it).
 #   blender --background --python build/city/03c_bridges.py
-import bpy, bmesh, math, os, sys, csv, json, time
+import bpy, bmesh, math, os, sys, csv, json, time, zlib
 import numpy as np
 T0 = time.time()
 REF = os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026-city/world")
@@ -268,7 +268,11 @@ for b in BRIDGES:
     # pothole / patch mask baked as a vertex colour attribute, so the deck material AND the
     # feature JSON below come from the SAME positions - one source, not two.
     feats = []
-    rng = np.random.default_rng(hash(b['name']) & 0xffffffff)
+    # zlib.crc32, not the built-in hash() - Python randomises str hash() per PROCESS
+    # (PYTHONHASHSEED), so the "same" script silently placed different potholes on every rebuild.
+    # MEASURED: road_surface_features.json changed between two back-to-back reruns with no source
+    # change - found while about to commit it, not guessed.
+    rng = np.random.default_rng(zlib.crc32(b['name'].encode()))
     for _ in range(b['potholes']):
         feats.append(dict(kind='pothole', s=float(rng.uniform(0.08, 0.92)) * L,
                            offset=float(rng.uniform(-half_c * 0.7, half_c * 0.7)),
