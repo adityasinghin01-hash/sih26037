@@ -107,6 +107,42 @@ assert(nOnRoad == 0, "sc:s4buildingOnRoad", "%d buildings sit too close to the c
 assert(nOverlap == 0, "sc:s4furnitureOverlap", "%d furniture overlaps - worst: %s", ...
     nOverlap, overlapWorst);
 
-fprintf('[S4 world] route %.1f m (real trunk chain) | %d buildings (spec 41) | median drawn, opposite carriageway not modelled\n', ...
-        W.Path.Len, numel(W.Buildings));
+% ---------------------------------------------------------------- signs, Phase B fix pass
+% "SIGNAGE AND FURNITURE - the thing that makes a highway read as a highway" - S4's own
+% words, and none of it existed before this pass. CHOSEN/DISCLOSED: the written spec gives
+% chainages (gantry at 120, cantilever sign at 380) against ITS OWN chainage reference,
+% which this file's real 411.7m route has no established correspondence to (unlike S1/S3,
+% which both anchor to a real, measured station via the cow/junction/squeeze). Used here
+% as direct real-route stations - close enough for a schematic, disclosed as approximate
+% rather than claimed exact. The three cautionary signs have no written station at all
+% ("merge ahead, lane narrows, pedestrian crossing" - descriptive only), placed near where
+% this file's own density layer (sc.s4density) already put the matching moving traffic.
+W.Signs = struct('Type',{},'Station',{},'Lateral',{},'Label',{});
+W.Signs(end+1) = struct('Type',"gantry",'Station',120,'Lateral',0, ...
+    'Label',"overhead gantry, destinations in Devanagari+English");
+W.Signs(end+1) = struct('Type',"hoarding",'Station',380,'Lateral',NEARSET+3, ...
+    'Label',"cantilever direction sign");
+W.Signs(end+1) = struct('Type',"cautionary",'Station',P.Len*0.08,'Lateral',NEARSET, ...
+    'Label',"merge ahead");
+W.Signs(end+1) = struct('Type',"cautionary",'Station',P.Len*0.38,'Lateral',NEARSET, ...
+    'Label',"lane narrows");
+W.Signs(end+1) = struct('Type',"cautionary",'Station',P.Len*0.63,'Lateral',NEARSET, ...
+    'Label',"pedestrian crossing");
+kmS = linspace(P.Len*0.2, P.Len*0.8, 3);
+for i = 1:3
+    W.Signs(end+1) = struct('Type',"kmstone",'Station',kmS(i),'Lateral',-(NEARSET+1), ...
+        'Label',""); %#ok<AGROW>
+end
+hdS = linspace(P.Len*0.10, P.Len*0.90, 5);
+for i = 1:5
+    side = 2*mod(i,2) - 1;
+    W.Signs(end+1) = struct('Type',"hoarding",'Station',hdS(i),'Lateral',side*(NEARSET+5), ...
+        'Label',""); %#ok<AGROW>
+end
+% NOT built this pass, disclosed rather than silently skipped: the W-beam crash barrier
+% along the bridge approaches/median openings. The median band already occupies that
+% visual space; a genuinely separate barrier object is a smaller remaining gap.
+
+fprintf('[S4 world] route %.1f m (real trunk chain) | %d buildings (spec 41) | %d signs | median drawn, opposite carriageway not modelled\n', ...
+        W.Path.Len, numel(W.Buildings), numel(W.Signs));
 end

@@ -712,6 +712,78 @@ if isfield(W,'SideRoads') && ~isempty(W.SideRoads)
         end
     end
 end
+
+% ---- service drops (a short stub from a building to its wire run) -------
+% Added with sc.s3world's own W.ServiceDrops (Phase C, 11 Sep 2026 fix pass) - each entry
+% is a single point in (Station, Lateral0->Lateral1), not a run along the path, so it is
+% drawn directly rather than through sc.path.at() at two different stations.
+if isfield(W,'ServiceDrops') && ~isempty(W.ServiceDrops)
+    for k = 1:numel(W.ServiceDrops)
+        d = W.ServiceDrops(k);
+        p0 = P.at(d.S0, d.Lateral0);  p1 = P.at(d.S1, d.Lateral1);
+        plot(ax, [p0(1) p1(1)], [p0(2) p1(2)], '-', 'Color',[.55 .50 .40], ...
+             'LineWidth',0.5, 'Clipping','on');
+    end
+end
+
+% ---- signs - gantry / cautionary / km-stone / hoarding -------------------
+% Added 11 Sep 2026, Phase B of the density-initiative fix pass. Nothing drew these
+% before, at all - S4-THE-HIGHWAY.md's own "signage and furniture is the thing that makes
+% a highway read as a highway" line named a real gap. Shapes and colours are the SAME
+% IRC 67 / Vienna-convention sourcing drawHazard's own "sharpturn"/"speedsign" cases
+% already use for S1/S3's hazards - this is the identical real-world convention, just for
+% CONTEXT signs rather than hazards the planner's speed cap logic reads.
+if isfield(W,'Signs') && ~isempty(W.Signs)
+    for k = 1:numel(W.Signs)
+        drawSign(ax, P, W.Signs(k));
+    end
+end
+end
+
+function drawSign(ax, P, sg)
+c = P.at(sg.Station, sg.Lateral);
+switch string(sg.Type)
+case "gantry"
+    % IRC: a wide green overhead panel spanning the carriageway. Drawn here as a green
+    % band across the road at its station - the deck itself is 5.5m up, invisible to a
+    % top-down view (the same "no elevation channel" call sc.s4world's own header makes
+    % for flyover decks), so this marks WHERE it crosses, not what it looks like from below.
+    [~, acrossDir] = frame(P, sg.Station);
+    hw = 8.0;
+    p0 = c - acrossDir*hw;  p1 = c + acrossDir*hw;
+    plot(ax, [p0(1) p1(1)], [p0(2) p1(2)], '-', 'Color',[.05 .45 .15], 'LineWidth',5.0, ...
+         'Clipping','on');
+case "cautionary"
+    % IRC 67: white equilateral triangle, red border - IDENTICAL shape to drawHazard's
+    % own "sharpturn" case, reused verbatim rather than redrawn differently.
+    r = 2.0;
+    th = [pi/2, pi/2+2*pi/3, pi/2+4*pi/3];
+    patch(ax, c(1)+r*cos(th), c(2)+r*sin(th), [1 1 1], ...
+          'EdgeColor',[.80 .08 .10], 'LineWidth',2.6, 'Clipping','on');
+case "kmstone"
+    % IRC 8: 600x300x100mm, green top for a national highway.
+    r = 0.8;
+    patch(ax, c(1)+r*[-1 1 1 -1], c(2)+r*[-.5 -.5 .5 .5], [.90 .88 .80], ...
+          'EdgeColor',[.05 .45 .15], 'LineWidth',2.0, 'Clipping','on');
+case "hoarding"
+    % a unipole billboard - grey board, dark post mark. Drawn axis-aligned rather than
+    % rotated to the road heading - a small map icon, not a measured footprint.
+    r = [3.0 1.4];
+    patch(ax, c(1)+r(1)*[-1 1 1 -1], c(2)+r(2)*[-1 -1 1 1], [.75 .75 .75], ...
+          'EdgeColor',[.3 .3 .3], 'LineWidth',1.2, 'Clipping','on');
+otherwise
+    plot(ax, c(1), c(2), 's', 'MarkerSize',8, 'Color',[.5 .5 .5], 'Clipping','on');
+end
+lbl = string(fieldOr(sg,'Label',""));
+if strlength(lbl) > 0
+    [~, acrossDir] = frame(P, sg.Station);
+    anchor = c + acrossDir*7.0;
+    text(ax, anchor(1), anchor(2), char(labelHead(lbl,28)), ...
+         'HorizontalAlignment','center','VerticalAlignment','middle', ...
+         'FontName','Helvetica','FontSize',8,'Color',[.15 .15 .15], ...
+         'BackgroundColor',[1 1 1],'EdgeColor',[.6 .6 .6],'Margin',1.5, ...
+         'Interpreter','none','Clipping','on');
+end
 end
 
 function c = buildingColour(typ)
