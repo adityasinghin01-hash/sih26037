@@ -75,6 +75,11 @@ function R = demo_play(route, opts)
 %   for the lateral bounds it clamps to (they exist for Phase 6/8), so a hazard
 %   occupying part of the carriageway takes that band away and the real planner
 %   plans around what is left. No file of anyone else's is edited to do it.
+%   A LIVE barrier is the one special case: changing a scalar bound after the
+%   ego is already inside the blocked band invalidates its present pose. The
+%   live adapter therefore removes blocked terminal offsets, adds the
+%   max-clearance line to the real candidate fan, and holds that candidate as
+%   a commitment while planContingency continues to solve each planning cycle.
 %
 %   =====================================================================
 %   TIER 3, TESTED AND ANSWERED: POTHOLES ARE SLOW-THROUGH, NOT DODGED
@@ -147,7 +152,9 @@ arguments
     opts.Recompute  (1,1) logical = false    % ignore any cache
     opts.Speed      (1,1) double  = 1.0      % 1.0 = natural speed. NOT slow-motion.
     opts.ViewSpan   (1,1) double  = 60       % m, half-span of the follow camera
-    opts.PlanEvery  (1,1) double  = 1
+    % Anjali profile, this branch: 84.7 ms average, ~130 ms slow region.
+    % 3 means 6.67 Hz and leaves measured headroom; 2 (10 Hz) is aggressive.
+    opts.PlanEvery  (1,1) double  = 3
     opts.TEnd       (1,1) double  = NaN      % s, override the route's own length
     opts.Sensed     (1,1) logical = false    % sense the traffic via sc.senseRig/senseStep
                                               % (lidar+radar+ring, trackerGNN) instead of
@@ -155,6 +162,8 @@ arguments
     opts.Interactive(1,1) logical = true
     opts.Snap       (1,1) string  = ""       % write a frame here and exit
     opts.Cow        (1,1) string  = "blocking" % "blocking" | "verge" | "none"
+    opts.InjectStep (1,1) double  = NaN      % automated rehearsal/test hook; UI uses clicks
+    opts.InjectXY   (1,2) double  = [NaN NaN]
     opts.WriteResults(1,1) logical = true    % write results/<run>/{trajectories.csv,
                                               % metrics.json, config.json} - AGENTS.md
                                               % section 3. Skipped under Live=true, where
@@ -163,6 +172,8 @@ end
 
 here = fileparts(mfilename('fullpath'));
 addpath(here);
+assert(isfinite(opts.PlanEvery) && opts.PlanEvery >= 1 && opts.PlanEvery == round(opts.PlanEvery), ...
+    'demo_play:PlanEvery','PlanEvery must be a positive integer');
 assert(~isempty(which('sih.planner.planContingency')), ...
     'sih.planner is not on the path - the +sih repo is not where planSeat expects it');
 
@@ -192,7 +203,7 @@ if opts.Live
     LOG = [];                                  % computed inside the draw loop
 elseif ~opts.Recompute && isfile(cacheFile)
     L = load(cacheFile);
-    [LOG, why] = useCache(L, D, DT);
+    [LOG, why] = useCache(L, D, DT, opts.PlanEvery);
     if isempty(LOG)
         fprintf('%s - recomputing\n', why);
         LOG = runPlanner(D, DT, opts.PlanEvery);
@@ -874,6 +885,8 @@ for i = 1:n
         'EgoXY',xy,'EgoYaw',hdg,'Kappa',kappaV(ki),'CruiseV',D.CruiseV);
     fn = fieldnames(TUNE);
     for f = 1:numel(fn), ctx.(fn{f}) = TUNE.(fn{f}); end
+    [ctx.LatOffsets, livePassE] = liveSafeOffsets( ...
+        D.Hazards, s, W, TUNE.EgoWidth, ctx.LatOffsets);
 
     % ---- TIER 2: hazards narrow the corridor the planner may use ----------
     % planSeat reads ctx.ELo/ctx.EHi as supported overrides of its lateral
@@ -927,6 +940,12 @@ for i = 1:n
         cmd.MirrorsFolded = mirrorsFoldedNow;   % cheap, computed every step
                                                  % regardless of planEvery
     end
+    if isfinite(livePassE)
+        % This is one of the planner's terminal candidates. Hold it through
+        % the manoeuvre instead of following only the first few metres of the
+        % same receding-horizon lateral transition on every new cycle.
+        cmd.e = livePassE;
+    end
 
     % ---- TIER 2: the hazard speed cap, beside speedLimit, never inside it --
     [cap, why] = hazardCap(D.Hazards, s, v, D.CruiseV);
@@ -955,7 +974,98 @@ for i = 1:n
 end
 LOG.ReachedEnd = reachedEnd;
 LOG.PlannerFP  = plannerFingerprint();
+LOG.PlanEvery  = planEvery;
 fprintf('planner run done in %.1f s (%d plan failures)\n', toc(tRun), nFail);
+end
+
+function TAIL = runPlannerTail(D, DT, planEvery, prior, keep)
+%RUNPLANNERTAIL  Re-plan only the unplayed portion after a live obstruction.
+%   The physical state at KEEP is preserved exactly. Deliberation state is
+%   deliberately fresh: the click creates a new planning episode, while the
+%   current tracks, road, speed and lateral motion remain the real ones.
+W = D.W;  P = W.Path;
+RefPath = referencePathFrenet(P.P);
+kappaV  = P.curvature();
+TUNE = struct( ...
+    'TermSpeeds',   [0 4 8 11 14.4], ...
+    'LatOffsets',   [-2.5 -1.585 -0.9 0 0.9 1.75 2.6], ...
+    'Horizon',      4.0, 'TimeRes', 0.1, 'Inflation', 0.0, ...
+    'EgoWidth',     1.8, 'EgoLength', 4.7, 'Wheelbase', 2.7, ...
+    'LookaheadT',   0.6, 'MinLookahead', 2.0, 'DMin', 2.5);
+A_LON = 1.5;  D_LON = 3.0;  R_LAT = 0.9;
+
+nTotal = round(D.TEnd/DT);
+n = max(0, nTotal - keep);
+TAIL = struct('t',zeros(1,n),'s',zeros(1,n),'e',zeros(1,n),'v',zeros(1,n), ...
+              'x',zeros(1,n),'y',zeros(1,n),'yaw',zeros(1,n), ...
+              'cmd',{cell(1,n)},'tracks',{cell(1,n)}, ...
+              'cap',nan(1,n),'capWhy',strings(1,n),'chapter',strings(1,n));
+s = prior.s(keep);  e = prior.e(keep);  v = prior.v(keep);
+ev = 0;
+if keep > 1, ev = (prior.e(keep) - prior.e(keep-1))/DT; end
+st = struct();  lastCmd = struct('v',v,'e',e);
+tRun = tic;  nFail = 0;  reachedEnd = false;
+fprintf('LIVE local re-plan: keeping %d frames, solving at 20/%d = %.2f Hz\n', ...
+        keep, planEvery, 20/planEvery);
+for j = 1:n
+    i = keep + j;
+    t = (i-1)*DT;
+    [xy, hdg] = P.at(s, e);
+    ki = min(numel(kappaV), max(1, round(s/P.Step)+1));
+    ctx = struct('s',s,'e',e,'v',v,'t',t, ...
+        'W',W,'Path',P,'RefPath',RefPath,'Tracks',tracksAt(D,i), ...
+        'EgoXY',xy,'EgoYaw',hdg,'Kappa',kappaV(ki),'CruiseV',D.CruiseV);
+    fn = fieldnames(TUNE);
+    for f = 1:numel(fn), ctx.(fn{f}) = TUNE.(fn{f}); end
+    [ctx.LatOffsets, livePassE] = liveSafeOffsets( ...
+        D.Hazards, s, W, TUNE.EgoWidth, ctx.LatOffsets);
+    [eLoH, eHiH] = corridorFrom(D.Hazards, s, W, TUNE.EgoWidth);
+    if isfinite(eLoH), ctx.ELo = eLoH; end
+    if isfinite(eHiH), ctx.EHi = eHiH; end
+
+    if j == 1 || mod(i-1, planEvery) == 0
+        [cmd, st] = sc.planSeat(st, ctx);
+        lastCmd = cmd;
+        if isfield(cmd,'PlanFailed') && strlength(cmd.PlanFailed) > 0, nFail = nFail + 1; end
+    else
+        cmd = lastCmd;  cmd.State = st.State;  cmd.Note = st.Note;
+    end
+    if isfinite(livePassE), cmd.e = livePassE; end
+    [cap, why] = hazardCap(D.Hazards, s, v, D.CruiseV);
+    cmd.VCap = min(cmd.v, cap);
+    cmd.v    = min(cmd.v, cap);
+    TAIL.cap(j) = cap;  TAIL.capWhy(j) = why;
+    TAIL.chapter(j) = chapterFor(D.Hazards, s, ctx.Tracks, D.W.Path, s);
+
+    dv = cmd.v - v;
+    v  = max(0, v + max(-D_LON*DT, min(A_LON*DT, dv)));
+    [e, ev] = sc.lateralStep(e, ev, cmd.e, v, DT, 'RateCap', R_LAT);
+    s  = min(P.Len, s + v*DT);
+    TAIL.t(j)=t; TAIL.s(j)=s; TAIL.e(j)=e; TAIL.v(j)=v;
+    TAIL.x(j)=xy(1); TAIL.y(j)=xy(2); TAIL.yaw(j)=hdg;
+    TAIL.cmd{j}=slimCmd(cmd); TAIL.tracks{j}=ctx.Tracks;
+    if s >= P.Len - 6
+        TAIL = truncate(TAIL, j);  reachedEnd = true;  break
+    end
+end
+TAIL.ReachedEnd = reachedEnd;
+TAIL.PlannerFP = plannerFingerprint();
+TAIL.PlanEvery = planEvery;
+fprintf('LIVE local re-plan done in %.1f s (%d plan failures, %d new frames)\n', ...
+        toc(tRun), nFail, numel(TAIL.t));
+end
+
+function LOG = spliceTail(LOG, TAIL, keep)
+%SPLICETAIL  Preserve the watched prefix byte-for-byte and replace only its tail.
+LOG = truncate(LOG, keep);
+names = {'t','s','e','v','x','y','yaw','cmd','tracks','cap','capWhy','chapter'};
+for k = 1:numel(names)
+    f = names{k};
+    LOG.(f) = [LOG.(f) TAIL.(f)];
+end
+LOG.ReachedEnd = TAIL.ReachedEnd;
+LOG.PlannerFP = TAIL.PlannerFP;
+LOG.PlanEvery = TAIL.PlanEvery;
 end
 
 function TR = tracksAt(D, i)
@@ -985,7 +1095,8 @@ function c = slimCmd(cmd)
 %   the point of watching) - just as single precision, which is well past the
 %   precision of a 1600-pixel-wide axes.
 keep = {'State','Note','v','e','H','HLabel','Look','Blocked','TrunkMode', ...
-        'Creeping','VCap','MirrorsFolded'};
+        'Creeping','VCap','MirrorsFolded','TurnType','TurnBinds', ...
+        'RefugePoint','NeedsReverse','EscapeCount','HasEscape','NearestEscape'};
 c = struct();
 for k = 1:numel(keep)
     if isfield(cmd, keep{k}), c.(keep{k}) = cmd.(keep{k}); end
@@ -1015,7 +1126,7 @@ function LOG = truncate(LOG, n)
 %TRUNCATE  Cut every per-step series to n samples. Scalar bookkeeping fields
 %   (Stamp, ReachedEnd) are left alone - they describe the RUN, not a step,
 %   and slicing them would quietly corrupt the cache's own metadata.
-skip = {'Stamp','ReachedEnd','PlannerFP'};
+skip = {'Stamp','ReachedEnd','PlannerFP','PlanEvery'};
 f = fieldnames(LOG);
 for k = 1:numel(f)
     if ismember(f{k}, skip), continue; end
@@ -1159,6 +1270,10 @@ eLo0 = -(hw - 0.95);  eHi0 = (hw - 0.95) + 0.35;    % planSeat's own defaults
 eLo  = eLo0;  eHi = eHi0;  touched = false;
 for k = 1:numel(H)
     if ~ismember(string(H(k).Type), ["barrier","damage"]), continue; end
+    % A live barrier constrains terminal candidate lines in liveSafeOffsets.
+    % ELo/EHi also applies to the candidate's current pose, so using it here
+    % would invalidate every path before an ego on the blocked side can leave.
+    if startsWith(string(H(k).Label),"LIVE OBSTACLE"), continue; end
     [lo, hi] = stretch(H(k));
     if s < lo - leadIn || s > hi, continue; end      % leadIn m of approach to plan in
     % RAMPED, NOT A STEP FUNCTION - progress 0 at s=lo-leadIn (no effect yet)
@@ -1216,6 +1331,42 @@ if ~touched || eHi - eLo < minCorridor               % never squeeze below the s
     eLo = NaN;  eHi = NaN;                           % floor - that is not a corridor,
 end                                                  % it is a wall, and planSeat's
 end                                                  % own bounds are the honest fallback
+
+function [offsets, passE] = liveSafeOffsets(H, s, W, egoW, offsets)
+%LIVESAFEOFFSETS  Offer terminal lines only on a clear side of a live barrier.
+%   Terminal offsets let the trajectory begin at the ego's unchanged pose and
+%   move across. planContingency still generates, safety-checks, selects and
+%   follows the resulting trajectory; this adapter only removes blocked goals.
+eLo = -(W.Width/2 - 0.95);
+eHi =  (W.Width/2 - 0.95) + 0.35;
+passE = NaN;
+for k = 1:numel(H)
+    if ~startsWith(string(H(k).Label),"LIVE OBSTACLE"), continue; end
+    [lo, hi] = stretch(H(k));
+    if s < lo - 45 || s > hi, continue; end
+    halfObstacle = 0.35;
+    if isfinite(H(k).Radius) && H(k).Radius > 0
+        halfObstacle = H(k).Radius;
+    end
+    clearance = 0.50;
+    blockedLo = H(k).Lateral - halfObstacle - egoW/2 - clearance;
+    blockedHi = H(k).Lateral + halfObstacle + egoW/2 + clearance;
+    rightRoom = blockedLo - eLo;
+    leftRoom  = eHi - blockedHi;
+    if leftRoom >= rightRoom
+        safeLo = blockedHi;  safeHi = eHi;
+    else
+        safeLo = eLo;        safeHi = blockedLo;
+    end
+    if safeHi <= safeLo
+        continue                         % physically a wall: retain safe stop
+    end
+    keep = offsets >= safeLo & offsets <= safeHi;
+    bestClearanceLine = 0.5*(safeLo + safeHi);
+    offsets = unique([offsets(keep) bestClearanceLine], 'stable');
+    passE = bestClearanceLine;
+end
+end
 
 function c = chapterFor(H, s, tracks, P, egoS)
 %CHAPTERFOR  The FULL label of whatever the ego is closest to, for the panel.
@@ -1299,7 +1450,8 @@ function R = play(D, LOG, DT, opts)
 n = numel(LOG.t);
 sc.plannerView('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
     'Hazards',D.Hazards,'Title',D.Title,'ViewSpan',opts.ViewSpan, ...
-    'Interactive',opts.Interactive,'Sensed',D.Sensed));
+    'Interactive',opts.Interactive,'EnableInjection',opts.Interactive, ...
+    'Sensed',D.Sensed));
 
 if strlength(opts.Snap) > 0                       % one frame, for a screenshot
     i = max(1, round(n/2));
@@ -1338,16 +1490,58 @@ fprintf('\nplaying %d steps = %.0f s of driving at %.1fx\n', n, n*DT, opts.Speed
 fprintf('SPACE pause/resume    ->  or  N  step one frame    Q quit\n\n');
 dtWall = DT/opts.Speed;
 ft = nan(1,n);  lag = nan(1,n);
+nReplans = 0;  nRejected = 0;  lastReplanS = NaN;
+lastObstacleS = NaN;  lastObstacleE = NaN;
 % Draw frame 1 BEFORE starting the clock. Building the figure, the road, and
 % fourteen labelled hazards is a genuine one-off cost (measured at ~14 s the
 % first time MATLAB touches these graphics paths) and charging it to the
 % playback clock would make the car appear to sprint to catch up.
 sc.plannerView('step', frameOf(LOG, 1));
 tClock = tic;  pausedFor = 0;  quit = false;  drawn = 1;
-for i = 2:n
+i = 2;
+while i <= n
     ctl = sc.plannerView('step', frameOf(LOG, i));
+    if isfinite(opts.InjectStep) && i == round(opts.InjectStep) && all(isfinite(opts.InjectXY))
+        % Deterministic twin of a mouse event for regression testing and a
+        % pre-scripted rehearsal fallback. The normal demo leaves this off.
+        ctl.InjectPending = true;
+        ctl.InjectXY = opts.InjectXY;
+    end
     ft(i) = ctl.LastFrame_ms;
     if ctl.Quit, quit = true; break; end
+    if ctl.InjectPending
+        [hs, he, accepted, why] = sc.clickToRoad(D.W.Path, D.W, ctl.InjectXY, LOG.s(i));
+        if accepted
+            % A stationary obstruction needs braking lead-in as well as a safe
+            % terminal line. Four m/s makes this a controlled pass; the local
+            % re-solve still decides the candidate trajectory and speed below.
+            liveHz = hz("barrier", hs, he, "LIVE OBSTACLE - judge click", 0.35, 4.0, 0);
+            sc.plannerView('status', struct('Text',sprintf( ...
+                'LIVE RE-PLAN TRIGGERED AT s=%.1f m, e=%+.1f m', hs, he)));
+            nextD = D;  nextD.Hazards(end+1) = liveHz;
+            try
+                tail = runPlannerTail(nextD, DT, opts.PlanEvery, LOG, i);
+                LOG = spliceTail(LOG, tail, i);
+                D = nextD;
+                n = numel(LOG.t);
+                nReplans = nReplans + 1;
+                lastReplanS = LOG.s(i);
+                lastObstacleS = hs;  lastObstacleE = he;
+                sc.plannerView('addHazard', struct('Hazard',liveHz));
+                sc.plannerView('status', struct('Text',sprintf( ...
+                    'LIVE RE-PLAN COMPLETE FROM s=%.1f m  (%g Hz)', LOG.s(i), 20/opts.PlanEvery)));
+            catch me
+                % The already-watched prefix and the original cached tail both
+                % survive. A failed live feature must not destroy the demo.
+                sc.plannerView('status', struct('Text', ...
+                    "LIVE RE-PLAN FAILED - ORIGINAL SAFE TAIL RETAINED"));
+                warning('demo_play:liveReplan','live re-plan failed: %s',me.message);
+            end
+        else
+            nRejected = nRejected + 1;
+            sc.plannerView('status', struct('Text',"OBSTACLE NOT PLACED - " + why));
+        end
+    end
     drawn = i;
     % Pace against a real clock, not by accumulating pauses: time spent PAUSED
     % must not be repaid by the car sprinting to catch up afterwards.
@@ -1359,15 +1553,29 @@ for i = 2:n
         pause(slack);
     end
     lag(i) = toc(tClock) - (pausedFor + i*dtWall);
+    i = i + 1;
 end
 elapsed = toc(tClock);
 ft = ft(1:max(drawn,1));  lag = lag(1:max(drawn,1));
 y = sort(ft(isfinite(ft)));
+egoEAtObstacle = NaN;
+if isfinite(lastObstacleS)
+    [~, iObstacle] = min(abs(LOG.s(1:drawn) - lastObstacleS));
+    egoEAtObstacle = LOG.e(iObstacle);
+end
+lastCmd = LOG.cmd{drawn};
+finalState = "";  finalNote = "";
+if isfield(lastCmd,'State'), finalState = string(lastCmd.State); end
+if isfield(lastCmd,'Note'),  finalNote  = string(lastCmd.Note);  end
 R = struct('Frames',drawn,'Elapsed_s',elapsed,'Quit',quit, ...
            'MeanFrame_ms',mean(ft,'omitnan'), ...
            'MedianFrame_ms',median(ft,'omitnan'), ...
            'P95Frame_ms',pick(y,0.95), 'MaxFrame_ms',max(ft), ...
-           'OverBudget',sum(ft > 1000*DT), 'MaxLag_s',max(abs(lag),[],'omitnan'));
+           'OverBudget',sum(ft > 1000*DT), 'MaxLag_s',max(abs(lag),[],'omitnan'), ...
+           'LiveReplans',nReplans,'RejectedClicks',nRejected,'LastReplan_s',lastReplanS, ...
+           'LiveObstacleS',lastObstacleS,'LiveObstacleE',lastObstacleE, ...
+           'EgoEAtObstacle',egoEAtObstacle,'FinalS',LOG.s(drawn),'FinalE',LOG.e(drawn), ...
+           'ReachedEnd',LOG.ReachedEnd,'FinalState',finalState,'FinalNote',finalNote);
 fprintf('\n--- PLAYBACK ---\n');
 qtxt = 'ran to the end'; if quit, qtxt = 'quit early'; end
 fprintf('  %d frames in %.1f s wall clock (%s)\n', drawn, elapsed, qtxt);
@@ -1376,6 +1584,7 @@ fprintf('  frame work: mean %.2f ms  median %.2f  p95 %.2f  max %.2f\n', ...
 fprintf('  frames over the %.0f ms budget: %d (%.2f%%)\n', 1000*DT, R.OverBudget, ...
         100*R.OverBudget/max(drawn,1));
 fprintf('  worst drift from the real clock: %.3f s\n', R.MaxLag_s);
+fprintf('  live re-plans: %d  rejected clicks: %d\n', R.LiveReplans, R.RejectedClicks);
 if ~quit, fprintf('  (window left open - close it or call sc.plannerView(''close''))\n'); end
 end
 
@@ -1403,7 +1612,7 @@ catch
 end
 end
 
-function [LOG, why] = useCache(L, D, DT)
+function [LOG, why] = useCache(L, D, DT, planEvery)
 %USECACHE  Decide whether a cached run answers this request.
 %
 %   A cached run is REUSABLE IF it is the same route AND it covers at least as
@@ -1423,6 +1632,13 @@ end
 C = L.LOG;
 if ~strcmp(C.Stamp, routeStamp(D))
     why = 'cache is for a different route';  return
+end
+if ~isfield(C,'cmd') || isempty(C.cmd) || ~isfield(C.cmd{1},'TurnType') ...
+        || ~isfield(C.cmd{1},'NearestEscape')
+    why = 'cache predates the turn/escape HUD fields';  return
+end
+if ~isfield(C,'PlanEvery') || C.PlanEvery ~= planEvery
+    why = sprintf('cache planner rate differs from PlanEvery=%d', planEvery);  return
 end
 % THE PLANNER CODE IS NOT PART OF THE STAMP, ON PURPOSE. If it were, every
 % edit to planSeat.m would invalidate every cache and force a two-minute

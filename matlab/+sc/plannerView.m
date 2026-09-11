@@ -11,7 +11,7 @@ function out = plannerView(action, d)
 %     - the ego (oriented rectangle, real car L/W) and every road user, by class
 %     - the fan of candidate paths (thin grey) and the committed trunk (green)
 %     - the look-ahead point the steering is aimed at
-%     - a numbers panel: t, s, v, target v, target e, state, h = lambda-beta
+%     - a numbers panel: motion/safety plus live turn and escape-point state
 %     - a MODEL STATUS panel: the 4 perception models + the planner, live
 %     - a rolling strip of v and h against t
 %
@@ -107,7 +107,8 @@ function out = plannerView(action, d)
 %   under -batch when no Snap= was asked for.)
 
 persistent S
-out = struct('Paused',false,'Quit',false,'Frames',0,'LastFrame_ms',NaN);
+out = struct('Paused',false,'Quit',false,'Frames',0,'LastFrame_ms',NaN, ...
+             'InjectPending',false,'InjectXY',[NaN NaN]);
 
 switch action
 % --------------------------------------------------------------------- init
@@ -121,6 +122,7 @@ case 'init'
     % tried and the ego was too small to read.
     S.span = getf(d,'ViewSpan',60);          % m, half-span of the follow camera
     S.interactive = getf(d,'Interactive',true);
+    S.enableInjection = getf(d,'EnableInjection',S.interactive);
     S.sensed = getf(d,'Sensed',false);       % demo_play's Sensed= - see the ground-truth
                                               % notice below, which reads this
     % See demo_play's own note: feature('ShowFigureWindows') is TRUE under
@@ -310,14 +312,25 @@ case 'init'
     % State lives in the FIGURE's appdata, not in this persistent struct: the
     % KeyPressFcn callback fires from MATLAB's event loop, where it cannot see
     % or safely mutate a persistent in a function that is mid-call.
-    setappdata(S.fig, 'ctl', struct('Paused',false,'StepOnce',false,'Quit',false));
+    setappdata(S.fig, 'ctl', struct('Paused',false,'StepOnce',false,'Quit',false, ...
+        'InjectPending',false,'InjectXY',[NaN NaN]));
+    setappdata(S.fig, 'injectAxes', S.axMap);
     if S.interactive
         set(S.fig, 'KeyPressFcn', @onKey, 'CloseRequestFcn', @onClose);
+        if S.enableInjection
+            % Figure-level by design: clicks on an existing road line, hazard,
+            % candidate or vehicle must not get swallowed by that child object.
+            set(S.fig, 'WindowButtonDownFcn', @onMapClick);
+        end
     end
     S.hHint = annotation(S.fig, 'textbox', [0.035 0.955 0.615 0.04], ...
-        'String', 'SPACE pause/resume     ->  or  N   step one frame     Q quit', ...
+        'String', 'CLICK road: add obstacle     SPACE pause     N step     Q quit', ...
         'FontName','Menlo','FontSize',10,'Color',[.35 .35 .35], ...
         'EdgeColor','none','VerticalAlignment','middle');
+    S.hLive = annotation(S.fig, 'textbox', [0.035 0.922 0.615 0.032], ...
+        'String','', 'FontName','Menlo','FontSize',10,'FontWeight','bold', ...
+        'Color',[.78 .18 .08], 'EdgeColor','none', ...
+        'VerticalAlignment','middle','Visible','off');
     S.hBanner = annotation(S.fig, 'textbox', [0.30 0.60 0.30 0.08], ...
         'String','PAUSED','FontName','Menlo','FontSize',26,'FontWeight','bold', ...
         'Color',[.85 .25 .1],'BackgroundColor',[1 1 1],'FaceAlpha',0.82, ...
@@ -423,6 +436,13 @@ case 'step'
         S.wrapKey2 = string(hzLine);  S.wrapVal2 = wrapNote(char(hzLine), 34, 5);
     end
     hzW = S.wrapVal2;
+    turnType = char(clampStr(getf(cmd,'TurnType',"unknown"), 10));
+    turnBinds = char(clampStr(getf(cmd,'TurnBinds',"unknown"), 10));
+    refuge = pointText(getf(cmd,'RefugePoint',[NaN NaN]));
+    reverse = yesNo(getf(cmd,'NeedsReverse',false));
+    escapeCount = getf(cmd,'EscapeCount',0);
+    hasEscape = yesNo(getf(cmd,'HasEscape',false));
+    nearestEscape = pointText(getf(cmd,'NearestEscape',[NaN NaN]));
     set(S.txt,'String',sprintf([ ...
         'WHERE\n%s\n\n' ...
         'STATE   %s%s\n\n' ...
@@ -435,12 +455,17 @@ case 'step'
         'h        %+6.3f     (%s)\n' ...
         'trunkMode %s\n' ...
         'road users %d\n' ...
-        'candidates %d\n\n' ...
+        'candidates %d\n' ...
+        'turn     %-10s bind %-10s\n' ...
+        'refuge   %-15s reverse %s\n' ...
+        'escapes  %3.0f available %s\n' ...
+        'nearest  %s\n\n' ...
         'HAZARD\n%s\n\n' ...
         'WHY\n%s'], ...
         chapW, char(cmd.State), blk, d.t, d.s, cowLine, d.v, 3.6*d.v, ...
         getf(cmd,'v',NaN), getf(cmd,'e',NaN), capTxt, h, hlabel(cmd), tm, ...
-        numel(d.tracks), numCand(cmd), hzW, wrapNote(noteOf(cmd),34,3)));
+        numel(d.tracks), numCand(cmd), turnType, turnBinds, refuge, reverse, ...
+        escapeCount, hasEscape, nearestEscape, hzW, wrapNote(noteOf(cmd),34,3)));
 
     % ---- model status panel ---------------------------------------------
     M = getf(d,'Models',[]);
@@ -522,7 +547,7 @@ case 'step'
         ctl.StepOnce = false;  ctl.Paused = true;
         setappdata(S.fig, 'ctl', ctl);
     else
-        while ctl.Paused && ~ctl.Quit
+        while ctl.Paused && ~ctl.Quit && ~getf(ctl,'InjectPending',false)
             set(S.hBanner,'Visible','on');
             drawnow;                   % full drawnow: limitrate can drop the
             pause(0.03);               % banner and swallow the keypress
@@ -537,6 +562,36 @@ case 'step'
 
     out.Paused = ctl.Paused;  out.Quit = ctl.Quit;
     out.Frames = S.nFrames;  out.LastFrame_ms = S.lastMs;
+    out.InjectPending = getf(ctl,'InjectPending',false);
+    out.InjectXY = getf(ctl,'InjectXY',[NaN NaN]);
+    if out.InjectPending
+        % Consume exactly once. A held mouse button must never trigger a
+        % second re-plan on the following frame.
+        ctl.InjectPending = false;
+        setappdata(S.fig, 'ctl', ctl);
+    end
+
+% --------------------------------------------------------------- addHazard
+case 'addHazard'
+    if isempty(S) || ~isgraphics(S.fig) || ~isfield(d,'Hazard'), return; end
+    if isempty(S.hz), S.hz = d.Hazard; else, S.hz(end+1) = d.Hazard; end
+    drawHazard(S.axMap, S.P, d.Hazard, numel(S.hz));
+    if ~S.headless, drawnow; end
+
+% ----------------------------------------------------------- queueInjection
+case 'queueInjection'
+    % Programmatic twin of the mouse callback. This exists so the complete
+    % click -> re-plan -> splice path can be driven in an automated smoke test
+    % without manufacturing a Windows mouse event.
+    if isempty(S) || ~isgraphics(S.fig) || ~isfield(d,'XY'), return; end
+    queueInjection(S.fig, d.XY);
+
+% ------------------------------------------------------------------ status
+case 'status'
+    if isempty(S) || ~isgraphics(S.fig) || ~isfield(S,'hLive') || ~isgraphics(S.hLive), return; end
+    msg = string(getf(d,'Text',""));
+    set(S.hLive, 'String',char(msg), 'Visible',onoff(strlength(msg) > 0));
+    if ~S.headless, drawnow; end
 
 % --------------------------------------------------------------------- snap
 case 'snap'
@@ -556,7 +611,8 @@ case 'close'
     % load, not ordering - see demo_play's header. Releasing the figure
     % promptly is still the right thing to do.)
     if ~isempty(S) && isfield(S,'fig') && isgraphics(S.fig)
-        set(S.fig,'CloseRequestFcn','closereq','KeyPressFcn',[]);
+        set(S.fig,'CloseRequestFcn','closereq','KeyPressFcn',[], ...
+            'WindowButtonDownFcn',[]);
         delete(S.fig);
     end
     S = [];
@@ -577,6 +633,26 @@ switch lower(ev.Key)
     case {'q','escape'}
         ctl.Quit = true;  ctl.Paused = false;
 end
+setappdata(fig, 'ctl', ctl);
+end
+
+function onMapClick(fig, ~)
+% Figure callback, not an axes callback: objects drawn on the map still count.
+if ~isgraphics(fig) || ~strcmp(get(fig,'SelectionType'),'normal'), return; end
+ax = getappdata(fig, 'injectAxes');
+if isempty(ax) || ~isgraphics(ax), return; end
+hit = hittest(fig);
+hitAx = ancestor(hit, 'axes');
+if isempty(hitAx) || ~isequal(hitAx, ax), return; end
+cp = get(ax, 'CurrentPoint');
+queueInjection(fig, cp(1,1:2));
+end
+
+function queueInjection(fig, xy)
+if numel(xy) ~= 2 || any(~isfinite(xy)), return; end
+ctl = getappdata(fig, 'ctl');
+ctl.InjectPending = true;
+ctl.InjectXY = reshape(double(xy),1,2);
 setappdata(fig, 'ctl', ctl);
 end
 
@@ -905,6 +981,22 @@ end
 
 function v = onoff(tf)
 if tf, v = 'on'; else, v = 'off'; end
+end
+
+function s = yesNo(v)
+if (islogical(v) || isnumeric(v)) && isscalar(v) && isfinite(double(v))
+    if logical(v), s = 'yes'; else, s = 'no'; end
+else
+    s = '?';
+end
+end
+
+function s = pointText(p)
+if isnumeric(p) && numel(p) >= 2 && all(isfinite(double(p(1:2))))
+    s = sprintf('(%+.1f,%+.1f)', double(p(1)), double(p(2)));
+else
+    s = '-';
+end
 end
 
 function c = wrapStr(s, maxChars, maxLines)
