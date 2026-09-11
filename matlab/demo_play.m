@@ -152,7 +152,7 @@ arguments
     opts.Recompute  (1,1) logical = false    % ignore any cache
     opts.Speed      (1,1) double  = 1.0      % 1.0 = natural speed. NOT slow-motion.
     opts.ViewSpan   (1,1) double  = 60       % m, half-span of the follow camera
-    % Anjali profile, main be73c3c: 75.7 ms average, ~130 ms slow region.
+    % Anjali profile, this branch: 84.7 ms average, ~130 ms slow region.
     % 3 means 6.67 Hz and leaves measured headroom; 2 (10 Hz) is aggressive.
     opts.PlanEvery  (1,1) double  = 3
     opts.TEnd       (1,1) double  = NaN      % s, override the route's own length
@@ -1095,7 +1095,6 @@ function c = slimCmd(cmd)
 %   the point of watching) - just as single precision, which is well past the
 %   precision of a 1600-pixel-wide axes.
 keep = {'State','Note','v','e','H','HLabel','Look','Blocked','TrunkMode', ...
-        'Creeping','VCap','TurnType','TurnBinds','RefugePoint', ...
         'Creeping','VCap','MirrorsFolded','TurnType','TurnBinds', ...
         'RefugePoint','NeedsReverse','EscapeCount','HasEscape','NearestEscape'};
 c = struct();
