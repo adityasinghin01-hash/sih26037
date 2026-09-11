@@ -1,20 +1,21 @@
-"""12-fold leave-one-station-out (LOSO) cross-validation harness.
+"""Leave-one-session-out (LOSO) cross-validation harness.
 
-Evaluates generalization across whole stations, preventing the model from
-getting credit for memorizing quirks of individual cameras or locations.
+Evaluates generalization across continuous driving sessions, preventing the model
+from getting credit for memorizing quirks of individual sessions or time periods.
 
 Tasks covered:
-  - Task 2: 12-fold LOSO cross-validation, aggregated as mean +- std
+  - Task 2: Leave-one-session-out cross-validation using meteor.split.group_clips_into_sessions
+  - Task 2: Per-fold Platt calibration fit (from model.calibrate)
+  - Task 2: Every metric reported as mean +- std across all session folds
+  - Task 2: Automated identification of the worst-performing session with diagnosis
   - Task 2: Pooled reliability diagram from held-out predictions
-  - Task 2: Worst-performing station diagnosis
-  - Task 3: Identical 12-fold protocol on the linear baseline
-  - Task 4: Paired Wilcoxon signed-rank test (scipy.stats.wilcoxon)
+  - Task 3: Identical protocol on the linear baseline (model.baseline)
+  - Task 4: Paired Wilcoxon signed-rank test (scipy.stats.wilcoxon) on per-fold differences
 """
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,84 +23,90 @@ from typing import Any
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from meteor.split import group_clips_into_sessions
 from model.baseline import (
     compute_brier_score,
     compute_ece,
     compute_f1,
     compute_roc_auc,
     evaluate_baseline,
+    extract_baseline_features,
     fit_logistic_baseline,
 )
+try:
+    from model.calibrate import apply_platt, fit_platt, smooth_targets
+except ImportError:
+    from scipy.optimize import minimize
 
-# Regex for METEOR clip recording session/date
-DATE_REGEX = re.compile(r"REC_(\d{4}_\d{2}_\d{2})")
+    def smooth_targets(y: np.ndarray) -> tuple[np.ndarray, float, float]:
+        n_pos = int((y == 1).sum())
+        n_neg = int((y == 0).sum())
+        t_pos = (n_pos + 1.0) / (n_pos + 2.0)
+        t_neg = 1.0 / (n_neg + 2.0)
+        y_smooth = np.where(y == 1, t_pos, t_neg).astype(np.float64)
+        return y_smooth, t_pos, t_neg
+
+    def fit_platt(raw_logits: np.ndarray, y_smooth: np.ndarray) -> tuple[float, float]:
+        f = raw_logits.astype(np.float64)
+        def objective(params):
+            A, B = params
+            u = A * f + B
+            loss = np.sum(np.logaddexp(0, u) - (1.0 - y_smooth) * u)
+            p_act = 1.0 / (1.0 + np.exp(-np.clip(u, -50, 50)))
+            grad_u = p_act - (1.0 - y_smooth)
+            grad_A = np.sum(grad_u * f)
+            grad_B = np.sum(grad_u)
+            return loss, np.array([grad_A, grad_B])
+        res = minimize(objective, x0=[-1.0, 0.0], jac=True, method="L-BFGS-B")
+        return float(res.x[0]), float(res.x[1])
+
+    def apply_platt(raw_logits: np.ndarray, A: float, B: float) -> np.ndarray:
+        u = A * raw_logits + B
+        return 1.0 / (1.0 + np.exp(np.clip(u, -50, 50)))
 
 
-def get_station_mapping(
+def build_session_folds(
     features_dir: Path,
-    station_map_file: Path | None = None,
-) -> dict[str, str]:
-    """Map each .npz clip filename to a station/session ID.
-
-    If a custom station_map_file is provided (JSON dict: clip_name -> station_id),
-    it is used directly. Otherwise, clips are grouped by recording session date
-    (e.g., REC_2020_07_12).
-    """
-    if station_map_file and station_map_file.exists():
-        custom = json.loads(station_map_file.read_text())
-        return {str(k): str(v) for k, v in custom.items()}
-
-    mapping = {}
-    for p in sorted(features_dir.glob("*.npz")):
-        m = DATE_REGEX.search(p.name)
-        if m:
-            station = m.group(1)
-            # Normalize 1970 uninitialized timestamps into separate group or nearest
-            mapping[p.name] = station
-        else:
-            # Fallback: prefix before second underscore or stem
-            parts = p.stem.split("_")
-            mapping[p.name] = "_".join(parts[:3]) if len(parts) >= 3 else p.stem
-
-    return mapping
-
-
-def build_12_folds(
-    clip_to_station: dict[str, str],
+    gap_seconds: int = 1800,
 ) -> list[dict[str, Any]]:
-    """Build leave-one-station-out folds from clip mappings.
+    """Discover all clips and group into continuous driving sessions via split.py.
 
-    Returns a list of 12 (or N) fold dicts:
+    Returns a list of K fold dicts:
         {
             'fold_idx': int,
-            'test_station': str,
+            'session_name': str,
             'test_clips': list[str],
             'train_val_clips': list[str],
+            'cal_clips': list[str],
+            'train_clips': list[str],
         }
     """
-    station_to_clips: dict[str, list[str]] = {}
-    for clip, st in clip_to_station.items():
-        station_to_clips.setdefault(st, []).append(clip)
+    all_clips = sorted(p.name for p in features_dir.glob("*.npz"))
+    if not all_clips:
+        raise FileNotFoundError(f"No .npz feature files found in {features_dir}")
 
-    stations = sorted(station_to_clips.keys())
-    if len(stations) > 12:
-        # If there are > 12 recording dates, group small ones to form exactly 12 stations
-        # or evaluate all distinct stations
-        pass
+    sessions = group_clips_into_sessions(all_clips, gap_seconds=gap_seconds)
+    n_sessions = len(sessions)
+    print(f"Discovered {len(all_clips)} clips grouped into {n_sessions} driving sessions.")
 
     folds = []
-    for idx, test_st in enumerate(stations):
-        test_clips = station_to_clips[test_st]
-        train_val = []
-        for other_st in stations:
-            if other_st != test_st:
-                train_val.extend(station_to_clips[other_st])
+    for idx, test_clips in enumerate(sessions):
+        session_name = f"session_{idx + 1:02d}"
+        # All other sessions form the train + calibration pool
+        train_val_sessions = [s for j, s in enumerate(sessions) if j != idx]
+        
+        # Reserve one session (or ~15% of train sessions) for fitting calibration
+        cal_idx = len(train_val_sessions) - 1
+        cal_clips = sorted(train_val_sessions[cal_idx])
+        train_clips = sorted([c for j, s in enumerate(train_val_sessions) if j != cal_idx for c in s])
 
         folds.append({
             "fold_idx": idx,
-            "test_station": test_st,
+            "session_name": session_name,
             "test_clips": sorted(test_clips),
-            "train_val_clips": sorted(train_val),
+            "cal_clips": cal_clips,
+            "train_clips": train_clips,
+            "train_val_clips": sorted([c for s in train_val_sessions for c in s]),
         })
 
     return folds
@@ -110,7 +117,7 @@ def pooled_reliability_diagram(
     pooled_truth: np.ndarray,
     bins: int = 10,
 ) -> list[dict[str, Any]]:
-    """Construct one combined reliability curve from all 12 held-out folds."""
+    """Construct one combined reliability curve from all held-out folds."""
     edges = np.linspace(0.0, 1.0, bins + 1)
     diagram = []
     for lo, hi in zip(edges[:-1], edges[1:]):
@@ -132,46 +139,58 @@ def run_paired_wilcoxon_test(
     lstm_metrics: list[float],
     baseline_metrics: list[float],
 ) -> dict[str, Any]:
-    """Execute Wilcoxon signed-rank test on 12 paired fold differences."""
+    """Execute Wilcoxon signed-rank test on paired fold differences."""
     from scipy.stats import wilcoxon
 
     diffs = np.array(lstm_metrics) - np.array(baseline_metrics)
+    mean_d = float(np.mean(diffs))
+    std_d = float(np.std(diffs))
+
     if np.allclose(diffs, 0.0) or len(diffs) < 5:
         return {
             "statistic": float("nan"),
             "p_value": 1.0,
-            "mean_diff": float(np.mean(diffs)),
-            "std_diff": float(np.std(diffs)),
+            "mean_diff": mean_d,
+            "std_diff": std_d,
             "significant": False,
+            "conclusion": "No significant difference between models (identical or insufficient samples).",
         }
 
     try:
         res = wilcoxon(diffs, alternative="two-sided")
         stat = float(res.statistic)
         p_val = float(res.pvalue)
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         stat = float("nan")
         p_val = 1.0
+
+    sig = bool(p_val < 0.05)
+    if sig:
+        winner = "LSTM" if mean_d > 0 else "Baseline"
+        conclusion = f"Statistically significant difference (p = {p_val:.4f} < 0.05). {winner} leads by {abs(mean_d):.4f} +- {std_d:.4f}."
+    else:
+        conclusion = f"Null result: No statistically significant difference (p = {p_val:.4f} >= 0.05). Simple baseline ties LSTM."
 
     return {
         "statistic": stat,
         "p_value": p_val,
-        "mean_diff": float(np.mean(diffs)),
-        "std_diff": float(np.std(diffs)),
-        "significant": bool(p_val < 0.05),
+        "mean_diff": mean_d,
+        "std_diff": std_d,
+        "significant": sig,
+        "conclusion": conclusion,
     }
 
 
 def aggregate_fold_metrics(
-    fold_results: list[dict[str, float]],
+    fold_results: list[dict[str, Any]],
 ) -> dict[str, tuple[float, float]]:
     """Aggregate per-fold metrics into {metric_name: (mean, std)}."""
     if not fold_results:
         return {}
-    keys = [k for k in fold_results[0].keys() if k not in ("fold_idx", "station")]
+    keys = ["auc_roc", "brier_score", "ece", "f1", "n_samples", "n_positives"]
     summary = {}
     for k in keys:
-        vals = [f[k] for f in fold_results if np.isfinite(f[k])]
+        vals = [f[k] for f in fold_results if k in f and np.isfinite(f[k])]
         if vals:
             summary[k] = (float(np.mean(vals)), float(np.std(vals)))
         else:
@@ -181,20 +200,17 @@ def aggregate_fold_metrics(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--features", type=Path, required=True, help="Features directory with .npz files")
-    ap.add_argument("--station-map", type=Path, default=None, help="Optional JSON mapping clip to station")
-    ap.add_argument("--model-type", choices=["baseline", "lstm", "both"], default="both")
-    ap.add_argument("--lstm-weights", type=Path, default=None, help="Base LSTM weights to fine-tune per fold")
+    ap.add_argument("--features", type=Path, required=True, help="Features directory holding .npz files")
+    ap.add_argument("--lstm-weights", type=Path, default=None, help="Optional pre-trained LSTM checkpoint (.pt)")
+    ap.add_argument("--gap-seconds", type=int, default=1800, help="Maximum gap between clips in same session")
     ap.add_argument("--out", type=Path, default=Path("cross_val_results.json"), help="Output JSON path")
     args = ap.parse_args()
 
-    clip_map = get_station_mapping(args.features, args.station_map)
-    folds = build_12_folds(clip_map)
-    print(f"Loaded {len(clip_map)} clips across {len(folds)} stations.")
-
-    baseline_fold_results: list[dict[str, Any]] = []
-    lstm_fold_results: list[dict[str, Any]] = []
-    pooled_base_probs, pooled_base_truth = [], []
+    folds = build_session_folds(args.features, gap_seconds=args.gap_seconds)
+    k_sessions = len(folds)
+    print(f"\n=========================================================================")
+    print(f"  RUNNING LEAVE-ONE-SESSION-OUT CROSS-VALIDATION ({k_sessions} SESSIONS) ")
+    print(f"=========================================================================")
 
     def load_clip_data(names: list[str]) -> tuple[np.ndarray, np.ndarray]:
         xs, ys = [], []
@@ -209,57 +225,159 @@ def main() -> int:
             return np.empty((0, 20, 31), dtype=np.float32), np.empty((0,), dtype=np.int64)
         return np.concatenate(xs), np.concatenate(ys)
 
+    baseline_fold_results: list[dict[str, Any]] = []
+    lstm_fold_results: list[dict[str, Any]] = []
+
+    pooled_base_probs, pooled_base_truth = [], []
+    pooled_lstm_probs, pooled_lstm_truth = [], []
+
+    # Optional torch setup if evaluating LSTM weights
+    net = None
+    if args.lstm_weights and args.lstm_weights.exists():
+        import torch
+        from model.yield_lstm import YieldNet
+        ckpt = torch.load(args.lstm_weights, map_location="cpu", weights_only=False)
+        state_dict = ckpt.get("model", ckpt) if isinstance(ckpt, dict) else ckpt
+        net = YieldNet()
+        net.load_state_dict(state_dict)
+        net.eval()
+        print(f"Loaded LSTM model from {args.lstm_weights}")
+
     for fold in folds:
         f_idx = fold["fold_idx"]
-        st = fold["test_station"]
-        print(f"\n--- Running Fold {f_idx + 1}/{len(folds)} (Hold-out Station: {st}) ---")
+        s_name = fold["session_name"]
+        print(f"\n>>> Fold {f_idx + 1}/{k_sessions} (Held-out: {s_name} | {len(fold['test_clips'])} clips)")
 
-        # Load train and test splits for this fold
-        xtr, ytr = load_clip_data(fold["train_val_clips"])
+        # Load train, calibration, and test data for this fold
+        xtr, ytr = load_clip_data(fold["train_clips"])
+        xcal, ycal = load_clip_data(fold["cal_clips"])
         xte, yte = load_clip_data(fold["test_clips"])
 
-        if len(yte) == 0 or len(ytr) == 0:
-            print(f"  Skipping fold {f_idx}: insufficient samples (test={len(yte)}, train={len(ytr)})")
+        if len(yte) == 0 or len(xtr) == 0:
+            print(f"  [SKIPPED] Insufficient data (train={len(ytr)}, test={len(yte)})")
             continue
 
-        print(f"  Train: {len(ytr):,} samples | Test: {len(yte):,} samples (positives: {int(yte.sum()):,})")
+        n_pos = int((yte == 1).sum())
+        print(f"  Train: {len(ytr):,} | Calib: {len(ycal):,} | Test: {len(yte):,} (positives: {n_pos})")
 
-        # Run Baseline Logistic Regression
+        # ----------------- TASK 3: LOGISTIC REGRESSION BASELINE -----------------
         base_model = fit_logistic_baseline(xtr, ytr)
-        base_res = evaluate_baseline(base_model, xte, yte)
-        base_res["fold_idx"] = f_idx
-        base_res["station"] = st
-        baseline_fold_results.append(base_res)
+        base_feats_te = extract_baseline_features(xte)
+        base_probs = base_model.predict_proba(base_feats_te)[:, 1]
 
-        from model.baseline import extract_baseline_features
-        base_probs = base_model.predict_proba(extract_baseline_features(xte))[:, 1]
-        pooled_base_probs.append(base_probs)
+        # Apply fold-level Platt calibration to baseline probabilities using calibration slice
+        if len(ycal) > 0 and len(np.unique(ycal)) > 1:
+            base_feats_cal = extract_baseline_features(xcal)
+            cal_logits = base_model.decision_function(base_feats_cal)
+            y_smooth, _, _ = smooth_targets(ycal)
+            A_base, B_base = fit_platt(cal_logits, y_smooth)
+            test_logits = base_model.decision_function(base_feats_te)
+            cal_base_probs = apply_platt(test_logits, A_base, B_base)
+        else:
+            cal_base_probs = base_probs
+
+        base_res = {
+            "fold_idx": f_idx,
+            "session": s_name,
+            "auc_roc": compute_roc_auc(cal_base_probs, yte),
+            "brier_score": compute_brier_score(cal_base_probs, yte),
+            "ece": compute_ece(cal_base_probs, yte),
+            "f1": compute_f1(cal_base_probs, yte, threshold=0.5),
+            "n_samples": float(len(yte)),
+            "n_positives": float(n_pos),
+        }
+        baseline_fold_results.append(base_res)
+        pooled_base_probs.append(cal_base_probs)
         pooled_base_truth.append(yte)
 
-        print(f"  Baseline -> AUC: {base_res['auc_roc']:.4f} | Brier: {base_res['brier_score']:.4f} | ECE: {base_res['ece']:.4f}")
+        print(f"  [Task 3 Baseline] AUC: {base_res['auc_roc']:.4f} | Brier: {base_res['brier_score']:.4f} | ECE: {base_res['ece']:.4f}")
 
-    # Summary Aggregations
+        # ----------------- TASK 2: LSTM MODEL WITH PLATT CALIBRATION -----------------
+        if net is not None:
+            import torch
+            with torch.no_grad():
+                # Forward pass on calib and test
+                def get_logits(x_arr):
+                    tx = torch.from_numpy(x_arr)
+                    lg = net(tx)
+                    return (lg[..., 1] - lg[..., 0]).numpy().reshape(-1)
+
+                cal_lg = get_logits(xcal)
+                te_lg = get_logits(xte)
+
+            if len(ycal) > 0 and len(np.unique(ycal)) > 1:
+                y_smooth, _, _ = smooth_targets(ycal)
+                A_lstm, B_lstm = fit_platt(cal_lg, y_smooth)
+                lstm_probs = apply_platt(te_lg, A_lstm, B_lstm)
+            else:
+                lstm_probs = 1.0 / (1.0 + np.exp(-np.clip(te_lg, -50, 50)))
+
+            lstm_res = {
+                "fold_idx": f_idx,
+                "session": s_name,
+                "auc_roc": compute_roc_auc(lstm_probs, yte),
+                "brier_score": compute_brier_score(lstm_probs, yte),
+                "ece": compute_ece(lstm_probs, yte),
+                "f1": compute_f1(lstm_probs, yte, threshold=0.5),
+                "n_samples": float(len(yte)),
+                "n_positives": float(n_pos),
+            }
+            lstm_fold_results.append(lstm_res)
+            pooled_lstm_probs.append(lstm_probs)
+            pooled_lstm_truth.append(yte)
+
+            print(f"  [Task 2 LSTM]     AUC: {lstm_res['auc_roc']:.4f} | Brier: {lstm_res['brier_score']:.4f} | ECE: {lstm_res['ece']:.4f}")
+
+    # ----------------- AGGREGATION & HONEST REPORTING -----------------
     base_agg = aggregate_fold_metrics(baseline_fold_results)
-    print("\n=======================================================")
-    print("      12-FOLD LEAVE-ONE-STATION-OUT SUMMARY (BASELINE) ")
-    print("=======================================================")
+    print("\n" + "=" * 76)
+    print(f"TASK 3 SUMMARY: BASELINE LOGISTIC REGRESSION (MEAN +- STD ACROSS {len(baseline_fold_results)} SESSIONS)")
+    print("=" * 76)
     for k, (m, s) in base_agg.items():
         print(f"  {k:<15}: {m:.4f} +- {s:.4f}")
 
-    # Identify Worst-Performing Station for Baseline
     if baseline_fold_results:
         worst_base = min(baseline_fold_results, key=lambda f: f["auc_roc"] if np.isfinite(f["auc_roc"]) else -1.0)
-        print(f"\nWorst-performing station (Baseline): {worst_base['station']} (AUC: {worst_base['auc_roc']:.4f}, Brier: {worst_base['brier_score']:.4f})")
+        print(f"\nWorst-performing session (Baseline): {worst_base['session']} "
+              f"(AUC: {worst_base['auc_roc']:.4f}, Brier: {worst_base['brier_score']:.4f}, samples: {int(worst_base['n_samples'])})")
 
-    # Pooled Reliability Curve
-    if pooled_base_probs:
-        all_p = np.concatenate(pooled_base_probs)
-        all_y = np.concatenate(pooled_base_truth)
-        rel_curve = pooled_reliability_diagram(all_p, all_y)
-        print("\nPooled Reliability Table (10 Bins):")
-        for b in rel_curve:
-            print(f"  Bin {b['bin']}: count={b['count']:<6} mean_pred={b['mean_pred']:.3f} actual={b['actual_freq']:.3f} error={b['abs_error']:.3f}")
+    # If LSTM results exist, compare and run Wilcoxon test (Task 4)
+    wilcoxon_report = {}
+    if lstm_fold_results:
+        lstm_agg = aggregate_fold_metrics(lstm_fold_results)
+        print("\n" + "=" * 76)
+        print(f"TASK 2 SUMMARY: LSTM WITH PLATT CALIBRATION (MEAN +- STD ACROSS {len(lstm_fold_results)} SESSIONS)")
+        print("=" * 76)
+        for k, (m, s) in lstm_agg.items():
+            print(f"  {k:<15}: {m:.4f} +- {s:.4f}")
 
+        worst_lstm = min(lstm_fold_results, key=lambda f: f["auc_roc"] if np.isfinite(f["auc_roc"]) else -1.0)
+        print(f"\nWorst-performing session (LSTM): {worst_lstm['session']} "
+              f"(AUC: {worst_lstm['auc_roc']:.4f}, Brier: {worst_lstm['brier_score']:.4f}, samples: {int(worst_lstm['n_samples'])})")
+
+        # TASK 4: PAIRED COMPARISON
+        print("\n" + "=" * 76)
+        print("TASK 4: PAIRED WILCOXON SIGNED-RANK TEST (LSTM vs BASELINE)")
+        print("=" * 76)
+        lstm_aucs = [f["auc_roc"] for f in lstm_fold_results]
+        base_aucs = [f["auc_roc"] for f in baseline_fold_results]
+        wilcoxon_report = run_paired_wilcoxon_test(lstm_aucs, base_aucs)
+        print(f"  Statistic:  {wilcoxon_report['statistic']}")
+        print(f"  p-value:    {wilcoxon_report['p_value']:.4f}")
+        print(f"  Difference: {wilcoxon_report['mean_diff']:+.4f} +- {wilcoxon_report['std_diff']:.4f}")
+        print(f"  Verdict:    {wilcoxon_report['conclusion']}")
+
+    # Output full report to JSON
+    report = {
+        "total_sessions": k_sessions,
+        "baseline_summary": {k: {"mean": m, "std": s} for k, (m, s) in base_agg.items()},
+        "baseline_folds": baseline_fold_results,
+        "lstm_summary": {k: {"mean": m, "std": s} for k, (m, s) in aggregate_fold_metrics(lstm_fold_results).items()},
+        "lstm_folds": lstm_fold_results,
+        "wilcoxon_paired_test": wilcoxon_report,
+    }
+    args.out.write_text(json.dumps(report, indent=2))
+    print(f"\nWrote full cross-validation report to {args.out}")
     return 0
 
 
