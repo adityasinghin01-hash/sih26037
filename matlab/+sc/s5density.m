@@ -73,8 +73,13 @@ spec(end+1,:) = {8, 213.5+408, -(HALF+1.6+ADULT(2)/2), ADULT, 0, pi/2, [], []}; 
 spec(end+1,:) = {8, 213.5+388, HALF+0.6+ADULT(2)/2, ADULT, 0, pi/2, [], []};      % tea shop,
 spec(end+1,:) = {8, 213.5+390, HALF+0.9+ADULT(2)/2, ADULT, 0, pi/2, [], []};      % 2nd bend
 spec(end+1,:) = {8, 213.5+392, HALF+1.2+ADULT(2)/2, ADULT, 0, pi/2, [], []};      % 3 total
-spec(end+1,:) = {8, 213.5+150, HALF+0.6+ADULT(2)/2, ADULT, 0, 0, [], []};         % fodder x2
-spec(end+1,:) = {8, 213.5+600, HALF+0.6+ADULT(2)/2, ADULT, 0, 0, [], []};
+spec(end+1,:) = {8, 213.5+150, HALF+0.6+ADULT(2)/2, ADULT, 0.7, 0, [], []};       % fodder x2,
+spec(end+1,:) = {8, 213.5+600, HALF+0.6+ADULT(2)/2, ADULT, 0.7, 0, [], []};       % walking
+                                                                                   % uphill,
+                                                                                   % given real
+                                                                                   % motion in
+                                                                                   % the Phase
+                                                                                   % F fix pass
 spec(end+1,:) = {8, templeS,   -(HALF+0.6+ADULT(2)/2), ADULT, 0, pi/2, [], []};   % temple x4
 spec(end+1,:) = {8, templeS+3, -(HALF+0.9+ADULT(2)/2), ADULT, 0, pi/2, [], []};
 spec(end+1,:) = {8, templeS-3, -(HALF+0.6+ADULT(2)/2), ADULT, 0, pi/2, [], []};
@@ -97,6 +102,9 @@ assert(sum([spec{:,1}]==0) - 4 == 33, "sc:s5densityMacaques", ...
 
 nOnRoad = 0;  worst = "";
 for k = 1:size(spec,1)
+    if spec{k,5} ~= 0, continue; end   % moving actors (Phase F: the two fodder-carriers)
+                                        % are real road users, same exclusion s1density/
+                                        % s3density's own checks use
     ext = spec{k,4};
     nearEdge = abs(spec{k,3}) - ext(2)/2;
     if nearEdge < HALF + 0.10

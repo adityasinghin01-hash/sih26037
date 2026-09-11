@@ -75,13 +75,13 @@ spec = { ...
 % ---- PEOPLE, 21 -------------------------------------------------------
 8,  34, +4.3, ADULT, 0, pi/2, [], [] ; ...      % cane cutter 1 (30-42m, left)
 8,  38, +4.6, ADULT, 0, pi/2, [], [] ; ...      % cane cutter 2
-8,  55, +4.5, ADULT, 0, 0,    [], [] ; ...      % carrying cane bundle, walking the verge
+8,  55, +4.5, ADULT, 1.3, 0,  [], [] ; ...      % carrying cane bundle, walking the verge
 8, 190, +4.5, ADULT, 0, pi/2, [], [] ; ...      % paddy harvester 1 (176-255m, left)
 8, 205, +4.8, ADULT, 0, pi/2, [], [] ; ...      % paddy harvester 2
 8, 220, +4.5, ADULT, 0, pi/2, [], [] ; ...      % paddy harvester 3
 8, 240, +5.0, ADULT, 0, pi/2, [], [] ; ...      % paddy harvester 4, stacking
-8, 278, +4.3, ADULT, 0, 0,    [], [] ; ...      % woman walking, left verge 280m
-8, 282, +4.6, ADULT, 0, 0,    [], [] ; ...      % woman walking, left verge 280m
+8, 278, +4.3, ADULT, 1.2, 0,  [], [] ; ...      % woman walking, left verge 280m
+8, 282, +4.6, ADULT, 1.2, 0,  [], [] ; ...      % woman walking, left verge 280m
 8, 338, -4.5, ADULT, 0, pi/2, [], [] ; ...      % dairy yard, right 340m - milking
 8, 340, -4.8, ADULT, 0, pi/2, [], [] ; ...      % dairy yard - loading
 8, 342, -4.3, ADULT, 0, pi/2, [], [] ; ...      % dairy yard - loading
@@ -97,10 +97,10 @@ spec = { ...
 % ---- ANIMALS beyond the cow/herd ---------------------------------------
 10, 220, -5.0, cowDim, 0, pi/2, [], [] ; ...    % loose zebu bull 1 (stubble, 210-268m)
 10, 245, -5.5, cowDim, 0, pi/2, [], [] ; ...    % loose zebu bull 2
-10, 317, -4.3, cowDim, 0, pi/2, [], [] ; ...    % buffalo, driven along the right verge, 320m
-10, 319, -4.6, cowDim, 0, pi/2, [], [] ; ...    % buffalo
-10, 321, -4.9, cowDim, 0, pi/2, [], [] ; ...    % buffalo
-10, 323, -4.4, cowDim, 0, pi/2, [], [] ; ...    % buffalo
+10, 317, -4.3, cowDim, 0.8, pi/2, [], [] ; ...  % buffalo, driven along the right verge, 320m
+10, 319, -4.6, cowDim, 0.8, pi/2, [], [] ; ...  % buffalo
+10, 321, -4.9, cowDim, 0.8, pi/2, [], [] ; ...  % buffalo
+10, 323, -4.4, cowDim, 0.8, pi/2, [], [] ; ...  % buffalo
 0,  160, -5.0, GOAT, 0, pi/2, [], [] ; ...      % goat 1 (kans grass, 150-200m, right)
 0,  165, -5.3, GOAT, 0, pi/2, [], [] ; ...      % goat 2
 0,  172, -4.8, GOAT, 0, pi/2, [], [] ; ...      % goat 3
@@ -169,8 +169,11 @@ assert(nPedestrian + nCyclistPeople == 21, "sc:s1densityPeople", ...
 ROAD_HALF = 3.5;   % S1's own 7.0 m carriageway (sc.s1world W.Width/2)
 nOnRoad = 0;  worst = "";
 for k = 1:size(spec,1)
-    if spec{k,1} == 9 && spec{k,5} ~= 0, continue; end   % the moving cyclist
-    if spec{k,1} == 1 && spec{k,5} ~= 0, continue; end   % the Bolero
+    % ANY moving actor is excluded, not just the cyclist/Bolero this check originally
+    % named - Phase F of the fix pass (11 Sep 2026) gives real along-route motion to
+    % several more rows (the bundle-carrier, the two walking women, the buffalo), and
+    % they are real road users the same way the cyclist and Bolero already were.
+    if spec{k,5} ~= 0, continue; end
     ext = spec{k,4};
     nearEdge = abs(spec{k,3}) - ext(2)/2;
     if nearEdge < ROAD_HALF

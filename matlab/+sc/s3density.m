@@ -67,8 +67,15 @@ spec = { ...
 8,  270, +1.9,  CHILD, 0, pi/2, [], [] ; ...
 8,  271, +2.1,  CHILD, 0, pi/2, [], [] ; ...
 8,  190, -1.9,  ADULT, 0, pi/2, [], [] ; ...    % on the charpai with tea, 190m
-8,  328.3,+1.9, ADULT, 0, 0,    [], [] ; ...    % 2 walking away (remap(340))
-8,  328.3,+2.2, ADULT, 0, 0,    [], [] ; ...
+8,  328.3,+2.3, ADULT, 1.2, 0,  [], [] ; ...    % 2 walking away (remap(340)) - Phase F:
+8,  328.3,+2.6, ADULT, 1.2, 0,  [], [] ; ...    % given real motion. Lateral bumped to 2.3/
+                                                 % 2.6 (was 1.9/2.2) because giving a row
+                                                 % nonzero speed makes it skip the auto-
+                                                 % lateral-correction below (real road
+                                                 % users, not furniture) - these two now
+                                                 % have to clear the band by their own
+                                                 % authored number, same as the cyclist/
+                                                 % auto-rickshaw already did
 8,  112, -1.9,  ADULT, 0, pi/2, [], [] ; ...    % washing a motorcycle, 110m (offset off child@110)
 8,  356.7,-2.3, ADULT, 0, pi/2, [], [] ; ...    % milking the buffalo, right 380m (remap(380))
 8,  370.9,+2.3, ADULT, 0, pi/2, [], [] ; ...    % at the kirana shop, 400m (remap(400))
