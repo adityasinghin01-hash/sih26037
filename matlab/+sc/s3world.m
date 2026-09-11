@@ -112,6 +112,12 @@ W.Buildings(end+1) = struct('Type',"wall",'Station',remap(360),'Lateral', (1.9+1
     'Width',3.2,'Depth',3.0,'Storeys',0,'Label',"");
 assert(numel(W.Buildings) == 54, "sc:s3buildingCount", ...
     "%d buildings built, S3's own spec states 54", numel(W.Buildings));
+% RESOLVED BEFORE ANYTHING ELSE READS A STATION OFF THESE - the named additions above
+% (the 2 sheds, the kirana shop, the 2 extra compound walls) were placed at fixed written
+% stations with no awareness of the procedural scatter already occupying that same 300-
+% 416m band, and collided with it. Service drops and the overlap assert below both read
+% W.Buildings' stations, so the resolve has to happen before either, not after.
+W.Buildings = sc.resolveFurnitureOverlaps(W.Buildings);
 nOnRoadB = 0;
 for k = 1:numel(W.Buildings)
     if abs(W.Buildings(k).Lateral) - W.Buildings(k).Width/2 < 0.90
@@ -127,20 +133,41 @@ assert(nOnRoadB == 0, "sc:s3buildingOnRoad", ...
 % is the SIGNED convention this codebase uses throughout (positive = left).
 W.Drains = struct('S0',0,'S1',W.Path.Len,'Lateral',-2.5,'Width',0.38, ...
     'Label',"open drain, 380mm, the whole length");
-% "9-14 parallel wire runs... service drops to every house" - drawn as ONE representative
-% pole/wire run rather than 9-14 literal lines: a flat top-down schematic cannot show sag,
-% height or which of 14 runs is which voltage, so drawing all of them adds clutter without
-% adding information this layer can actually convey. Disclosed as a simplification, not a
-% missed count - the spec's own number is about what is OVERHEAD, and this view is plan-only.
+% "9-14 parallel wire runs... service drops to every house" - UPGRADED in the Phase C fix
+% pass (11 Sep 2026) from a single representative line to THREE, one per real voltage tier
+% S3's own text names (3x 11kV, 4x 415V, the rest cable TV/telephone) - still not literally
+% 9-14 (at this zoom, 14 near-parallel lines over 382 m converge to visual noise with no
+% extra information in a flat top-down schematic - measured by looking at the S1 draft
+% before deciding this, not assumed), but the three real TIERS are now distinguishable
+% rather than one undifferentiated bundle. Each run gets its own lateral offset and its own
+% label so a viewer can tell which is which, the same way the culvert/drain labels work.
 poleS = 20:40:360;
 W.Poles = struct('Station',{},'Lateral',{},'Run',{},'Label',{});
-for s = poleS
-    W.Poles(end+1) = struct('Station',s,'Lateral',2.6,'Run',1, ...
-        'Label',"overhead wire bundle (9-14 real runs, drawn as one)"); %#ok<AGROW>
+tiers = struct('e',{2.4,2.7,3.0}, 'lbl',{"11kV (3 real runs, drawn as one)", ...
+    "415V service (4 real runs, drawn as one)", "cable TV / telephone (the rest, drawn as one)"});
+for t = 1:3
+    for s = poleS
+        W.Poles(end+1) = struct('Station',s,'Lateral',tiers(t).e,'Run',t, ...
+            'Label',tiers(t).lbl); %#ok<AGROW>
+    end
 end
 % the transformer "on two poles" at 118 m, right side - a real, specifically located item
-W.Poles(end+1) = struct('Station',118,'Lateral',-2.6,'Run',2,'Label',"transformer, two poles");
+W.Poles(end+1) = struct('Station',118,'Lateral',-2.6,'Run',4,'Label',"transformer, two poles");
+% service drops: a short stub from each building's own footprint to the nearest 415V run
+% (tier 2, e=2.7), matching "service drops to every single house... landing at a meter box".
+% Only buildings on the SAME side as the pole run get a drop (a drop cannot cross the road).
+W.ServiceDrops = struct('S0',{},'S1',{},'Lateral0',{},'Lateral1',{});
+for k = 1:numel(W.Buildings)
+    b = W.Buildings(k);
+    if sign(b.Lateral) <= 0, continue; end   % the pole runs are on the left (positive) side
+    W.ServiceDrops(end+1) = struct('S0',b.Station,'S1',b.Station, ...
+        'Lateral0',b.Lateral - sign(b.Lateral)*b.Width/2, 'Lateral1',2.7); %#ok<AGROW>
+end
 
-fprintf('[S3 world] route %.1f m | %d buildings (spec 54) | drain the whole length | %d poles in %d run(s)\n', ...
-        W.Path.Len, numel(W.Buildings), numel(W.Poles), numel(unique([W.Poles.Run])));
+[nOverlap, overlapWorst] = sc.checkFurnitureOverlaps(W.Buildings, W.Poles);
+assert(nOverlap == 0, "sc:s3furnitureOverlap", "%d furniture overlaps - worst: %s", ...
+    nOverlap, overlapWorst);
+
+fprintf('[S3 world] route %.1f m | %d buildings (spec 54) | drain the whole length | %d poles in %d run(s) | %d service drops\n', ...
+        W.Path.Len, numel(W.Buildings), numel(W.Poles), numel(unique([W.Poles.Run])), numel(W.ServiceDrops));
 end

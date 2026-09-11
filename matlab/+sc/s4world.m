@@ -62,31 +62,39 @@ mk = @(typ,s,side,w,d,st,lbl) struct('Type',string(typ),'Station',double(s), ...
 rng(26037);
 W.Buildings = struct('Type',{},'Station',{},'Lateral',{},'Width',{},'Depth',{}, ...
     'Storeys',{},'Label',{});
+% PHASE A FIX, 11 Sep 2026: every group below originally used side=1 (or -1)
+% UNCONDITIONALLY for every member - 36 of 41 buildings landed on one side of the road,
+% crammed enough that 9 pairs actually overlapped, caught by sc.checkFurnitureOverlaps.
+% This is the same class of bug s1world/s3world hit, one level worse (no alternation at
+% all, not just insufficient spacing). Fixed at the actual cause - alternating sides -
+% not just papered over by the resolver below, though that still runs as a safety net.
 ss = linspace(P.Len*0.05, P.Len*0.95, 27);              % 18 commercial + 9 two-storey = 27
 for i = 1:27
+    side = 2*mod(i,2) - 1;
     if i <= 18
-        W.Buildings(end+1) = mk("house1", ss(i), 1, 4.5+3.0*rand, 8.0, 1, ""); %#ok<AGROW>
+        W.Buildings(end+1) = mk("house1", ss(i), side, 4.5+3.0*rand, 8.0, 1, ""); %#ok<AGROW>
     else
-        W.Buildings(end+1) = mk("house2", ss(i), 1, 5.0+2.5*rand, 7.0, 2, ""); %#ok<AGROW>
+        W.Buildings(end+1) = mk("house2", ss(i), side, 5.0+2.5*rand, 7.0, 2, ""); %#ok<AGROW>
     end
 end
 ss2 = linspace(P.Len*0.10, P.Len*0.90, 2);
 for i = 1:2
-    W.Buildings(end+1) = mk("house3", ss2(i), -1, 6.0, 7.5, 3, ""); %#ok<AGROW>
+    W.Buildings(end+1) = mk("house3", ss2(i), 2*mod(i,2)-1, 6.0, 7.5, 3, ""); %#ok<AGROW>
 end
 ss3 = linspace(P.Len*0.15, P.Len*0.85, 5);
 for i = 1:5
-    W.Buildings(end+1) = mk("shed", ss3(i), 1, 3.2, 5.0, 1, ""); %#ok<AGROW>
+    W.Buildings(end+1) = mk("shed", ss3(i), 2*mod(i,2)-1, 3.2, 5.0, 1, ""); %#ok<AGROW>
 end
 W.Buildings(end+1) = mk("shop", P.Len*0.35, -1, 8.0, 6.0, 1, "toll-plaza style office shell");
 W.Buildings(end+1) = mk("wall", P.Len*0.55, -1, 3.0, 3.0, 0, "police check post, barrier + sandbags");
 ssOut = linspace(P.Len*0.20, P.Len*0.80, 4);
 for i = 1:4
-    W.Buildings(end+1) = mk("house1", ssOut(i), 1, 6.0, 6.0, 1, "outlying, in haze"); %#ok<AGROW>
+    W.Buildings(end+1) = mk("house1", ssOut(i), 2*mod(i,2)-1, 6.0, 6.0, 1, "outlying, in haze"); %#ok<AGROW>
 end
 W.Buildings(end+1) = mk("shed", P.Len*0.65, -1, 4.0, 4.0, 0, "mobile tower base, 40m lattice");
 assert(numel(W.Buildings) == 41, "sc:s4buildingCount", ...
     "%d buildings built, S4's own spec states 41", numel(W.Buildings));
+W.Buildings = sc.resolveFurnitureOverlaps(W.Buildings);
 nOnRoad = 0;
 for k = 1:numel(W.Buildings)
     if abs(W.Buildings(k).Lateral) - W.Buildings(k).Width/2 < W.Width/2 + 1.0
@@ -94,6 +102,10 @@ for k = 1:numel(W.Buildings)
     end
 end
 assert(nOnRoad == 0, "sc:s4buildingOnRoad", "%d buildings sit too close to the carriageway", nOnRoad);
+
+[nOverlap, overlapWorst] = sc.checkFurnitureOverlaps(W.Buildings, []);
+assert(nOverlap == 0, "sc:s4furnitureOverlap", "%d furniture overlaps - worst: %s", ...
+    nOverlap, overlapWorst);
 
 fprintf('[S4 world] route %.1f m (real trunk chain) | %d buildings (spec 41) | median drawn, opposite carriageway not modelled\n', ...
         W.Path.Len, numel(W.Buildings));

@@ -142,6 +142,10 @@ for i = 1:2
         'Label', "NO PARAPET - the drop, unprotected"); %#ok<AGROW>
 end
 
+[nOverlap, overlapWorst] = sc.checkFurnitureOverlaps(W.Buildings, []);
+assert(nOverlap == 0, "sc:s5furnitureOverlap", "%d furniture overlaps - worst: %s", ...
+    nOverlap, overlapWorst);
+
 fprintf('[S5 world] approach %.1f m (real) + climb %.1f m (authored, 4 hairpins) = %.1f m total | %d buildings (spec 22+temple) | 5 culverts | 2 no-parapet stretches\n', ...
         P0.Len, P.Len - P0.Len, P.Len, numel(W.Buildings)-1);
 end

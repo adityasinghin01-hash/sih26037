@@ -617,26 +617,51 @@ assert(abs(W.JunctionS - 386) < 2, "sc:s1junctionDrift", ...
 % W.Width/2+W.Shoulder = 4.7 m from the centreline; every footprint's NEAR edge (its own
 % Lateral minus its own Width/2) is placed at 5.5 m, a disclosed 0.8 m yard beyond the
 % shoulder - close enough to read as roadside, never overlapping the shoulder or the road.
+% PHASE A FIX, 11 Sep 2026: the ORIGINAL hand-picked stations here put three buildings
+% on top of each other (392/395/398 all within a few metres, on overlapping sides) -
+% caught by sc.checkFurnitureOverlaps, not by eye. Hand-picking a station per building
+% and only checking each one against the ROAD (never against its neighbours) was the
+% bug, the same class of mistake sc.s3density's lateral arithmetic made and fixed the
+% same way: solved by construction instead of re-guessed one at a time.
 NEARSET = 5.5;
 mk = @(typ,s,e,w,d,st,lbl) struct('Type',string(typ),'Station',double(s),'Lateral',double(e), ...
     'Width',double(w),'Depth',double(d),'Storeys',double(st),'Label',string(lbl));
 lat = @(w,side) side*(NEARSET + w/2);
-W.Buildings = [ ...
-    mk("hut",     345, lat(6.0,+1),  6.0, 5.5, 1, "")
-    mk("hut",     365, lat(6.0,+1),  6.0, 5.5, 1, "")
-    mk("house1",  338, lat(6.5,+1),  6.5, 6.0, 1, "")
-    mk("house1",  355, lat(6.5,-1),  6.5, 6.0, 1, "")
-    mk("house1",  395, lat(6.5,+1),  6.5, 6.0, 1, "")
-    mk("house1",  405, lat(6.5,-1),  6.5, 6.0, 1, "")
-    mk("house2",  375, lat(7.5,-1),  7.5, 7.0, 2, "")
-    mk("house2",  392, lat(7.5,+1),  7.5, 7.0, 2, "exposed rebar")
-    mk("house2",  402, lat(7.5,-1),  7.5, 7.0, 2, "")
-    mk("shop",    386, lat(3.0,+1),  3.0, 4.0, 1, "shop (at the real junction, s=386m)")
-    mk("shrine",  398, lat(2.5,+1),  2.5, 2.5, 1, "shrine, under a peepal")
-    mk("house1",  350, +55,          7.0, 6.0, 1, "outlying, roofline only")
-    mk("house1",  380, -70,          7.0, 6.0, 1, "outlying, roofline only")
-    mk("house1",  400, +60,          7.0, 6.0, 1, "outlying, roofline only")
-]';
+GAP = 2.0;    % m, clear gap between adjacent footprints - a believable street gap, chosen
+
+% LEFT SIDE, 7 items, placed sequentially with GAP between them, then the WHOLE row
+% shifted so the shop (item 6) lands EXACTLY on the real junction (s=386, solved above) -
+% the one anchor point this cluster actually has, not an arbitrary pick.
+leftItems = {"hut",6.0,5.5,""; "hut",6.0,5.5,""; "house1",6.5,6.0,""; "house1",6.5,6.0,""; ...
+    "house2",7.5,7.0,"exposed rebar"; "shop",3.0,4.0,"shop (at the real junction, s=386m)"; ...
+    "shrine",2.5,2.5,"shrine, under a peepal"};
+sL = zeros(7,1);  s = 0;
+for i = 1:7
+    d = leftItems{i,3};  sL(i) = s + d/2;  s = sL(i) + d/2 + GAP;
+end
+sL = sL + (386 - sL(6));    % shift so item 6 (the shop) sits at s=386
+
+% RIGHT SIDE, 4 items, no anchor point - sequential from a chosen start.
+rightItems = {"house1",6.5,6.0,""; "house2",7.5,7.0,""; "house1",6.5,6.0,""; "house2",7.5,7.0,""};
+sR = zeros(4,1);  s = 355;
+for i = 1:4
+    d = rightItems{i,3};  sR(i) = s + d/2;  s = sR(i) + d/2 + GAP;
+end
+
+W.Buildings = struct('Type',{},'Station',{},'Lateral',{},'Width',{},'Depth',{}, ...
+    'Storeys',{},'Label',{});
+storeyOf1 = dictionary(["hut" "house1" "house2" "shop" "shrine"], [1 1 2 1 1]);
+for i = 1:7
+    W.Buildings(end+1) = mk(leftItems{i,1}, sL(i), lat(leftItems{i,2},+1), ...
+        leftItems{i,2}, leftItems{i,3}, storeyOf1(leftItems{i,1}), leftItems{i,4}); %#ok<AGROW>
+end
+for i = 1:4
+    W.Buildings(end+1) = mk(rightItems{i,1}, sR(i), lat(rightItems{i,2},-1), ...
+        rightItems{i,2}, rightItems{i,3}, storeyOf1(rightItems{i,1}), rightItems{i,4}); %#ok<AGROW>
+end
+W.Buildings(end+1) = mk("house1", 350, +55, 7.0, 6.0, 1, "outlying, roofline only");
+W.Buildings(end+1) = mk("house1", 380, -70, 7.0, 6.0, 1, "outlying, roofline only");
+W.Buildings(end+1) = mk("house1", 400, +60, 7.0, 6.0, 1, "outlying, roofline only");
 assert(numel(W.Buildings) == 14, "sc:s1buildingCount", ...
     "%d buildings built, S1's own spec states 14", numel(W.Buildings));
 nOnRoadB = 0;
@@ -668,6 +693,16 @@ end
 % hidden: this is a simplification, not a measurement.
 W.Drains = struct('S0',156.5,'S1',159.5,'Lateral',0,'Width',1.2, ...
     'Label',"culvert, 900mm, half silted (158m)");
+
+% PHASE A OF THE FIX PASS, 11 Sep 2026: the road-clearance assert above only ever checked
+% buildings against the DRIVABLE CARRIAGEWAY. Nothing checked buildings against EACH
+% OTHER or against a pole standing inside one. Added here rather than assumed.
+% RESOLVED, THEN VERIFIED - not just verified: sc.resolveFurnitureOverlaps is a no-op
+% when nothing overlaps, so this is safe to call unconditionally.
+W.Buildings = sc.resolveFurnitureOverlaps(W.Buildings);
+[nOverlap, overlapWorst] = sc.checkFurnitureOverlaps(W.Buildings, W.Poles);
+assert(nOverlap == 0, "sc:s1furnitureOverlap", "%d furniture overlaps - worst: %s", ...
+    nOverlap, overlapWorst);
 
 fprintf(['[S1 world] cover %.0f%% open / %.0f%% village (lean %.2f) | route %.0f m | %d trees (%d carry understorey) | %d scrub ' ...
          '(h_full %.2f-%.2f m) | thicket r=%.2f m | REVEAL %.0f m (spec %.0f) | nearest veg to centreline %.2f m (road edge %.2f)\n'], ...
