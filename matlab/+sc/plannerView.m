@@ -553,6 +553,14 @@ case 'addHazard'
     drawHazard(S.axMap, S.P, d.Hazard, numel(S.hz));
     if ~S.headless, drawnow; end
 
+% ----------------------------------------------------------- queueInjection
+case 'queueInjection'
+    % Programmatic twin of the mouse callback. This exists so the complete
+    % click -> re-plan -> splice path can be driven in an automated smoke test
+    % without manufacturing a Windows mouse event.
+    if isempty(S) || ~isgraphics(S.fig) || ~isfield(d,'XY'), return; end
+    queueInjection(S.fig, d.XY);
+
 % ------------------------------------------------------------------ status
 case 'status'
     if isempty(S) || ~isgraphics(S.fig) || ~isfield(S,'hLive') || ~isgraphics(S.hLive), return; end
@@ -612,9 +620,14 @@ hit = hittest(fig);
 hitAx = ancestor(hit, 'axes');
 if isempty(hitAx) || ~isequal(hitAx, ax), return; end
 cp = get(ax, 'CurrentPoint');
+queueInjection(fig, cp(1,1:2));
+end
+
+function queueInjection(fig, xy)
+if numel(xy) ~= 2 || any(~isfinite(xy)), return; end
 ctl = getappdata(fig, 'ctl');
 ctl.InjectPending = true;
-ctl.InjectXY = cp(1,1:2);
+ctl.InjectXY = reshape(double(xy),1,2);
 setappdata(fig, 'ctl', ctl);
 end
 
