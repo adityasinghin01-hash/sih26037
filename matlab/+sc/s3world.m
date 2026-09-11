@@ -156,6 +156,16 @@ assert(nOnRoadB == 0, "sc:s3buildingOnRoad", ...
 % is the SIGNED convention this codebase uses throughout (positive = left).
 W.Drains = struct('S0',0,'S1',W.Path.Len,'Lateral',-2.5,'Width',0.38, ...
     'Label',"open drain, 380mm, the whole length");
+% BEYOND SPEC, DISCLOSED - Phase G of the fix pass (11 Sep 2026). S3-THE-GALLI.md names
+% "broken concrete in patches" but gives no pothole count or stations the way S1's spec
+% does (9 potholes, exact chainages). These 3 are authored, not measured, placed in the
+% open stretches away from the squeeze/hazard zones already built - added because the
+% original density ask wanted repeated instances of a hazard type, not a single token
+% one, and S3 had ZERO road-surface hazards of its own before this.
+for ps = [55, 175, 265]
+    W.Drains(end+1) = struct('S0',ps-0.4,'S1',ps+0.4,'Lateral',0.3,'Width',0.5, ...
+        'Label',"pothole (authored, not in the written spec)"); %#ok<AGROW>
+end
 % "9-14 parallel wire runs... service drops to every house" - UPGRADED in the Phase C fix
 % pass (11 Sep 2026) from a single representative line to THREE, one per real voltage tier
 % S3's own text names (3x 11kV, 4x 415V, the rest cable TV/telephone) - still not literally

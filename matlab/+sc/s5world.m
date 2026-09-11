@@ -142,6 +142,21 @@ for i = 1:2
         'Label', "NO PARAPET - the drop, unprotected"); %#ok<AGROW>
 end
 
+% THE BRIDGE'S OWN 11 POTHOLES - REAL, MISSED IN THE ORIGINAL PASS, FIXED HERE (Phase G,
+% 11 Sep 2026). S5's own words: "Deck heavily potholed and patch-repaired: 16 patches, 11
+% open potholes 0.2-0.7 m." No exact stations given, only the count and the location (the
+% bridge deck, the real 213.5 m approach) - spread across the deck's own middle third,
+% disclosed as chosen positions for a real, spec-sourced count.
+potS = linspace(P0.Len*0.35, P0.Len*0.75, 11);
+for i = 1:11
+    W.Drains(end+1) = struct('S0',potS(i)-0.3,'S1',potS(i)+0.3,'Lateral',0.5*sign(randn), ...
+        'Width',0.4,'Label',"deck pothole (11 real, 0.2-0.7m)"); %#ok<AGROW>
+end
+% "520-640m: no bitumen at all - graded earth and loose stone, a washout being repaired" -
+% real, climb-relative 340-460 (written minus 180, this file's own no-remap convention).
+W.Drains(end+1) = struct('S0',toReal(340),'S1',toReal(460),'Lateral',0,'Width',W.Width*0.9, ...
+    'Label',"NO BITUMEN - graded earth and loose stone, a washout");
+
 [nOverlap, overlapWorst] = sc.checkFurnitureOverlaps(W.Buildings, []);
 assert(nOverlap == 0, "sc:s5furnitureOverlap", "%d furniture overlaps - worst: %s", ...
     nOverlap, overlapWorst);
