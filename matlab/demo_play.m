@@ -638,7 +638,8 @@ function c = slimCmd(cmd)
 %   the point of watching) - just as single precision, which is well past the
 %   precision of a 1600-pixel-wide axes.
 keep = {'State','Note','v','e','H','HLabel','Look','Blocked','TrunkMode', ...
-        'Creeping','VCap'};
+        'Creeping','VCap','TurnType','TurnBinds','RefugePoint', ...
+        'NeedsReverse','EscapeCount','HasEscape','NearestEscape'};
 c = struct();
 for k = 1:numel(keep)
     if isfield(cmd, keep{k}), c.(keep{k}) = cmd.(keep{k}); end
@@ -1147,6 +1148,10 @@ end
 C = L.LOG;
 if ~strcmp(C.Stamp, routeStamp(D))
     why = 'cache is for a different route';  return
+end
+if ~isfield(C,'cmd') || isempty(C.cmd) || ~isfield(C.cmd{1},'TurnType') ...
+        || ~isfield(C.cmd{1},'NearestEscape')
+    why = 'cache predates the turn/escape HUD fields';  return
 end
 % THE PLANNER CODE IS NOT PART OF THE STAMP, ON PURPOSE. If it were, every
 % edit to planSeat.m would invalidate every cache and force a two-minute

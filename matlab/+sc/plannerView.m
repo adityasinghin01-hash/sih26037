@@ -11,7 +11,7 @@ function out = plannerView(action, d)
 %     - the ego (oriented rectangle, real car L/W) and every road user, by class
 %     - the fan of candidate paths (thin grey) and the committed trunk (green)
 %     - the look-ahead point the steering is aimed at
-%     - a numbers panel: t, s, v, target v, target e, state, h = lambda-beta
+%     - a numbers panel: motion/safety plus live turn and escape-point state
 %     - a MODEL STATUS panel: the 4 perception models + the planner, live
 %     - a rolling strip of v and h against t
 %
@@ -423,6 +423,13 @@ case 'step'
         S.wrapKey2 = string(hzLine);  S.wrapVal2 = wrapNote(char(hzLine), 34, 5);
     end
     hzW = S.wrapVal2;
+    turnType = char(clampStr(getf(cmd,'TurnType',"unknown"), 10));
+    turnBinds = char(clampStr(getf(cmd,'TurnBinds',"unknown"), 10));
+    refuge = pointText(getf(cmd,'RefugePoint',[NaN NaN]));
+    reverse = yesNo(getf(cmd,'NeedsReverse',false));
+    escapeCount = getf(cmd,'EscapeCount',0);
+    hasEscape = yesNo(getf(cmd,'HasEscape',false));
+    nearestEscape = pointText(getf(cmd,'NearestEscape',[NaN NaN]));
     set(S.txt,'String',sprintf([ ...
         'WHERE\n%s\n\n' ...
         'STATE   %s%s\n\n' ...
@@ -435,12 +442,17 @@ case 'step'
         'h        %+6.3f     (%s)\n' ...
         'trunkMode %s\n' ...
         'road users %d\n' ...
-        'candidates %d\n\n' ...
+        'candidates %d\n' ...
+        'turn     %-10s bind %-10s\n' ...
+        'refuge   %-15s reverse %s\n' ...
+        'escapes  %3.0f available %s\n' ...
+        'nearest  %s\n\n' ...
         'HAZARD\n%s\n\n' ...
         'WHY\n%s'], ...
         chapW, char(cmd.State), blk, d.t, d.s, cowLine, d.v, 3.6*d.v, ...
         getf(cmd,'v',NaN), getf(cmd,'e',NaN), capTxt, h, hlabel(cmd), tm, ...
-        numel(d.tracks), numCand(cmd), hzW, wrapNote(noteOf(cmd),34,3)));
+        numel(d.tracks), numCand(cmd), turnType, turnBinds, refuge, reverse, ...
+        escapeCount, hasEscape, nearestEscape, hzW, wrapNote(noteOf(cmd),34,3)));
 
     % ---- model status panel ---------------------------------------------
     M = getf(d,'Models',[]);
@@ -956,6 +968,22 @@ end
 
 function v = onoff(tf)
 if tf, v = 'on'; else, v = 'off'; end
+end
+
+function s = yesNo(v)
+if (islogical(v) || isnumeric(v)) && isscalar(v) && isfinite(double(v))
+    if logical(v), s = 'yes'; else, s = 'no'; end
+else
+    s = '?';
+end
+end
+
+function s = pointText(p)
+if isnumeric(p) && numel(p) >= 2 && all(isfinite(double(p(1:2))))
+    s = sprintf('(%+.1f,%+.1f)', double(p(1)), double(p(2)));
+else
+    s = '-';
+end
 end
 
 function c = wrapStr(s, maxChars, maxLines)
