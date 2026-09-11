@@ -146,7 +146,9 @@ arguments
     opts.Recompute  (1,1) logical = false    % ignore any cache
     opts.Speed      (1,1) double  = 1.0      % 1.0 = natural speed. NOT slow-motion.
     opts.ViewSpan   (1,1) double  = 60       % m, half-span of the follow camera
-    opts.PlanEvery  (1,1) double  = 1
+    % Anjali profile, main be73c3c: 75.7 ms average, ~130 ms slow region.
+    % 3 means 6.67 Hz and leaves measured headroom; 2 (10 Hz) is aggressive.
+    opts.PlanEvery  (1,1) double  = 3
     opts.TEnd       (1,1) double  = NaN      % s, override the route's own length
     opts.Interactive(1,1) logical = true
     opts.Snap       (1,1) string  = ""       % write a frame here and exit
@@ -183,7 +185,7 @@ if opts.Live
     LOG = [];                                  % computed inside the draw loop
 elseif ~opts.Recompute && isfile(cacheFile)
     L = load(cacheFile);
-    [LOG, why] = useCache(L, D, DT);
+    [LOG, why] = useCache(L, D, DT, opts.PlanEvery);
     if isempty(LOG)
         fprintf('%s - recomputing\n', why);
         LOG = runPlanner(D, DT, opts.PlanEvery);
@@ -520,6 +522,7 @@ for i = 1:n
 end
 LOG.ReachedEnd = reachedEnd;
 LOG.PlannerFP  = plannerFingerprint();
+LOG.PlanEvery  = planEvery;
 fprintf('planner run done in %.1f s (%d plan failures)\n', toc(tRun), nFail);
 end
 
@@ -595,6 +598,7 @@ for j = 1:n
 end
 TAIL.ReachedEnd = reachedEnd;
 TAIL.PlannerFP = plannerFingerprint();
+TAIL.PlanEvery = planEvery;
 fprintf('LIVE local re-plan done in %.1f s (%d plan failures, %d new frames)\n', ...
         toc(tRun), nFail, numel(TAIL.t));
 end
@@ -609,6 +613,7 @@ for k = 1:numel(names)
 end
 LOG.ReachedEnd = TAIL.ReachedEnd;
 LOG.PlannerFP = TAIL.PlannerFP;
+LOG.PlanEvery = TAIL.PlanEvery;
 end
 
 function TR = tracksAt(D, i)
@@ -669,7 +674,7 @@ function LOG = truncate(LOG, n)
 %TRUNCATE  Cut every per-step series to n samples. Scalar bookkeeping fields
 %   (Stamp, ReachedEnd) are left alone - they describe the RUN, not a step,
 %   and slicing them would quietly corrupt the cache's own metadata.
-skip = {'Stamp','ReachedEnd','PlannerFP'};
+skip = {'Stamp','ReachedEnd','PlannerFP','PlanEvery'};
 f = fieldnames(LOG);
 for k = 1:numel(f)
     if ismember(f{k}, skip), continue; end
@@ -1128,7 +1133,7 @@ catch
 end
 end
 
-function [LOG, why] = useCache(L, D, DT)
+function [LOG, why] = useCache(L, D, DT, planEvery)
 %USECACHE  Decide whether a cached run answers this request.
 %
 %   A cached run is REUSABLE IF it is the same route AND it covers at least as
@@ -1152,6 +1157,9 @@ end
 if ~isfield(C,'cmd') || isempty(C.cmd) || ~isfield(C.cmd{1},'TurnType') ...
         || ~isfield(C.cmd{1},'NearestEscape')
     why = 'cache predates the turn/escape HUD fields';  return
+end
+if ~isfield(C,'PlanEvery') || C.PlanEvery ~= planEvery
+    why = sprintf('cache planner rate differs from PlanEvery=%d', planEvery);  return
 end
 % THE PLANNER CODE IS NOT PART OF THE STAMP, ON PURPOSE. If it were, every
 % edit to planSeat.m would invalidate every cache and force a two-minute
