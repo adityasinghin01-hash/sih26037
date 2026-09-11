@@ -159,6 +159,15 @@ arguments
                                               % metrics.json, config.json} - AGENTS.md
                                               % section 3. Skipped under Live=true, where
                                               % LOG is never a single reproducible record.
+    opts.Driver     (1,1) string  = "planner" % ADDED 11 Sep 2026, Phase 1 (Bring Your
+                                              % Own Planner). A name from
+                                              % sih.bench.registry() - "planner" is
+                                              % sc.planSeat, BYTE-IDENTICAL to every call
+                                              % before this option existed. Pass
+                                              % "placeholder" or "defensive" to run one of
+                                              % the other two already-proven drivers
+                                              % through this exact same hazard/corridor/
+                                              % sensing loop instead of writing a second one.
 end
 
 here = fileparts(mfilename('fullpath'));
@@ -179,6 +188,19 @@ fprintf('\n================ %s ================\n', D.Title);
 fprintf('route  %.0f m,  %d hazards,  %.0f s of driving\n', ...
         D.W.Path.Len, numel(D.Hazards), D.TEnd);
 
+% ================================================================= the driver
+% opts.Driver resolved against sih.bench.registry() rather than accepted as a
+% raw function handle, so the cache tag below can stay a plain string (a
+% function handle in a filename is not this file's problem to invent) and so
+% a typo names itself instead of failing three minutes into a recompute.
+reg = sih.bench.registry();
+if ~isfield(reg, opts.Driver)
+    error('demo_play:badDriver', ...
+        '"%s" is not a driver sih.bench.registry() knows about. Valid names: %s', ...
+        opts.Driver, strjoin(fieldnames(reg), ', '));
+end
+driverFn = reg.(opts.Driver);
+
 % ================================================================= the run
 % The cow mode is in the FILENAME, not just the stamp. Both modes are real
 % runs somebody may want back; keyed on route alone they overwrite each other,
@@ -187,6 +209,7 @@ fprintf('route  %.0f m,  %d hazards,  %.0f s of driving\n', ...
 tag = route;
 if opts.Cow ~= "verge", tag = route + "-cow" + opts.Cow; end
 if opts.Sensed, tag = tag + "-sensed"; end
+if opts.Driver ~= "planner", tag = tag + "-drv" + opts.Driver; end
 cacheFile = fullfile(here, 'renders', sprintf('demo_%s.mat', tag));
 if opts.Live
     LOG = [];                                  % computed inside the draw loop
@@ -195,14 +218,14 @@ elseif ~opts.Recompute && isfile(cacheFile)
     [LOG, why] = useCache(L, D, DT);
     if isempty(LOG)
         fprintf('%s - recomputing\n', why);
-        LOG = runPlanner(D, DT, opts.PlanEvery);
+        LOG = runPlanner(D, DT, opts.PlanEvery, driverFn);
         LOG.Stamp = routeStamp(D);
         saveCache(cacheFile, LOG);
     else
         fprintf('%s\n', why);
     end
 else
-    LOG = runPlanner(D, DT, opts.PlanEvery);
+    LOG = runPlanner(D, DT, opts.PlanEvery, driverFn);
     LOG.Stamp = routeStamp(D);
     saveCache(cacheFile, LOG);
 end
@@ -796,8 +819,19 @@ end
 % =========================================================================
 %                       THE PLANNER RUN (computed once)
 % =========================================================================
-function LOG = runPlanner(D, DT, planEvery)
-%RUNPLANNER  The real sc.planSeat, stepped over the route, logged. No graphics.
+function LOG = runPlanner(D, DT, planEvery, driverFn)
+%RUNPLANNER  A driver stepped over the route, logged. No graphics.
+%
+%   driverFn - OPTIONAL, ADDED 11 Sep 2026 (Phase 1 of the planner/ML side-
+%   build, "Bring Your Own Planner"). Defaults to @sc.planSeat, so every
+%   existing call in this file (both of them) is byte-identical to before.
+%   Any function sharing sc.planSeat's own [cmd,st]=driver(st,ctx) contract
+%   can be passed instead - sc.s1drive and sc.s1defensive already use this
+%   exact contract (planSeat.m's own header says so), so this one default
+%   argument is what turns this already-proven hazard/corridor/sensing loop
+%   into sih.bench's shared harness, instead of writing a second, separate
+%   copy of everything this function already does correctly.
+if nargin < 4, driverFn = @sc.planSeat; end
 W = D.W;  P = W.Path;
 RefPath = referencePathFrenet(P.P);
 kappaV  = P.curvature();
@@ -918,7 +952,7 @@ for i = 1:n
     if isfinite(eHiH), ctx.EHi = eHiH; end
 
     if mod(i-1, planEvery) == 0
-        [cmd, st] = sc.planSeat(st, ctx);
+        [cmd, st] = driverFn(st, ctx);
         cmd.MirrorsFolded = mirrorsFoldedNow;
         lastCmd = cmd;
         if isfield(cmd,'PlanFailed') && strlength(cmd.PlanFailed) > 0, nFail = nFail + 1; end
