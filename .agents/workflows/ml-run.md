@@ -6,13 +6,13 @@ description: Run the whole yield-predictor pipeline end to end - features, split
 stream. Point them at it rather than re-explaining. `ml/TROUBLESHOOTING.md` has every error we
 have already hit, with its real cause.
 
-## Stay inside the ML stream
+## Stay inside the ML track
 
 | Yours | NOT yours — say so in one sentence and stop |
 |---|---|
-| `ml/` and everything in it | `matlab/+sih/+planner/` and the Simulink model — Stream D |
-| `matlab/+sih/+prediction/` — the feature twin | `plan/` and `plan/CONTRACT-AB.md` — Stream D's roadmap |
-| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `ml/` and everything in it | `matlab/+sih/+planner/`, `matlab/+sc/`, and the Simulink model — the Planner track |
+| `matlab/+sih/+prediction/` — the feature twin | `plan/` — the Planner track's roadmap |
+| `matlab/+sih/+models/` | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | `ml/python/tests/` | `matlab/baseline/` — the competitor. **Never** |
 
 **You produce `S3 PYield`. You never consume it.** The planner reads it through the contract and
@@ -202,13 +202,13 @@ python3 ml/python/export/to_onnx.py --model "$DATA"/features/yield_attention.pt
 **Run it once per checkpoint.** A checkpoint holds one model, so the script now exports only
 that one and prints `SKIPPED` for the other. It used to export both, which meant the untrained
 one was written with random weights under an `[OK]` line - a randomly-initialised network could
-have reached the planner stream looking finished. Nothing would have errored; it would simply
+have reached the Planner track looking finished. Nothing would have errored; it would simply
 have predicted noise.
 
 **There is no `--opset` flag.** The script writes opsets 17, 18 and 20, then reads the opset back
 out of each file, because **torch silently upconverts anything below its implementation floor** —
 ask for 9, 11 or 13 and you get a file stamped 18. Reporting the number you requested would send
-the planner stream an opset that is not true of the file.
+the Planner track an opset that is not true of the file.
 
 **Check three things in its output:**
 - **numerics vs PyTorch below `1e-4`.** An export that succeeds and returns different numbers is
@@ -229,7 +229,7 @@ the planner stream an opset that is not true of the file.
 
 Run `/ml-parity` if `features.py` changed during this run.
 
-**Send the working opset number to the planner stream immediately. It blocks them.**
+**Send the working opset number to the Planner track immediately. It blocks them.**
 
 Finish with the section 7 report from `ml/ML.md`:
 

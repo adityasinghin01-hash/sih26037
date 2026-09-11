@@ -20,6 +20,9 @@ end
 
 function testKnownTagsMapToS5(tc)
 tc.verifyEqual(sih.scenario.classIDByName("cow"),        uint8(10));
+tc.verifyEqual(sih.scenario.classIDByName("car"),        uint8(1));
+tc.verifyEqual(sih.scenario.classIDByName("dog"),        uint8(11));
+tc.verifyEqual(sih.scenario.classIDByName("child"),      uint8(8));
 tc.verifyEqual(sih.scenario.classIDByName("auto"),       uint8(4));
 tc.verifyEqual(sih.scenario.classIDByName("moto_wrong"), uint8(5));
 tc.verifyEqual(sih.scenario.classIDByName("moto_over"),  uint8(5));

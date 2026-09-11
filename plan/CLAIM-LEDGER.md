@@ -1,6 +1,108 @@
-# The claim ledger — what we may say on the 7th, and what we may not
+# The claim ledger — what we may say, and what we may not
 
-**Written 4 September 2026, 20:18 IST. Every row traces to something that was RUN.**
+> ## REWRITTEN IN FULL — 10 September 2026. This supersedes the 4 September original below,
+> ## and its own 10 September "superseded in part" note, both kept underneath for history.
+>
+> Every row in Part 1 and Part 2 below was produced by re-running something today, 10 September
+> 2026, on MATLAB `26.1.0.3346908 (R2026a) Update 5`, on this machine — not carried forward from
+> memory of an earlier run. Where a number could not be re-run today (mainly the ML track's own
+> figures, which need the Python pipeline and training data this pass did not touch), that is
+> stated next to the number, not silently presented as current.
+
+---
+
+## Part 1 — What we CAN say, with the evidence
+
+| Claim | Evidence |
+|---|---|
+| **"Our planner drives a real 610 m stretch of an actual Indian road and negotiates around a cow, computing every acceleration and steering command itself, with 0.965 m clearance on both sides for the full route."** | `demo_play('demo1')`, full route, 0 plan failures. Re-verified 10 Sep under BOTH exact ground truth and simulated lidar+radar+near-field-ring sensing — the number is unchanged between the two |
+| **"Real sensing can replace ground truth in the live demo with no change to the headline S1 number."** | `demo_play('demo1', Sensed=true)`, byte-identical planner behaviour confirmed as a regression check when sensing is disabled |
+| **"We built a third scenario — a 1.95 m squeeze in a residential galli, with an oncoming motorcycle, a child crossing, and a dog in the road — and the planner clears all three."** | `demo_play('demo3')`, full 382.2 m route, 0 plan failures, 0 NaN/Inf, separations +0.175 m / +0.999 m / +0.550 m, `MirrorsFolded` engages correctly through the squeeze. Four real planner-interaction bugs were found and fixed getting here — see `demo3Route.m` and `demo_play.m`'s own headers for the full account, not summarised away |
+| **"We ran MathWorks' shipped urban planner, unmodified. It does not complete."** Dies at its own `error()` call at t = 19.7 s, 0 of 120 candidates collision-free | `plan/BASELINE-R2026a.md`. Reproduced 3×, two platforms (macOS Apple Silicon, Windows x86), identical to the digit |
+| **"When every candidate trajectory is invalid, their planner has no defined behaviour — it raises an error."** | Their own source, `MotionPlanningUsingDynamicMapExample.m` line 193, under their own comment |
+| **"Our planner checks that a path leaves us somewhere we can still stop; theirs checks only that the path itself is clear."** | `plan/D6-TRUNK-RULING.md`; `checkTerminalStop` wired at `planContingency.m`; the baseline's own `HelperDynamicMapValidator.m` does per-point checking with no terminal condition — read, never edited |
+| **"344 automated tests exist against the planner, scenario, sensing, and evidence code; 335 pass, 0 fail."** The 9 Incomplete are a gitignored third-party dependency not cloned, not a regression | Re-run today, same session as this document |
+| **"Every demo run ships its own evidence: a trajectory log, ten standard metrics, and the exact configuration that produced it."** | `results/<run>/{trajectories.csv, metrics.json, config.json}`, built 10 Sep. Explicitly disclosed as reusing an already-proven metric formula set, not independently re-derived against the PRD — see the file's own header |
+| **"Head-on give-way is LEFT, derived from Indian law, not imported from COLREGs."** RRR 1989 reg. 2. COLREGs Rule 14 says the opposite and would steer into oncoming traffic | `chooseVelocity.m` header; caught and corrected during the D6 design pass, before any demo used it |
+| **"Two barriers, no mode switch — geometry decides which binds."** `h_agent` and `h_road`, both implemented and logged every step | `velocityObstacle.m`, `roadBarrier.m`, `speedLimit.m` |
+
+---
+
+## Part 2 — What we must NOT say, and the honest sentence that replaces it
+
+| ✗ Do not say | ✓ Say instead | Why |
+|---|---|---|
+| *"S2 works, with one disclosed clearance bug"* | **"S2 does not currently finish the route under either condition we tested today. Under exact ground truth it grazes the wrong-way rider at −0.003 m (t=17.65 s); under real sensing it collides at −0.909 m (t=12.70 s, reproducing the previously-documented figure exactly). In BOTH cases the planner then permanently stalls partway around the ring — s≈116–121 m of a 244 m route — and never reaches the ring exit."** | Re-run today, `s2_planner_run.m`, both `Sensed=true` and `Sensed=false`. The previous wording ("works, one disclosed bug") is not what a fresh run shows — it implies the route otherwise completes, and it does not, under either sensing condition |
+| *"The stall is a sensing artefact"* | **"It is not — it reproduces under exact ground truth too, at a different station (s≈121 m vs s≈116 m) and holding on a different track (one stable ID under ground truth vs three different IDs in sequence under sensing). Both conditions show the same D9 WAIT-rung mechanism repeatedly finding, then losing, a viable pass and never fully clearing."** | Directly observed in both re-runs' own state timelines, not inferred |
+| *"We beat MathWorks' planner"* | **"We ran theirs unmodified and it does not complete. We do not yet have both planners on one shared scenario."** | No head-to-head exists — theirs is a six-lidar urban intersection, ours is a different scenario set entirely |
+| *"MathWorks' planner is broken"* | **"It fails identically on macOS Apple Silicon and Windows x86 under R2026a Update 5. An earlier MATLAB release has not been tested."** | Two platforms, one MATLAB version. Say the bound, not more |
+| *"Our ML model decides who yields"* | **"As of the last figure we have (4 Sep, not independently re-run this pass), it did not clear its own pre-registered safety bar — 20.18% dangerous-error rate against a ≤1% target — so it emits `Valid=false` and the planner falls back to the geometric right-of-way role. Calibration is Shourya's current, in-progress work."** | Flagged as not re-verified this session rather than re-quoted as current fact |
+| *"Validated on real road data"* | **"S1 and S3 are built on real OpenStreetMap road geometry with measured, disclosed real-vs-chosen decisions in each scenario file. S2's world geometry is real map data with an authored gyratory island (no island exists in the OSM data — stated plainly in `s2world.m`'s own header)."** | Precise about which parts of which scenario are measured vs. authored |
+| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples of either, so no detection performance can be claimed for them."** | Features `[23,24,25,27]` are permanently dead in the frozen 31-dim vector — a data property, not a bug |
+| *"344 tests pass"* — any bare number, unquoted date | **Re-run it first, every time.** Today: 344 total, 335 pass, 0 fail, 9 incomplete (needs `OpenTrafficLab/` cloned into the repo root) | This count has been wrong in project docs multiple times before, always from someone quoting it without re-running it |
+| *"We pass the cow with 0.965 m clearance"* without saying which run | **"0.965 m is the real planner's own number, verified under both ground truth and real sensing, full route, 0 plan failures."** | Distinguish a planner claim from a scenario-geometry claim, every time — the discipline the 5 Sep scope note below still requires |
+
+---
+
+## Part 3 — Sentences to say before a judge says them for us
+
+> **"S2, the chowk, does not currently finish the route under either ground truth or real sensing — it collides with the wrong-way rider and then stalls partway around the ring. This is the open item on the Planner track, not a hidden gap."**
+
+> **"We do not yet have both planners — ours and MathWorks' shipped one — on a common scenario. That is real, remaining comparative work."**
+
+> **"Our ML yield predictor has not cleared its own pre-registered safety bar, so the planner does not let it drive anything yet — it falls back to geometric right-of-way, which is the designed fallback, not a missing feature."**
+
+Saying these costs nothing. Having them extracted from us on stage costs the project.
+
+---
+
+## Part 4 — If S2 or the ML gate close before the cutoff
+
+Nothing above transfers automatically.
+
+- If Antara's S2 fix lands: re-run `s2_planner_run.m` under BOTH `Sensed=true` and `Sensed=false` (this pass found they fail differently — a ground-truth-only re-run would miss half the picture) and quote the new numbers, replacing the Part 2 row above with whatever is actually measured, including a fresh check for the permanent-stall behaviour specifically, since a fix for the −0.909 m clearance does not automatically fix the separate stall.
+- If Shourya's calibration and Kishan's evaluation clear the ≤1% dangerous-error bar: re-run the actual evaluation and quote the new figure with its confidence interval — never the old 20.18% figure past that point, in either direction.
+- **If `h` still goes negative with the real planner driving, that is a finding and it gets reported.** Never clip it to make a run look clean.
+
+---
+
+## Status
+
+Rewritten by Claude at Aditya's instruction, 10 September 2026, on MATLAB `26.1.0.3346908
+(R2026a) Update 5`, `MACA64`. Every row in Part 1 and Part 2 traces to something re-run today
+in this same session, except the ML dangerous-error-rate figure, which is explicitly marked as
+last measured 4 Sep and not independently re-verified this pass.
+
+---
+
+<br>
+
+# Below: the original 4 September ledger and its 10 September superseded-in-part note, kept for
+# history. Do not quote numbers from this section — everything current is above.
+
+> ## SUPERSEDED — 10 September 2026 (original note, itself now superseded by the full rewrite above)
+>
+> This entire ledger was written around a crisis (the probe never fires, S1 collides, the
+> defensive stand-in beats us) that **has since been fixed.** What I can personally confirm as
+> current, verified this session:
+> - **S1 is fully solved**: 610m real route, full route completed, 0.965m clearance each side.
+>   Several of Part 2's "must not say" rows below (S1 safety, "the mechanism doesn't fire",
+>   "defensive beats us on S1") are now **false as written** — the honest claim has gotten
+>   *stronger*, not weaker, and this ledger has not caught up.
+> - **S2 still has one disclosed bug** (−0.909m, a lateral-commit tie-break) — closer to what
+>   Part 2 originally described, but re-verify the exact current number before quoting it; a lot
+>   has changed since 4-5 September.
+> - **Real sensing is now wired into the live demo** (`demo_play.m`, `Sensed=true`) — not
+>   mentioned anywhere below because it didn't exist yet.
+> - I have **not** personally re-verified the ML dangerous-error-rate (20.18% below), the exact
+>   current baseline framing, or most of Part 1/2's other specific numbers this session — do not
+>   treat their absence from my list above as confirmation they're still accurate either way.
+>
+> **Before any pitch rehearsal: re-run the actual measurements this ledger depends on and rewrite
+> it properly.** I'm flagging this rather than silently rewriting a new ledger myself — composing
+> new stage claims from partial knowledge is exactly the mistake this file exists to prevent.
+
+**Original version written 4 September 2026, 20:18 IST. Every row traces to something that was RUN — at that time.**
 
 > ### CORRECTED 4 September 2026, 22:0x IST — read `plan/BACKUP-PROBE-FINDING.md` first
 > The backup demo was run for the first time this evening and it changed three things in this
@@ -13,8 +115,6 @@
 `TEAM.md`, `HANDOFF.md`, `plan/D-planner.md`, `plan/E-evidence.md`, `ml/C-prediction.md` and three
 world files all refer to "the claim ledger". **It had never been written.** This is it, for the code
 side. The World's visual claims are Aditya's and live elsewhere.
-
-**Rule: if a sentence is not in the left column below, do not say it on stage.**
 
 > ### SCOPE, added 5 September — read this before Part 2
 > **Two different programs are called "the backup" and the rows below do not apply to both.**
@@ -30,7 +130,7 @@ side. The World's visual claims are Aditya's and live elsewhere.
 
 ---
 
-## Part 1 — What we CAN say, with the evidence
+### (Original) Part 1 — What we CAN say, with the evidence
 
 | Claim | Evidence |
 |---|---|
@@ -47,7 +147,7 @@ side. The World's visual claims are Aditya's and live elsewhere.
 
 ---
 
-## Part 2 — What we must NOT say, and the honest sentence that replaces it
+### (Original) Part 2 — What we must NOT say, and the honest sentence that replaces it
 
 | ✗ Do not say | ✓ Say instead | Why |
 |---|---|---|
@@ -58,7 +158,7 @@ side. The World's visual claims are Aditya's and live elsewhere.
 | *"Latency on hardware"* / *"PIL timing"* | **"Simulation timings."** | No MATLAB/Simulink/Embedded Coder on this licence |
 | *"Our ML model decides who yields"* | **"It does not clear its own safety bar, so it emits `Valid = false` and the planner falls back to geometry. Here is the number."** | 20.18% dangerous-error rate against a ≤1% target |
 | *"Validated on real road data"* | **"Tested against hand-constructed S9/S10. Not yet validated against World data."** | `matlab/+sih/+scenario/` and `+perception/` are empty |
-| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples, so we cannot claim detection performance for them. Cows and tractors are present."** | Features `[23,24,25,27]` are dead — dog, pushcart, animal-drawn cart, static obstacle |
+| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples, so we cannot claim detection performance for them. Cows and tractors are present."** | Features `[23,24,25,27]` are dead - dog, pushcart, animal-drawn cart, static obstacle |
 | *"51 / 42 / 213 / 214 tests pass"* — any bare number | **Re-run it first.** `main` = 51 tests / 50 pass. `stream-d-a` = **304 total, 303 pass, 1 fail, 0 incomplete** (5 Sep) — and only with `OpenTrafficLab/` cloned into the repo root; without it 7 tests silently SKIP | The count has been wrong in the docs **five** separate times |
 | *"The car probes, reads the response, then commits"* | **"The mechanism is implemented and the gate that triggers it does not currently open. Here is the measurement."** | `any(contains(o.Reason,"probe"))` = **0** in both S1 and S2. `plan/BACKUP-PROBE-FINDING.md` |
 | *"We pass the cow with 0.95 m clearance"* | **"The written manoeuvre does not run. Measured closest approach to the cow is 3.656 m."** | Per-actor minimum distance, S1, 1060 samples |
@@ -67,7 +167,7 @@ side. The World's visual claims are Aditya's and live elsewhere.
 
 ---
 
-## Part 3 — The two sentences to say before a judge says them for us
+### (Original) Part 3 — The two sentences to say before a judge says them for us
 
 > **"We do not yet have both planners on a common scenario. That is the next piece of work."**
 
@@ -80,26 +180,9 @@ side. The World's visual claims are Aditya's and live elsewhere.
 > `plan/BACKUP-PROBE-FINDING.md` step 1 is outstanding. Once the gate is fixed, delete this line
 > and re-measure.
 
-Saying these costs nothing. Having them extracted from us costs the project.
-
 ---
 
-## Part 4 — If the loop closes before the cutoff
-
-If `chooseVelocity` is wired into `NegotiatingStrategy` and the run comes back clean, then and only
-then:
-
-- `config.json` shows `plannerInLoop: true`
-- **Re-run `sih.runExperiment` and quote the NEW numbers.** Nothing above transfers automatically.
-- Row 1 of Part 2 is retired and replaced with the measured result — **whatever it is.**
-
-**If `h` still goes negative with the planner driving, that is a finding and it gets reported.**
-`plan/ReadThis.md` rule 5: *never clip `h < 0` to make a run look clean. A hidden violation is the
-one thing that would genuinely invalidate this project.*
-
----
-
-## Status
+### (Original) Status
 
 Written by Claude at Aditya's instruction, 4 September 2026. Every claim in Part 1 was produced by
 running something on MATLAB `26.1.0.3346908 (R2026a) Update 5`. Part 2 exists because each of those

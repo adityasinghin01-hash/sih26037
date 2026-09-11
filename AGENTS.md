@@ -1,7 +1,8 @@
 # SIH26037 - agent rules
 
-Read by Antigravity, Cursor and Claude Code.
-**Section 3 below is the frozen contract. It is the reason five people can work at once.**
+Read by Antigravity, Cursor, Claude Code, and Codex (Codex CLI reads `AGENTS.md` by convention,
+same file, no separate file needed for it).
+**Section 3 below is the frozen contract. It is the reason six people can work at once.**
 
 ## The project
 Smart India Hackathon 2026, problem statement **SIH26037** (MathWorks): adaptive path planning on

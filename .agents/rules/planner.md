@@ -7,27 +7,32 @@ description: Load when the task involves the PLANNER - COLREGs roles, the veloci
 
 **Read `plan/ReadThis.md`** before writing anything. It explains the mechanism — why the trunk
 IS the probe, why there are two barriers, why turn types are derived rather than classified.
-Then read **`plan/CONTRACT-AB.md`**, because Stream D is two people who must not share files.
 
-**Then use the workflow for the person you are helping:**
+**As of the 10 September restructure, the Planner track is Antara and Anjali, independently —
+not a two-person split of one job.** `plan/CONTRACT-AB.md` describes that older, no-longer-
+current arrangement (one person on pure functions, one on the Simulink model) — check
+`HANDOFF.md` for what each of them is actually building right now before assuming which workflow
+applies.
+
+**Workflows available:**
 
 | | |
 |---|---|
-| **`/plan-work`** | **Person A** — pure MATLAB functions in `matlab/+sih/+planner/` |
-| **`/plan-harness`** | **Person B** — the Simulink model and Stateflow chart |
+| **`/plan-work`** | The planner build order — pure MATLAB functions in `matlab/+sih/+planner/` |
+| **`/plan-harness`** | The Simulink model and Stateflow chart, **if that piece of work is still live for anyone** — it was last recorded as merged and dormant, so check before assuming it's someone's active task |
 | `/plan-test` | the geometry tests, and what a failure means |
 
 ## Stay inside the planner
 
 | Yours | NOT yours — say so and stop |
 |---|---|
-| `matlab/+sih/+planner/` | `ml/` and everything in it |
-| the Simulink model and chart | `matlab/+sih/+prediction/`, `+models/` — Stream C |
-| `matlab/+sih/+metrics/` reads your logs | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `matlab/+sih/+planner/`, `matlab/+sc/`, the Simulink model and chart if still live | `ml/` and everything in it |
+| `matlab/+sih/+metrics/` reads your logs | `matlab/+sih/+prediction/`, `+models/` — the ML track |
+| | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 
 **The predictor is not yours.** You consume `S3 PYield` through the contract and never open the
-model that produced it. If `PYield` looks wrong, report it to Stream C — do not go and retrain
-anything.
+model that produced it. If `PYield` looks wrong, report it to the ML track (Shourya or Kishan) —
+do not go and retrain anything.
 
 ## Four things that are settled
 

@@ -2,32 +2,30 @@
 
 
 **Install your fence before you start.** `cp .claude/fences/planner.settings.local.json .claude/settings.local.json`
-It refuses reads outside your stream instead of relying on you to remember. See `.claude/fences/README.md`.
-**You are Stream D. This folder is yours.** You are building the part of the project everything
-else exists to serve: **the thing that decides what the car does.**
+It refuses reads outside your track instead of relying on you to remember. See `.claude/fences/README.md`.
+**You are on the Planner track — Antara or Anjali. This folder is yours.** You are building (or
+verifying) the part of the project everything else exists to serve: **the thing that decides
+what the car does.**
 
-It is the biggest job here and it is two people. Read this once before you start.
+**As of the 10 September restructure, you and your counterpart are independent, not a shared
+job-split.** Antara: the S2 fix, reactive multi-agent traffic, live-obstacle-injection, S3's
+reverse-gear/deadlock behaviour. Anjali: profiling the planner's re-solve cost, the safety
+watchdog, regression verification, the randomized-run rigor upgrade. Check `HANDOFF.md` at the
+repo root for the current, detailed version of this — it changes faster than this file does.
 
 ## What is in this folder
 
-Streams **D** (the planner) and **E** (the baseline, the metrics, the report) are both **Role 2**,
-so they share one folder.
-
 | File | What it is | When you open it |
 |---|---|---|
-| **`ReadThis.md`** | this file — the whole stream, start to finish | first, once |
-| **`D-planner.md`** | Stream D's task list, D1 through D11 | you are Stream D |
-| **`CONTRACT-AB.md`** | the boundary between Stream D's **two** people — who writes what, and which file neither may touch | **before either of you writes anything** |
-| **`E-evidence.md`** | Stream E's task list: the three baselines, the metrics, the report | you are Stream E |
+| **`ReadThis.md`** | this file — the mechanism, start to finish | first, once |
+| **`D-planner.md`** | the original build-order task list (D1 through D11) — still accurate for what's built; treat it as a reference, not a live assignment sheet |
+| **`E-evidence.md`** | the baseline/metrics/report task list, same status as above |
+| **`CONTRACT-AB.md`** | **retired.** It described a different arrangement — one person writing pure functions, one owning a Simulink model, neither touching the other's files, because a `.slx` can't be merged. That specific problem doesn't describe your current, independent work. Kept for history, not a live rule |
 
-**Stream D is two people and they do NOT share files.** Person A writes `matlab/+sih/+planner/*.m`
-— pure functions, testable without Simulink. Person B owns the Simulink model and the Stateflow
-chart. **A `.slx` is a binary file: two people editing it cannot merge, and one person's work is
-simply lost.** That is why only Person B opens it. `CONTRACT-AB.md` is the whole rule.
-
-**Your commands:** `/plan-work` Person A's build order · `/plan-harness` Person B's Simulink loop
-and Stateflow chart · `/plan-test` run the planner tests and read a failure · `/state` where the
-project is · `/first-run` the MATLAB that has never been executed.
+**Your commands:** `/plan-work` the planner build order · `/plan-harness` the Simulink loop and
+Stateflow chart, if that piece of work is still live (check with Aditya) · `/plan-test` run the
+planner tests and read a failure · `/state` where the project is · `/first-run` the MATLAB that
+has never been executed.
 
 Nothing in `ml/`, `matlab/+sih/+prediction/` or `matlab/+sih/+models/` is yours. You consume
 `S3 PYield` and never open the model that produced it. **Install your fence** (top of this file)
@@ -51,24 +49,22 @@ That is the project. You are building it.
 
 ---
 
-# 1 · The two of you, and why you must not share files
+# 1 · You and your counterpart, and why you don't need to coordinate file-by-file
 
-| | **Person A** | **Person B** |
-|---|---|---|
-| Tool | Claude Code | Antigravity |
-| Writes | `matlab/+sih/+planner/*.m` — pure functions | the Simulink model and Stateflow chart |
-| Command | **`/plan-work`** | **`/plan-harness`** |
-| Branch | `stream-d-a` | `stream-d-b` |
-| Tests in | seconds, no Simulink needed | minutes, model must run |
+Antara and Anjali each own a complete, separate piece of work — not two halves of one job.
+Antara's is mostly new capability (the S2 fix, reactive agents, live-obstacle-injection, S3).
+Anjali's is mostly measurement and verification (profiling, the safety watchdog, regression
+checks, randomized-run rigor). That split means you're unlikely to touch the same file on the
+same day, but it's not a guaranteed, enforced boundary the way the old Simulink split was.
 
-**A Simulink `.slx` file is binary.** Git cannot merge two people's edits to it — one version
-silently overwrites the other. No conflict marker, no warning, just a lost day. **So B is the
-only person who ever opens it.**
+**If you ever do find yourselves editing the same file:** that's a two-line message to each
+other and to Aditya, not something to resolve by reading this file harder — nothing here can
+tell you who wins, because the situation this section used to describe (a `.slx` binary file
+that literally cannot be merged) doesn't apply to your actual work.
 
-The full rules are in **`plan/CONTRACT-AB.md`**. Read it before you write anything.
-
-**The question that settles almost every argument about whose job something is:**
-*does it need Simulink to test?* No → A's. Yes → B's.
+**Your command:** `/plan-work` — the planner build order. `/plan-harness` (the Simulink loop and
+Stateflow chart) may or may not still be live work for anyone — check `HANDOFF.md` before
+assuming it's yours.
 
 ---
 
@@ -76,14 +72,15 @@ The full rules are in **`plan/CONTRACT-AB.md`**. Read it before you write anythi
 
 | Yours | Not yours |
 |---|---|
-| `matlab/+sih/+planner/` — Person A | **`ml/`** — Stream C's folder, do not read it to debug your work |
-| the Simulink model and chart — Person B | `matlab/+sih/+prediction/`, `+models/` — Stream C |
-| | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `matlab/+sih/+planner/`, `matlab/+sc/` — the planner and its adapter | **`ml/`** — the ML track's folder, do not read it to debug your work |
+| the Simulink model and chart, if still live | `matlab/+sih/+prediction/`, `+models/` — the ML track |
+| | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | | **`matlab/baseline/`** — the competitor we compare against. Never |
 
 **You consume the yield predictor, you do not own it.** It reaches you as `S3 PYield` through the
-contract. If it looks wrong, tell Stream C. Do not open `ml/` and do not retrain anything — that
-is how two people end up with two different models and nobody knows which one the demo used.
+contract. If it looks wrong, tell Shourya or Kishan (the ML track). Do not open `ml/` and do not
+retrain anything — that is how two people end up with two different models and nobody knows
+which one the demo used.
 
 ---
 
@@ -122,9 +119,10 @@ runtests('matlab/tests')
 **These are the most trusted code in the repository.** If they break after you change something,
 you changed something you did not mean to.
 
-**Verified by running, not by reading:** 14 geometry + 19 D2 + 9 subclass = **42 tests, all
-passing on MATLAB R2026a, 4 September 2026.** Before you quote that number again, re-run them —
-it was wrong in three files for a week because nobody did.
+**Verified by running, not by reading — current count, 10 September 2026: the full suite is
+344 tests, 335 pass, 0 fail, 9 incomplete** (OpenTrafficLab-not-cloned skips). Before you quote
+that number again, re-run it — it has been wrong in these docs before, always from someone not
+re-running it.
 
 ## The one number that matters
 
@@ -232,9 +230,9 @@ you consume or produce.**
 
 | In | From |
 |---|---|
-| **S1** TrackList | Stream B — the things around us |
-| **S3** YieldPrediction | Stream C — `PYield` per track |
-| **S9** DrivableSpace | Stream B — the ground, the edge, how far we can see |
+| **S1** TrackList | Aditya's World track — the things around us |
+| **S3** YieldPrediction | The ML track — `PYield` per track |
+| **S9** DrivableSpace | Aditya's World track — the ground, the edge, how far we can see |
 | **S10** Route | the thin route layer — goal direction only |
 
 | Out | To |
@@ -252,29 +250,23 @@ you consume or produce.**
 
 # 9 · Where to start
 
-**Person A:** type `/plan-work`. It has the build order and the maths already specified.
-Start with D2 — turning a role into a command. Small, and it gets you oriented.
+Check `HANDOFF.md` at the repo root for your actual current task (Antara or Anjali) — it's kept
+more current than this file. In general: type `/plan-work` for the build order and the maths.
 
-**Person B:** type `/plan-harness`. **Start today, with stubs.** Do not wait for A — every struct
-is already defined, so you can build the whole loop against fakes this week and let the real
-pieces drop into slots that already work.
-
-**Both:** run `runtests('matlab/tests')` before every push. All of them, not just yours.
+**Run `runtests('matlab/tests')` before every push. All of them, not just the file you touched.**
 
 ---
 
 # 10 · Never do these
 
-1. **Never open a file the other person owns.** A does not open the `.slx`; B does not edit
-   `+planner/*.m`
-2. **Never edit `matlab/baseline/`** — that is MathWorks' planner, the competitor we compare
+1. **Never edit `matlab/baseline/`** — that is MathWorks' planner, the competitor we compare
    against. Change it and a judge calls the whole comparison rigged
-3. **Never change `AGENTS.md` section 3.** Six people build against it
-4. **Never use 0.5 as a fallback probability**
-5. **Never clip `h < 0` to make a run look clean.** Report it. A hidden violation is the one
+2. **Never change `AGENTS.md` section 3.** Everyone builds against it
+3. **Never use 0.5 as a fallback probability**
+4. **Never clip `h < 0` to make a run look clean.** Report it. A hidden violation is the one
    thing that would genuinely invalidate this project
-6. **Never write a number you did not produce by running something**
-7. **Never summarise an error.** All of it
+5. **Never write a number you did not produce by running something**
+6. **Never summarise an error.** All of it
 
 ---
 
@@ -282,6 +274,6 @@ pieces drop into slots that already work.
 
 1. **The trunk is the probe.** The car's movement is the question, not a signal beside it.
 2. **`h = lambda - beta`, and it never goes below zero.** Log it every step.
-3. **B builds the loop with stubs now.** Do not wait for A.
-4. **A tests in seconds, B tests in minutes.** That is the whole reason for the split.
-5. **A failing test is information.** Never edit a test to make it pass.
+3. **A failing test is information.** Never edit a test to make it pass.
+4. **Disclosed bugs are fine, hidden ones are not.** Say what's still broken.
+5. **Re-run the test suite before quoting its count.** It's been wrong in these docs before.

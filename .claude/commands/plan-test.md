@@ -15,14 +15,15 @@ MATLAB:unittest:TestSuite:UnrecognizedSuite
 Unable to create a test suite from matlab/tests/testPlannerGeometry.
 ```
 
-**14 tests. All passed on R2026a, 4 September 2026** — they are the oldest and best-verified
-code in the repository, so a failure means something you just changed, not something that was
-already broken. (Re-run before you quote that number: it said 12 for a week after two frame
-tests were added, and 13 in `D-planner.md` when it was never 13.)
+**14 tests, part of the full 344-test suite (335 pass, 0 fail, 9 incomplete as of 10 September
+2026)** — they are the oldest and best-verified code in the repository, so a failure means
+something you just changed, not something that was already broken. **Re-run before you quote
+either number** — both have been wrong in these docs before, always from someone not re-running
+them.
 
-**Stay inside the planner.** These tests are Stream D's. `ml/`, `matlab/+sih/+prediction/` and
-`+models/` belong to Stream C — if a test failure looks like it comes from the predictor, say so
-in one sentence and stop. Do not open their files to investigate.
+**Stay inside the planner.** These tests are the Planner track's. `ml/`, `matlab/+sih/+prediction/`
+and `+models/` belong to the ML track — if a test failure looks like it comes from the predictor,
+say so in one sentence and stop. Do not open their files to investigate.
 
 ## What each group is checking
 

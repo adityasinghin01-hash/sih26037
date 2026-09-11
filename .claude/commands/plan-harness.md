@@ -1,18 +1,18 @@
 ---
-description: Stream D Person B - build the Simulink model and Stateflow chart that close the loop and call Person A's planner functions.
+description: The Simulink model and Stateflow chart that close the loop and call the planner functions - check HANDOFF.md for whether this is currently anyone's active work.
 ---
 
 
 # /plan-harness — the closed loop, and the chart that drives it
 
-**You are Person B.** You own **the Simulink model and the Stateflow chart**. Person A owns
-`matlab/+sih/+planner/*.m` — the pure functions. Read `plan/CONTRACT-AB.md` before you start.
-
-**You are the only person who opens the `.slx`.** It is a binary file; git cannot merge two
-people's edits to it, so if A opens it too, one of you loses a day's work with no warning and no
-conflict marker. That is why the split exists.
-
-**Your branch is `stream-d-b`.**
+**Check `HANDOFF.md` before starting this one.** As of the 10 September restructure, the
+Simulink/Stateflow harness work was last recorded as merged and dormant — neither Antara's nor
+Anjali's current task list mentions it. If you're here because it's become live work again for
+someone, the technical content below is still accurate; the old "you are Person B, the only one
+who opens the `.slx`, Person A never touches it" framing just doesn't map onto anyone specific
+right now. **If two people do end up in this file at once, remember why the rule existed:** a
+`.slx` is a binary file, git cannot merge two people's edits to it, and one of you will silently
+lose a day's work with no conflict marker.
 
 ---
 
@@ -20,14 +20,14 @@ conflict marker. That is why the split exists.
 
 | Yours | NOT yours — say so in one sentence and stop |
 |---|---|
-| `matlab/+sih/+planner/` (A) and the Simulink model (B) | **`ml/` and everything in it** |
-| | `matlab/+sih/+prediction/`, `+models/` — Stream C |
-| | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| the Simulink model, `matlab/+sih/+planner/`, `matlab/+sc/` | **`ml/` and everything in it** |
+| | `matlab/+sih/+prediction/`, `+models/` — the ML track |
+| | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | | `matlab/baseline/` — the competitor. **Never** |
 
 **The yield predictor is not yours.** You consume `S3 PYield` through the contract and never open
-the model that produced it. If `PYield` looks wrong, report it to Stream C — do not retrain
-anything, and do not go reading `ml/` to work out why.
+the model that produced it. If `PYield` looks wrong, report it to the ML track (Shourya or
+Kishan) — do not retrain anything, and do not go reading `ml/` to work out why.
 
 ---
 
@@ -54,7 +54,7 @@ runtests('matlab/tests')
 
 ## The thing that decides whether this works: build the loop with stubs, now
 
-**Do not wait for Person A.** Every struct is already defined in `AGENTS.md` section 3, so you
+**Do not wait for the pure-function side of the planner to be finished.** Every struct is already defined in `AGENTS.md` section 3, so you
 can build the entire loop this week against fakes:
 
 - a stub that emits a hand-written `S1 TrackList` — two agents, one crossing, one head-on
@@ -103,8 +103,8 @@ Modes are **S8**: `0 STRUCTURED` · `1 UNSTRUCTURED` · `2 EMERGENCY`.
 the chart flip between states every step at the boundary, which looks like a bug in the planner
 and is not.
 
-**The chart decides WHEN. Person A's functions decide WHAT.** If you find yourself writing
-geometry inside the chart, it belongs in `+planner/` and it is A's.
+**The chart decides WHEN. The pure planner functions decide WHAT.** If you find yourself writing
+geometry inside the chart, it belongs in `+planner/`, not here.
 
 ## Step 3 — call A's functions
 
@@ -127,9 +127,9 @@ Both are valid. A three-argument call is not a bug — it takes every default.
 only. **`Signal`, `Gear`, `Committed` and `MirrorsFolded` are yours** — they are state-machine
 decisions and belong in the chart.
 
-**One thing to check early:** `.Reason` is a MATLAB `string`, which is what S4 specifies. Simulink and Stateflow handle strings poorly inside buses, and Embedded Coder restricts them further — which E9 needs for the PIL latency numbers. **If the chart cannot carry it, that is a contract question for Aditya, not a change you make.** Section 3 is frozen.
+**One thing to check early:** `.Reason` is a MATLAB `string`, which is what S4 specifies. Simulink and Stateflow handle strings poorly inside buses, and Embedded Coder restricts them further — which E9 (now cancelled — the whole Coder family is absent from the licence) would have needed for PIL latency numbers. **If the chart cannot carry it, that is a contract question for Aditya, not a change you make.** Section 3 is frozen.
 
-**The signature is agreed in `plan/CONTRACT-AB.md`** — check there, do not guess.
+**The signature is `AGENTS.md` section 3's S4** — check there, do not guess.
 
 ## Step 4 — log the safety number, every step
 
@@ -172,7 +172,8 @@ repeat in whatever builds your scenario** (`c.IsVisible = true` before the first
 
 ## Never
 
-- **Never edit `matlab/+sih/+planner/*.m`.** Those are A's. Ask for a signature change instead
+- **Never edit `matlab/+sih/+planner/*.m`** without checking whose active work that is right now.
+  Ask for a signature change instead of editing around it
 - **Never edit `matlab/baseline/`** — the competitor. Editing it makes every result worthless
 - **Never change `AGENTS.md` section 3.** Six people build against it
 - **Never clip `h < 0` to make a run look clean.** Report it. A hidden violation is the one
@@ -185,5 +186,5 @@ BUILT      : <what part of the loop>
 LOOP CLOSES: yes | no  <does a non-ego actor react to the ego?>
 h LOGGED   : yes | no  <min per step, with TrackID>
 STUBS      : <which pieces are still fake>
-FOR A      : <signatures you need, and by when>
+SIGNATURES NEEDED : <what you need from the planner functions, and by when>
 ```
