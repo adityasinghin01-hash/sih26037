@@ -647,6 +647,52 @@ if isfield(W,'Buildings') && ~isempty(W.Buildings)
              'BackgroundColor',[1 1 .92],'EdgeColor',[.6 .5 .3],'Margin',1.5, ...
              'Interpreter','none','Clipping','on');
     end
+
+    % ---- rooftop detail: water tanks, dishes, balconies, rebar ---------
+    % Added 11 Sep 2026, Phase D of the density-initiative fix pass. THE ONLY facade
+    % elements a straight-down 2D view can honestly show - a window or a door is on a
+    % VERTICAL wall and has no plan-view signature at all, so this deliberately does not
+    % try to fake one. A water tank and a dish sit ON the roof (visible from above); a
+    % balcony genuinely projects past the wall line (a real plan-view footprint change);
+    % rebar tied off at a roof corner reads as a small mark at that corner. Every field
+    % below is OPTIONAL (fieldOr default false/0) so a building with none of them (most
+    % of S4/S5's, which carry no per-building spec detail to honour) draws exactly as
+    % before this pass - purely additive.
+    for k = 1:nB
+        b = B(k);
+        [alongDir, acrossDir] = frame(P, b.Station);
+        c = P.at(b.Station, b.Lateral);
+        w_ = fieldOr(b,'Width',6.0);  d_ = fieldOr(b,'Depth',6.0);
+        side = sign(b.Lateral); if side == 0, side = 1; end
+        if fieldOr(b,'Tank',false)
+            tp = c + alongDir*(d_*0.28) - acrossDir*side*(w_*0.28);
+            patch(ax, tp(1)+0.5*[-1 1 1 -1], tp(2)+0.5*[-1 -1 1 1], [.10 .10 .12], ...
+                  'EdgeColor',[.05 .05 .05], 'LineWidth',0.5, 'Clipping','on');
+        end
+        if fieldOr(b,'Dish',false)
+            dp = c - alongDir*(d_*0.30) - acrossDir*side*(w_*0.20);
+            th = linspace(0,2*pi,14);
+            patch(ax, dp(1)+0.35*cos(th), dp(2)+0.35*sin(th), [.75 .75 .78], ...
+                  'EdgeColor',[.4 .4 .4], 'LineWidth',0.4, 'Clipping','on');
+        end
+        if fieldOr(b,'Balcony',false)
+            % projects PAST the road-facing wall - a real footprint change, drawn as a
+            % thin extra rectangle beyond the building's own near edge.
+            bp0 = c - acrossDir*side*(w_/2);
+            bp1 = bp0 - acrossDir*side*0.9;
+            corners = [bp0 + alongDir*d_*0.25; bp1 + alongDir*d_*0.25; ...
+                       bp1 - alongDir*d_*0.25; bp0 - alongDir*d_*0.25];
+            patch(ax, corners(:,1), corners(:,2), [.68 .66 .60], ...
+                  'EdgeColor',[.4 .38 .32], 'LineWidth',0.4, 'Clipping','on');
+        end
+        if fieldOr(b,'Rebar',false)
+            rp = c + alongDir*(d_*0.35) + acrossDir*side*(w_*0.35);
+            plot(ax, rp(1)+[-.3 .3], rp(2)+[-.3 .3], '-', 'Color',[.55 .25 .15], ...
+                 'LineWidth',1.2, 'Clipping','on');
+            plot(ax, rp(1)+[-.3 .3], rp(2)+[.3 -.3], '-', 'Color',[.55 .25 .15], ...
+                 'LineWidth',1.2, 'Clipping','on');
+        end
+    end
 end
 
 % ---- pole/wire runs ---------------------------------------------------

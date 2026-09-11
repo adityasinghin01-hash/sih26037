@@ -118,6 +118,29 @@ assert(numel(W.Buildings) == 54, "sc:s3buildingCount", ...
 % 416m band, and collided with it. Service drops and the overlap assert below both read
 % W.Buildings' stations, so the resolve has to happen before either, not after.
 W.Buildings = sc.resolveFurnitureOverlaps(W.Buildings);
+
+% ROOFTOP DETAIL, Phase D of the fix pass (11 Sep 2026). S3's own "Counted" line gives
+% exact totals across all 54 buildings: 31 water tanks, 22 balconies, 14 exposed-rebar,
+% 7 satellite dishes. Applied here at a seeded random rate tuned so the EXPECTED count
+% matches - not force-matched to the exact integer (that would need a combinatorial
+% assignment this file has no real per-building data to justify), and the actual count
+% achieved is reported below rather than asserted, since it is inherently a random draw.
+% Restricted to "wall" (5 compound walls, not habitable) getting none of any - a blank
+% wall has no roof to put a tank on - and Balcony restricted to Storeys>=2 (S3's own text:
+% balconies belong to the two/three-storey buildings, never the single-storey ones).
+rngD = RandStream('twister','Seed',77201);
+nTank=0; nBal=0; nReb=0; nDish=0;
+for k = 1:numel(W.Buildings)
+    b = W.Buildings(k);
+    if b.Type == "wall", continue; end
+    if rand(rngD) < 31/49, W.Buildings(k).Tank = true; nTank=nTank+1; end
+    if b.Storeys >= 2 && rand(rngD) < 22/38, W.Buildings(k).Balcony = true; nBal=nBal+1; end
+    if rand(rngD) < 14/49, W.Buildings(k).Rebar = true; nReb=nReb+1; end
+    if rand(rngD) < 7/49,  W.Buildings(k).Dish  = true; nDish=nDish+1; end
+end
+fprintf('[S3 world] rooftop detail: %d tanks (spec 31) | %d balconies (spec 22) | %d rebar (spec 14) | %d dishes (spec 7)\n', ...
+        nTank, nBal, nReb, nDish);
+
 nOnRoadB = 0;
 for k = 1:numel(W.Buildings)
     if abs(W.Buildings(k).Lateral) - W.Buildings(k).Width/2 < 0.90

@@ -664,6 +664,24 @@ W.Buildings(end+1) = mk("house1", 380, -70, 7.0, 6.0, 1, "outlying, roofline onl
 W.Buildings(end+1) = mk("house1", 400, +60, 7.0, 6.0, 1, "outlying, roofline only");
 assert(numel(W.Buildings) == 14, "sc:s1buildingCount", ...
     "%d buildings built, S1's own spec states 14", numel(W.Buildings));
+
+% ROOFTOP DETAIL, Phase D of the fix pass (11 Sep 2026) - S1's own words, not a ratio:
+% "4 single-storey brick houses, unplastered, flat roofs, 1.0 m parapet, black 1000 L
+% water tanks" - all 4 of them, not some. The 4 near-road house1 entries built above ARE
+% those 4 (the 3 further "outlying, roofline only" ones are deliberately excluded - the
+% spec's own words for them are "roofline only", and giving a distant silhouette a rooftop
+% tank contradicts what "roofline only" means). "One with exposed rebar at the roof
+% corners" - the one house2 entry already carrying that Label gets Rebar=true to match.
+for k = 1:numel(W.Buildings)
+    b = W.Buildings(k);
+    if b.Type == "house1" && ~contains(b.Label,"outlying")
+        W.Buildings(k).Tank = true;
+    end
+    if contains(b.Label, "rebar")
+        W.Buildings(k).Rebar = true;
+    end
+end
+
 nOnRoadB = 0;
 for k = 1:numel(W.Buildings)
     if abs(W.Buildings(k).Lateral) < W.Width/2 + W.Buildings(k).Width/2, nOnRoadB = nOnRoadB+1; end
@@ -685,6 +703,18 @@ W.Poles = struct('Station',{},'Lateral',{},'Run',{},'Label',{});
 for s = poleS
     W.Poles(end+1) = struct('Station',s,'Lateral',POLE_E,'Run',1, ...
         'Label',"11kV poles, 45m spans (village end)"); %#ok<AGROW>
+end
+% service drops, Phase C of the fix pass (11 Sep 2026): "service drops... through the
+% built-up stretches" (S0 s6) - a short stub from each LEFT-side building (the pole run's
+% own side) to POLE_E. Right-side buildings get none - a drop cannot cross the road, same
+% rule sc.s3world's own service-drop block uses.
+W.ServiceDrops = struct('S0',{},'S1',{},'Lateral0',{},'Lateral1',{});
+for k = 1:numel(W.Buildings)
+    b = W.Buildings(k);
+    if b.Lateral <= 0, continue; end
+    if b.Station < poleS(1) - 5 || b.Station > poleS(end) + 5, continue; end   % out of run
+    W.ServiceDrops(end+1) = struct('S0',b.Station,'S1',b.Station, ...
+        'Lateral0',b.Lateral - b.Width/2, 'Lateral1',POLE_E); %#ok<AGROW>
 end
 % the culvert at 158 m: "a hume pipe culvert, 900 mm, half silted" crossing UNDER the
 % road, not a drain running alongside it like S3's. Modelled as a short marker at its own
