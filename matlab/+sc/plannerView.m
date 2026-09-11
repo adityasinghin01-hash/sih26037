@@ -772,6 +772,30 @@ if isfield(W,'ServiceDrops') && ~isempty(W.ServiceDrops)
     end
 end
 
+% ---- trees ----------------------------------------------------------------
+% Added 11 Sep 2026, Phase E of the density-initiative fix pass, for S4's median/shoulder
+% planting and S5's climb-side forest scatter - a DIFFERENT, lighter mechanism from
+% sc.s1world's own 2200-tree forest (a big numeric matrix, rendered by the older
+% sc.s1render 3D chase-cam system, not this one). Disclosed rather than unified: S1's
+% forest carries canopy-cover solving, clumping noise and a reveal-distance mechanic none
+% of the new vegetation needs or claims - this is a plain scatter of crowns, drawn as
+% filled circles, nothing more.
+if isfield(W,'Trees') && ~isempty(W.Trees)
+    Tr = W.Trees;
+    nT = numel(Tr);
+    th = linspace(0, 2*pi, 10);
+    V = zeros(nT*10, 2);  F = zeros(nT,10);  Cd = zeros(nT,3);
+    for k = 1:nT
+        c = P.at(Tr(k).Station, Tr(k).Lateral);
+        r = fieldOr(Tr(k),'CrownR',1.5);
+        V((k-1)*10+1:k*10,:) = [c(1)+r*cos(th); c(2)+r*sin(th)]';
+        F(k,:) = (k-1)*10+1 : k*10;
+        Cd(k,:) = treeColour(fieldOr(Tr(k),'Species',"generic"));
+    end
+    patch(ax, 'Faces',F, 'Vertices',V, 'FaceVertexCData',Cd, 'FaceColor','flat', ...
+          'EdgeColor','none', 'FaceAlpha',0.85, 'Clipping','on');
+end
+
 % ---- signs - gantry / cautionary / km-stone / hoarding -------------------
 % Added 11 Sep 2026, Phase B of the density-initiative fix pass. Nothing drew these
 % before, at all - S4-THE-HIGHWAY.md's own "signage and furniture is the thing that makes
@@ -829,6 +853,17 @@ if strlength(lbl) > 0
          'FontName','Helvetica','FontSize',8,'Color',[.15 .15 .15], ...
          'BackgroundColor',[1 1 1],'EdgeColor',[.6 .6 .6],'Margin',1.5, ...
          'Interpreter','none','Clipping','on');
+end
+end
+
+function c = treeColour(species)
+%TREECOLOUR  Map-symbol colours, same footing as buildingColour's own -
+%   not photographed, a legibility convention distinguishing species groups.
+switch string(species)
+case "gulmohar_amaltas", c = [.42 .58 .28];   % median flowering trees, a warmer green
+case "eucalyptus",       c = [.38 .50 .42];   % cooler grey-green, pale peeling bark canopy
+case "sal",               c = [.30 .42 .22];   % denser forest green
+otherwise,                c = [.35 .48 .28];
 end
 end
 

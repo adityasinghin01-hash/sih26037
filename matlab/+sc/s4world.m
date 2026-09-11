@@ -143,6 +143,27 @@ end
 % along the bridge approaches/median openings. The median band already occupies that
 % visual space; a genuinely separate barrier object is a smaller remaining gap.
 
-fprintf('[S4 world] route %.1f m (real trunk chain) | %d buildings (spec 41) | %d signs | median drawn, opposite carriageway not modelled\n', ...
-        W.Path.Len, numel(W.Buildings), numel(W.Signs));
+% ---------------------------------------------------------------- vegetation, Phase E
+% "Median planting: gulmohar and amaltas alternating, 11 trees at ~36m" - 411.7/36 = 11.4,
+% so the real number and the real spacing agree with each other, not forced. Planted on
+% the median band itself. "Eucalyptus double row on the outer shoulder, 6m spacing, 22m
+% tall" - a real, bounded number, built in full (both rows, real spacing), not thinned for
+% convenience - this is what "vegetation, not a token instance" from the original ask
+% actually looks like where the spec gives a real count to build to.
+medS = 0:36:P.Len;
+W.Trees = struct('Station',{},'Lateral',{},'CrownR',{},'Species',{});
+for s = medS
+    W.Trees(end+1) = struct('Station',s,'Lateral',W.Width/2+2.5,'CrownR',3.5, ...
+        'Species',"gulmohar_amaltas"); %#ok<AGROW>
+end
+eucS = 0:6:P.Len;
+for s = eucS
+    W.Trees(end+1) = struct('Station',s,'Lateral', NEARSET+8.0,'CrownR',2.2, ...
+        'Species',"eucalyptus"); %#ok<AGROW>
+    W.Trees(end+1) = struct('Station',s,'Lateral',-(NEARSET+8.0),'CrownR',2.2, ...
+        'Species',"eucalyptus"); %#ok<AGROW>
+end
+
+fprintf('[S4 world] route %.1f m (real trunk chain) | %d buildings (spec 41) | %d signs | %d trees (%d median @ 36m, %d eucalyptus @ 6m double row)\n', ...
+        W.Path.Len, numel(W.Buildings), numel(W.Signs), numel(W.Trees), numel(medS), 2*numel(eucS));
 end

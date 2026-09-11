@@ -146,6 +146,48 @@ end
 assert(nOverlap == 0, "sc:s5furnitureOverlap", "%d furniture overlaps - worst: %s", ...
     nOverlap, overlapWorst);
 
-fprintf('[S5 world] approach %.1f m (real) + climb %.1f m (authored, 4 hairpins) = %.1f m total | %d buildings (spec 22+temple) | 5 culverts | 2 no-parapet stretches\n', ...
-        P0.Len, P.Len - P0.Len, P.Len, numel(W.Buildings)-1);
+% ---------------------------------------------------------------- vegetation, Phase E
+% STATED PLAINLY, NOT CLAIMED AS PARITY WITH sc.s1world's FOREST: S5's own text asks for
+% "sal forest... instanced, densest at the foot, thinning with altitude... undergrowth
+% follows light... kans grass... ferns in the wet gully mouths" - a REAL, rich spec. What
+% is built here is a plain scatter along the climb, both sides, thinning by a simple
+% linear falloff with climb progress (the one piece of "densest at the foot, thinning
+% with altitude" that a scatter-only pass can honestly claim). It has NONE of
+% sc.s1world's canopy-cover solving, clumping noise, reveal-distance mechanic, understorey
+% layer or form-cause modelling - that took a multi-session build on its own, and
+% reproducing it here would not be an honest afternoon's addition. Kans grass and ferns
+% are NOT built - texture-only features this scatter has no representation for.
+rngT = RandStream('twister','Seed',52037);
+climbLen = P.Len - P0.Len;
+W.Trees = struct('Station',{},'Lateral',{},'CrownR',{},'Species',{});
+nSalTarget = 260;
+nSal = 0;
+guard = 0;
+while nSal < nSalTarget && guard < nSalTarget*20
+    guard = guard + 1;
+    s = P0.Len + climbLen*rand(rngT);
+    densityAt = 1.0 - 0.65*((s-P0.Len)/climbLen);      % densest at the foot, thins uphill
+    if rand(rngT) > densityAt, continue; end
+    side = 2*(rand(rngT)>0.5) - 1;
+    e = side*(W.Width/2 + 1.5 + 12*rand(rngT));
+    W.Trees(end+1) = struct('Station',s,'Lateral',e,'CrownR',1.8+1.2*rand(rngT), ...
+        'Species',"sal"); %#ok<AGROW>
+    nSal = nSal + 1;
+end
+% keep the forest off the buildings and off the road itself - the scatter above already
+% starts outside the carriageway, but a tree can still land on a building footprint
+keep = true(numel(W.Trees),1);
+for k = 1:numel(W.Trees)
+    for b = 1:numel(W.Buildings)
+        if sign(W.Trees(k).Lateral) ~= sign(W.Buildings(b).Lateral), continue; end
+        if abs(W.Trees(k).Station - W.Buildings(b).Station) < W.Buildings(b).Depth/2 + 1 && ...
+           abs(abs(W.Trees(k).Lateral) - abs(W.Buildings(b).Lateral)) < W.Buildings(b).Width/2 + 1
+            keep(k) = false;  break
+        end
+    end
+end
+W.Trees = W.Trees(keep);
+
+fprintf('[S5 world] approach %.1f m (real) + climb %.1f m (authored, 4 hairpins) = %.1f m total | %d buildings (spec 22+temple) | 5 culverts | 2 no-parapet stretches | %d sal trees (simplified scatter, not S1-forest parity)\n', ...
+        P0.Len, P.Len - P0.Len, P.Len, numel(W.Buildings)-1, numel(W.Trees));
 end
