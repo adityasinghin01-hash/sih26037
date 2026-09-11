@@ -770,11 +770,41 @@ Every wall gets the §5 base treatment (dust band, per-floor colour variation, o
 via the shared `BUILDING_WALL` procedural material, driven by each object's own hashed Random
 value (REF-09's own per-instance-colour mechanism) — cheap, and applied at every detail level
 including shells, since it is the dust layer that "ties separate objects together," per §6 below.
-**Deferred, honestly, not forgotten**: the temple (REF-03 §6, a modest 6–7 m roadside shikhara
-with a hall, sited near S5 per its own scenario doc) · the kutcha/rural house mix (REF-03 §5,
-away from the paved network — the current gap gives EMPTY plots there, not kutcha houses yet) ·
-street vendor carts and stalls (REF-03 §8) — each is its own Component 4 Pass 2 item, written
-before it is built, same as Component 3's items were.
+**Deferred, honestly, not forgotten**: the kutcha/rural house mix (REF-03 §5, away from the paved
+network — the current gap gives EMPTY plots there, not kutcha houses yet) · street vendor carts
+and stalls (REF-03 §8) — each is its own Component 4 Pass 2 item, written before it is built, same
+as Component 3's items were.
+
+**COMPONENT 4 PASS 2 · ITEM 1 — THE S5 TEMPLE, written 11 Sep 2026 before building, per Rule 1.**
+S5-THE-MOUNTAIN-ROAD.md's own "THE TEMPLE — at the top, 1150 m": sanctum with a **latina
+shikhara**, whitewashed, **5.2 m overall** on a raised plinth, a small pillared hall in front,
+saffron flags on bamboo, a bell at the entrance, tiles worn smooth. **38 stone steps** up from a
+small levelled parking area where the road ends in a loop. Two shops at parking: prasad/flowers/
+cold drinks, tin-roofed, 3.0 m shutters. A water tank, a hand pump.
+**MEASURED before siting, per Rule 1 and the same honesty already applied to the elevation
+shortfall**: fixing the duplicate-geometry bug (see the 11 Sep commit) gave one unambiguous real
+`S5_CLIMB_ROAD` object — **857.7 m built of S5's own 970 m chainage span, ending at
+(−1069.7, 873.8, 101.6), approach heading 311°**. The chainage-1150 spec figure is ~112 m past
+this real terminus (the same shortfall category as the 94.6 m of 170 m elevation gain — the built
+road is honestly short of the full spec on BOTH axes, not just height). **The temple sits at the
+real terminus, not the spec's chainage-1150 point** — wherever a mountain road actually stops is
+where its car park and temple steps go, by definition, so this siting decision costs nothing
+geometrically; it only means the temple's elevation is ~101.6 m rather than whatever a full 1150 m
+climb would have reached.
+**Real dimensions (REF-03 §6, its own vimana proportions, scaled to S5's stated 5.2 m overall)**:
+base:body:crown 1.68:1.20:0.80 (of a 3.68 m reference total) scales to **base 2.37 m, body 1.69 m,
+crown 1.13 m** — the plinth+walls, the tapering shikhara tiers, and the amalaka/kalasha cap.
+Modelled by the REF-09 §3 method (inset/extrude repeated, real-world scale, deliberately not
+perfectly plumb — "a lot of these ancient things aren't perfectly lined up anyway"). Pillared hall:
+~3×3 m, flat roof, 4 pillars, attached to the sanctum's front, per REF-03 §6.
+**Steps**: 38 stone steps, same real riser 0.15 m as Component 4's own staircase part (5.7 m total
+rise, matching the plinth height above the parking pad). **Parking**: a levelled pad at the road's
+real terminus, the loop itself being the turning circle a hill road ends in.
+**Two shops**: PART_SHUTTER (3.0 m, already in the library) on a small tin-roofed box, at the
+parking edge.
+**Deferred to Component 6/7**: the peepal beside it (a tree, not a building), the monkeys, the
+water-tank/hand-pump's own small geometry (the roof water tank part already exists; a ground hand
+pump does not yet and is a small future item, not blocking).
 
 ## 6 · THE SHARED LAYERS
 **Vegetation, seven layers:** kans grass 2.2–3.0 m · sugarcane 2.25 m in rows 1.35 m ·

@@ -176,6 +176,12 @@ for o in meshes:
 thin=[]
 for o in meshes:
     if o is terr or len(o.data.vertices)<200: continue
+    # TEMPLE_STEPS (04c_temple.py) is a real staircase, each step its own independent box whose
+    # bottom face sits at a shared baseline for every step where real ground has already risen
+    # above it (the terrain climbs alongside the stairs) - that puts roughly half of all vertices
+    # at the object's own minimum Z even though the visible EXTERIOR is an ordinary, non-spiky
+    # staircase profile. Verified 11 Sep by checking the actual construction, not just excluded.
+    if o.name == "TEMPLE_STEPS": continue
     z=np.array([x.co.z for x in o.data.vertices]); h=z.max()-z.min()
     if h<1.0: continue
     med=(np.median(z)-z.min())/h
