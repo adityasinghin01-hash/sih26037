@@ -109,6 +109,19 @@ if H is not None:
         # from raw ground by design (that is the entire purpose of a cut face and a retaining
         # wall). A generic "matches raw ground" check does not apply to engineered road grade.
         if o.name.startswith("S5_"): continue
+        # BUILDING FACADE PARTS (04b_buildings.py) are wall/roof-mounted by design - a window on
+        # the 3rd floor, a water tank or a satellite dish on the roof, or a rebar stub is
+        # correctly several metres above raw ground, same reasoning as OHE_ARM/FLYOVER_* above.
+        # The building BOX ITSELF (BLDG_000_0_000, no tag suffix) is NOT excluded - it is founded
+        # on real terrain height at build time and should, and does, pass this check normally.
+        # PART_* are the facade part LIBRARY sources (04_buildingparts.py), appended into a
+        # hidden, non-rendered utility collection purely so real BLDG_* instances can share their
+        # mesh data - they sit at their own local-origin position, unrelated to any real ground.
+        if o.name.startswith("PART_"): continue
+        if o.name.startswith("BLDG_") and any(f"_{tag}_" in f"_{o.name}_" for tag in
+               ("WIN","DOOR","SHUTTER","BAL","AC","SIGN","AWN","DP","MB","WT","DISH","WASH",
+                "REBAR","PP")):
+            continue
         v=np.array([(o.matrix_world @ x.co)[:] for x in o.data.vertices])
         if len(v)>40000: v=v[::max(1,len(v)//40000)]
         d=v[:,2]-tz(v[:,0],v[:,1])

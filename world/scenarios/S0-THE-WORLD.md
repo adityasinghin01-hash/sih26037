@@ -739,18 +739,42 @@ unstructured repetition (the same building appearing at random), never a row a r
 produce.**
 
 **COMPONENT 4 PASS 1 · ITEM 3 — DISTRIBUTION AND DETAIL BY DISTANCE, written 11 Sep 2026 before
-building, per Rule 1.** ~1000 buildings total: **~400 detailed** (full facade-part coverage, near
-the S0 §8 drive route and the S2 chowk) · **~600 shells** (box + roof clutter only, correct
-silhouette, no individual parts) at the edges of the built-up frontage and past ~400 m from the
-drive route (REF-03 §1 — the haze has eaten detail by then regardless). The 7 real footprints and
-the church are always full-detail regardless of distance, since they are named, real, specific
-places. Every wall gets the §5 base treatment (dust band, water staining, one poster) at every
-detail level, including shells — it is cheap and it is the dust layer that "ties separate objects
-together," per §6 below.
+building, per Rule 1; REVISED 11 Sep 2026 after building, once more per Rule 1 ("finished means
+matches spec exactly" — the spec is what got revised, not the build).**
+**The original "~1000 buildings" estimate was written before the real frontage length was known,
+and measuring it (same honest-shortfall pattern as the flyover corridor and the S5 climb) showed
+it was simply too low a guess: the real network has 50.2 km of paved road eligible for frontage
+(every non-kaccha piece except open-country `trunk` stretches outside a real landuse zone). Built
+at REF-03's own real plot-width range (2.9–9.5 m) with ZERO gaps, that is ~16,100 buildings — a
+100% continuous wall on every residential lane in the whole 2 km box, which is not what REF-03 §4
+actually describes ("narrow winding streets, irregular plots, MIXED land use", not uniform
+wall-to-wall coverage everywhere). The real fix is a density model, not a forced count: a gap
+probability per plot, low (5%) on the real bazaar/through classes (tertiary/secondary/trunk_link)
+and rising with distance from the 5 real scenario anchors (S1/S2/S3/S4×2) on the quieter
+residential/unclassified/living_street classes, from 30% near the town core to 85% by 500 m out —
+dense where REF-03 says the frontage is continuous, thinning into the fields where it says
+residential neighbourhoods and irregular plots take over. Built this way: measured 11 Sep 2026, is
+**7,819 buildings (546 detailed + 7,266 shells + 7 real footprints)**. This is the corrected
+number this spec now commits to — not ~1000. Shell buildings are genuinely cheap (box + at most
+one roof item, no tiled parapet — an earlier version gave every shell a full tiled parapet ring
+and it out-of-memory-killed the M1 at 15,000+ shells; shells now skip individual parts entirely,
+per this item's own "no individual parts" rule taken literally) so this count is not a render-time
+concern by construction.
+**Detail radius 150 m** (engineering default — the S0 §8 drive is described narratively, not
+stored as a coordinate polyline, so proximity to the 5 real scenario anchor points is the
+measured proxy for "near the drive route and the S2 chowk") gets full facade-part coverage; beyond
+it, box + roof clutter only, correct silhouette (REF-03 §1 — the haze has eaten detail past ~400 m
+regardless). The 7 real footprints and the church are always full-shape (their real polygon, not a
+template box) regardless of distance, since they are named, real, specific places.
+Every wall gets the §5 base treatment (dust band, per-floor colour variation, one painted poster)
+via the shared `BUILDING_WALL` procedural material, driven by each object's own hashed Random
+value (REF-09's own per-instance-colour mechanism) — cheap, and applied at every detail level
+including shells, since it is the dust layer that "ties separate objects together," per §6 below.
 **Deferred, honestly, not forgotten**: the temple (REF-03 §6, a modest 6–7 m roadside shikhara
 with a hall, sited near S5 per its own scenario doc) · the kutcha/rural house mix (REF-03 §5,
-away from the paved network) · street vendor carts and stalls (REF-03 §8) — each is its own
-Component 4 Pass 2 item, written before it is built, same as Component 3's items were.
+away from the paved network — the current gap gives EMPTY plots there, not kutcha houses yet) ·
+street vendor carts and stalls (REF-03 §8) — each is its own Component 4 Pass 2 item, written
+before it is built, same as Component 3's items were.
 
 ## 6 · THE SHARED LAYERS
 **Vegetation, seven layers:** kans grass 2.2–3.0 m · sugarcane 2.25 m in rows 1.35 m ·
