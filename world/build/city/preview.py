@@ -101,6 +101,29 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        # camera position/aim measured off TEMPLE_SANCTUM's own real bounding box (diag script),
        # not guessed - same method as every other scenario-specific shot in this list.
        ("temple", (-1056.79, 871.16, 31.49), aim(-20.3, 303.7), 24.0))
+
+# the temple shot came back BLACK on the lab's own independent full-chain rebuild (11 Sep) even
+# though every other shot in the same batch was fine - a hardcoded camera position measured off
+# ONE local build cannot be trusted across separate rebuilds. Recompute it live from
+# TEMPLE_SANCTUM's own real bounding box, same method as the diag script that found the working
+# numbers in the first place, so this shot is self-correcting regardless of the root cause.
+_temple_ob = bpy.data.objects.get("TEMPLE_SANCTUM")
+if _temple_ob is not None:
+    _corners = [_temple_ob.matrix_world @ Vector(co) for co in _temple_ob.bound_box]
+    _minv = Vector((min(c.x for c in _corners), min(c.y for c in _corners), min(c.z for c in _corners)))
+    _maxv = Vector((max(c.x for c in _corners), max(c.y for c in _corners), max(c.z for c in _corners)))
+    _center = (_minv + _maxv) / 2
+    _size = (_maxv - _minv).length
+    _dist = _size * 2.2
+    _camloc = _center + Vector((_dist*0.9, -_dist*0.6, _dist*0.4))
+    _fwd = (_center - _camloc).normalized()
+    _elev = math.degrees(math.asin(_fwd.z))
+    _az = math.degrees(math.atan2(_fwd.x, _fwd.y)) % 360
+    SHOTS = tuple((nm, tuple(_camloc), aim(_elev, _az), lens) if nm == "temple" else (nm, loc, fwd_, lens)
+                  for nm, loc, fwd_, lens in SHOTS)
+    print(f"temple shot recomputed live: cam {tuple(round(v,1) for v in _camloc)}, "
+          f"elev {_elev:.1f}, az {_az:.1f}")
+
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))
