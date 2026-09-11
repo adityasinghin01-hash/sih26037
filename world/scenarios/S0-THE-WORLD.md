@@ -806,6 +806,25 @@ parking edge.
 water-tank/hand-pump's own small geometry (the roof water tank part already exists; a ground hand
 pump does not yet and is a small future item, not blocking).
 
+**COMPONENT 4 PASS 2 · ITEM 2 — THE KUTCHA/RURAL HOUSE MIX, written 11 Sep 2026 before building,
+per Rule 1.** REF-03 §5's own real form: frame of wood/bamboo, matting + cow-dung/mud plaster,
+thatched roof (grass/leaves/bamboo) that **sags**, **400–600 sq ft** (37.2–55.7 m²), single
+storey, 2 rooms + a verandah. **A round bhunga variant, ≈18 ft (5.49 m) diameter**, "found
+extensively in Uttar Pradesh" — real, not invented, so both forms are built, not just one.
+Every hut gets: uneven wall surfaces, a swept earth yard, a low mud boundary, a fodder stack.
+**Deferred to Component 7 (Life)**: the tethered animal — that is a living thing, not geometry.
+**Placement, closing the gap Item 3 left open**: `04b_buildings.py`'s own density model already
+computes real "gap" plots on the quieter residential/unclassified/living_street classes (30–85%
+skip probability, rising with distance from the 5 scenario anchors) — those gaps were left
+genuinely empty. **A fraction of them (40%, an engineering default — REF-03 does not give a
+rural-infill ratio, and "not a town, a scatter" per S5's own hillside-settlement language argues
+against 100%) now get a kutcha hut instead of staying empty**, seeded the same deterministic
+crc32 way as every other draw in that script. The other 60% of gaps stay open ground — a real
+rural scatter has working fields and yards between houses, not continuous building.
+**Never on the town's own paved-frontage classes** (tertiary/secondary/trunk_link) — kutcha
+housing is specifically the rural counterpart to the pucca shop-house frontage, per REF-03 §5's
+own title, so it only fills gaps on residential/unclassified/living_street.
+
 ## 6 · THE SHARED LAYERS
 **Vegetation, seven layers:** kans grass 2.2–3.0 m · sugarcane 2.25 m in rows 1.35 m ·
 shrub 0.8–1.4 m · mid grasses 0.30–0.60 m · doob 0.05–0.15 m grazed · weeds · floor litter.

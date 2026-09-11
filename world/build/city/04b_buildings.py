@@ -97,6 +97,14 @@ _recalc(BOXMESH)
 # a real UV so the wall shader can address world-relative Z (dust band) and per-floor bands
 uv = BOXMESH.uv_layers.new(name="UVMap")
 
+def mat(name, color, rough=0.7, metallic=0.0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = m.node_tree.nodes["Principled BSDF"]
+    b.inputs["Base Color"].default_value = (*color, 1.0)
+    b.inputs["Roughness"].default_value = rough
+    b.inputs["Metallic"].default_value = metallic
+    return m
+
 def wall_material():
     m = bpy.data.materials.new("BUILDING_WALL"); m.use_nodes = True
     nt = m.node_tree; b = nt.nodes["Principled BSDF"]
@@ -369,9 +377,158 @@ def add_roof(ob, width, depth, height, rng, detailed):
             instance_part("PART_PARAPET", (px, py, ob.location.z + height),
                           math.radians(side_heading), f"{ob.name}_PP_{side}_{t}")
 
+# ------------------------------------------------------------- ITEM 2: kutcha/rural houses
+# S0-THE-WORLD.md "COMPONENT 4 PASS 2 - ITEM 2", REF-03 s5. Fills 40% of the gap plots already
+# computed by gap_probability() on residential/unclassified/living_street classes only, per that
+# item's own spec (never on the paved through-road classes).
+KUTCHA_INFILL_PROB = 0.40   # engineering default, documented in S0 - REF-03 has no rural-infill
+                             # ratio, and "not a town, a scatter" (S5's own settlement language)
+                             # argues against filling every gap
+KUTCHA_CLASSES = {'unclassified', 'residential', 'living_street'}
+
+# geometry-only variants (return verts/faces, no object) so many shapes can be combined into ONE
+# mesh per hut via material_index - thousands of separate small objects (one per box/bar/prism)
+# turned out to have real, compounding Blender-side per-object overhead as total scene object
+# count grew past ~50,000 (found 11 Sep: per-piece build time rose from ~1s to >7s as the run
+# progressed). Combining is the fix, same principle as instancing: fewer objects, same geometry.
+def _box_geo(x0, x1, y0, y1, z0, z1, vbase):
+    verts = [(x0,y0,z0),(x1,y0,z0),(x1,y1,z0),(x0,y1,z0),
+             (x0,y0,z1),(x1,y0,z1),(x1,y1,z1),(x0,y1,z1)]
+    fs = [(0,1,2,3),(4,7,6,5),(0,4,5,1),(1,5,6,2),(2,6,7,3),(3,7,4,0)]
+    return verts, [tuple(i+vbase for i in f) for f in fs]
+
+def _bar_geo(p0, p1, w, vbase):
+    a, bb = np.array(p0), np.array(p1)
+    d = bb - a; L = np.linalg.norm(d)
+    fwd = d / L if L > 1e-9 else np.array([0,0,1.0])
+    ref = np.array([0,0,1.0]) if abs(fwd[2]) < 0.9 else np.array([1.0,0,0])
+    side = np.cross(fwd, ref); side = side/np.linalg.norm(side) * (w*0.5)
+    up = np.cross(side, fwd); up = up/np.linalg.norm(up) * (w*0.5)
+    verts = []
+    for base_pt in (a, bb):
+        for sx in (-1,1):
+            for sz in (-1,1):
+                verts.append(tuple(base_pt + side*sx + up*sz))
+    fs = [(0,1,3,2),(4,6,7,5),(0,4,5,1),(1,5,7,3),(3,7,6,2),(2,6,4,0)]
+    return verts, [tuple(i+vbase for i in f) for f in fs]
+
+def _prism_geo(cx, cy, z0, z1, r0, r1, vbase, segs=14):
+    verts = []
+    for r, z in ((r0,z0),(r1,z1)):
+        for i in range(segs):
+            a = 2*math.pi*i/segs
+            verts.append((cx+r*math.cos(a), cy+r*math.sin(a), z))
+    fs = []
+    for i in range(segs):
+        j = (i+1) % segs
+        fs.append((i, j, segs+j, segs+i))
+    fs.append(tuple(range(segs-1, -1, -1)))
+    fs.append(tuple(segs+i for i in range(segs)))
+    return verts, [tuple(i+vbase for i in f) for f in fs]
+
+def build_combined(name, parts, mats):
+    # parts: list of (verts, faces, mat_index)
+    all_verts, all_faces, all_matidx = [], [], []
+    for verts, faces, mi in parts:
+        all_verts.extend(verts)
+        all_faces.extend(faces)
+        all_matidx.extend([mi] * len(faces))
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(all_verts, [], all_faces)
+    me.update()
+    _recalc(me)
+    for m in mats: me.materials.append(m)
+    for i, mi in enumerate(all_matidx):
+        me.polygons[i].material_index = mi
+    ob = bpy.data.objects.new(name, me); BCOL.objects.link(ob)
+    return ob
+
+M_MUD = mat("KUTCHA_mud_plaster", (0.52, 0.40, 0.28), 0.9)
+M_THATCH = mat("KUTCHA_thatch", (0.62, 0.52, 0.24), 0.85)
+M_MUD_BOUNDARY = mat("KUTCHA_mud_boundary", (0.42, 0.33, 0.23), 0.9)
+M_FODDER = mat("KUTCHA_fodder", (0.68, 0.58, 0.20), 0.8)
+M_YARD = mat("KUTCHA_swept_yard", (0.48, 0.42, 0.32), 0.85)
+
+def build_kutcha(cx, cy, gz, heading_deg, seed):
+    # ONE combined object per hut (materials addressed by index) - separate per-piece objects
+    # (the first version of this function) turned out to have real, compounding Blender-side
+    # per-object overhead once total scene object count grew past ~50,000: per-piece build time
+    # rose from ~1s to >7s as the run progressed (found+killed 11 Sep). Combining costs nothing
+    # visually (same real geometry) and removes the whole class of problem.
+    tag = seed % 100000
+    rng = np.random.RandomState(seed % (2**31))
+    hd = math.radians(heading_deg)
+    def w2(lx, ly):
+        return (cx + lx*math.cos(hd) - ly*math.sin(hd), cy + lx*math.sin(hd) + ly*math.cos(hd))
+    MI_MUD, MI_THATCH, MI_YARD, MI_BOUNDARY, MI_FODDER = 0, 1, 2, 3, 4
+    parts = []   # (verts, faces, mat_index)
+    def add(verts, faces, mi):
+        vbase = sum(len(v) for v, _, _ in parts)
+        parts.append((verts, [tuple(i+vbase for i in f) for f in faces], mi))
+
+    round_type = rng.rand() < 0.25   # REF-03 s5: rectangular is the base form, bhunga a variant
+    if round_type:
+        R = 5.49 / 2.0   # 18 ft diameter, REF-03 s5's own real number
+        eave_h = 2.2 + rng.uniform(-0.1, 0.1)
+        apex_h = eave_h + rng.uniform(1.0, 1.4)
+        v, f = _prism_geo(cx, cy, gz, gz+eave_h, R, R, 0, segs=16); add(v, f, MI_MUD)
+        v, f = _prism_geo(cx, cy, gz+eave_h, gz+apex_h, R*1.12, 0.05, 0, segs=16); add(v, f, MI_THATCH)
+        footprint_w = footprint_d = R * 2
+    else:
+        area = rng.uniform(37.2, 55.7)   # 400-600 sq ft, REF-03 s5's own real range
+        width = rng.uniform(5.0, 7.0)
+        depth = area / width
+        eave_h = 2.4 + rng.uniform(-0.1, 0.1)
+        ridge_h = eave_h + rng.uniform(0.8, 1.1)
+        x0, y0 = w2(-width/2, 0); x1, y1 = w2(width/2, depth)
+        v, f = _box_geo(min(x0,x1), max(x0,x1), min(y0,y1), max(y0,y1), gz, gz+eave_h, 0)
+        add(v, f, MI_MUD)
+        # a sagging thatch roof: the ridge line dips at its midpoint rather than running dead
+        # straight - REF-03 s5's own "a tiled or thatched roof that sags"
+        sag = rng.uniform(0.12, 0.22)
+        rx0, ry0 = w2(-width/2-0.4, -0.3); rx1, ry1 = w2(width/2+0.4, depth+0.3)
+        rmx, rmy = w2(0, depth/2)
+        rverts = [(min(rx0,rx1),min(ry0,ry1),gz+eave_h),(max(rx0,rx1),min(ry0,ry1),gz+eave_h),
+                  (rmx,rmy,gz+ridge_h-sag),
+                  (min(rx0,rx1),max(ry0,ry1),gz+eave_h),(max(rx0,rx1),max(ry0,ry1),gz+eave_h)]
+        rfaces = [(0,1,2),(1,4,2),(4,3,2),(3,0,2)]
+        add(rverts, rfaces, MI_THATCH)
+        # verandah: 2 posts + an extended eave on the front (-y side)
+        for px_l in (-width/2+0.5, width/2-0.5):
+            px, py = w2(px_l, -1.2)
+            v, f = _bar_geo((px,py,gz), (px,py,gz+eave_h*0.9), 0.06, 0); add(v, f, MI_MUD)
+        vx0, vy0 = w2(-width/2-0.2, -1.4); vx1, vy1 = w2(width/2+0.2, 0.1)
+        v, f = _box_geo(min(vx0,vx1), max(vx0,vx1), min(vy0,vy1), max(vy0,vy1),
+                        gz+eave_h*0.9, gz+eave_h*0.9+0.08, 0)
+        add(v, f, MI_THATCH)
+        footprint_w, footprint_d = width, depth
+
+    # low mud boundary wall around a swept yard, per REF-03 s5
+    yard_w, yard_d = footprint_w + 3.0, footprint_d + 3.5
+    yx0, yy0 = w2(-yard_w/2, -2.0); yx1, yy1 = w2(yard_w/2, yard_d-2.0)
+    v, f = _box_geo(min(yx0,yx1), max(yx0,yx1), min(yy0,yy1), max(yy0,yy1), gz-0.02, gz, 0)
+    add(v, f, MI_YARD)
+    bh = 0.7
+    gap = 1.2   # entry gap in the boundary, on the front (-y) side
+    for (bx0,by0,bx1,by1) in (
+        (-yard_w/2, -2.0, -gap/2, -2.0), (gap/2, -2.0, yard_w/2, -2.0),
+        (-yard_w/2, -2.0, -yard_w/2, yard_d-2.0), (yard_w/2, -2.0, yard_w/2, yard_d-2.0),
+        (-yard_w/2, yard_d-2.0, yard_w/2, yard_d-2.0)):
+        p0 = w2(bx0, by0); p1 = w2(bx1, by1)
+        if math.hypot(p1[0]-p0[0], p1[1]-p0[1]) < 0.05: continue
+        v, f = _bar_geo((p0[0],p0[1],gz+bh/2), (p1[0],p1[1],gz+bh/2), bh, 0)
+        add(v, f, MI_BOUNDARY)
+    # a fodder stack in the yard corner
+    fx, fy = w2(yard_w/2-0.8, yard_d-2.8)
+    v, f = _prism_geo(fx, fy, gz, gz+1.3, 0.9, 0.3, 0, segs=10); add(v, f, MI_FODDER)
+
+    build_combined(f"KUTCHA_{tag}", parts, [M_MUD, M_THATCH, M_YARD, M_MUD_BOUNDARY, M_FODDER])
+
+n_kutcha = 0
 for pi, (rname, cls, P) in enumerate(eligible):
-    if pi % 100 == 0:
-        print(f"  ...road piece {pi}/{len(eligible)}, {buildings_built} buildings so far", flush=True)
+    if pi % 20 == 0:
+        print(f"  ...road piece {pi}/{len(eligible)}, {buildings_built} buildings, "
+              f"{n_kutcha} kutcha huts so far, {time.time()-T0:.0f}s elapsed", flush=True)
     d = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))]
     road_w = WIDTH[cls]
     cap = HEIGHT_CAP_NARROW if road_w < 6.0 else HEIGHT_CAP_WIDE
@@ -391,6 +548,12 @@ for pi, (rname, cls, P) in enumerate(eligible):
             off = road_w / 2.0 + FRONTAGE_MARGIN + PLOT_DEPTH / 2.0
             cx, cy = cx0 + nvx * off, cy0 + nvy * off
             if rng.rand() < gap_probability(cls, cx, cy):
+                if cls in KUTCHA_CLASSES and rng.rand() < KUTCHA_INFILL_PROB:
+                    kseed = zlib.crc32(f"kutcha_{rname}_{side}_{pi_local}".encode())
+                    kheading = math.degrees(math.atan2(tv[1], tv[0])) + (90.0 if side > 0 else -90.0)
+                    kgz = float(terrain_z(np.array([cx]), np.array([cy]))[0])
+                    build_kutcha(cx, cy, kgz, kheading, kseed)
+                    n_kutcha += 1
                 pos += plot_w; pi_local += 1; continue
             heading = math.degrees(math.atan2(tv[1], tv[0])) + (90.0 if side > 0 else -90.0)
             heading += rng.uniform(-2.0, 2.0)   # +-2 deg jitter, REF-03 s1
@@ -413,7 +576,7 @@ for pi, (rname, cls, P) in enumerate(eligible):
             pi_local += 1
 
 print(f"{buildings_built} generated buildings ({detailed_built} detailed, "
-      f"{buildings_built - detailed_built} shells)")
+      f"{buildings_built - detailed_built} shells), {n_kutcha} kutcha/rural houses in the gaps")
 
 # ---------------------------------------------------------------------------- the real footprints
 def real_footprints():
@@ -458,6 +621,7 @@ flag(f"total buildings matches the measured-real target of ~7,800 (got {building
      5000 <= buildings_built <= 12000)
 flag(f"at least some buildings marked detailed ({detailed_built})", detailed_built > 0)
 flag(f"shells also present ({buildings_built - detailed_built})", buildings_built - detailed_built > 0)
+flag(f"kutcha/rural houses built in the gaps ({n_kutcha})", n_kutcha > 0)
 PART_TAGS = ("_WIN_", "_DOOR_", "_SHUTTER_", "_BAL_", "_AC_", "_SIGN", "_AWN", "_DP",
              "_MB", "_WT", "_DISH", "_WASH", "_REBAR_", "_PP_")
 n_parts_placed = sum(1 for o in BCOL.objects if any(tag in o.name for tag in PART_TAGS))
