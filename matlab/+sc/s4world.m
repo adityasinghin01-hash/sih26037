@@ -151,19 +151,19 @@ end
 % convenience - this is what "vegetation, not a token instance" from the original ask
 % actually looks like where the spec gives a real count to build to.
 medS = 0:36:P.Len;
-W.Trees = struct('Station',{},'Lateral',{},'CrownR',{},'Species',{});
+W.TreeScatter = struct('Station',{},'Lateral',{},'CrownR',{},'Species',{});
 for s = medS
-    W.Trees(end+1) = struct('Station',s,'Lateral',W.Width/2+2.5,'CrownR',3.5, ...
+    W.TreeScatter(end+1) = struct('Station',s,'Lateral',W.Width/2+2.5,'CrownR',3.5, ...
         'Species',"gulmohar_amaltas"); %#ok<AGROW>
 end
 eucS = 0:6:P.Len;
 for s = eucS
-    W.Trees(end+1) = struct('Station',s,'Lateral', NEARSET+8.0,'CrownR',2.2, ...
+    W.TreeScatter(end+1) = struct('Station',s,'Lateral', NEARSET+8.0,'CrownR',2.2, ...
         'Species',"eucalyptus"); %#ok<AGROW>
-    W.Trees(end+1) = struct('Station',s,'Lateral',-(NEARSET+8.0),'CrownR',2.2, ...
+    W.TreeScatter(end+1) = struct('Station',s,'Lateral',-(NEARSET+8.0),'CrownR',2.2, ...
         'Species',"eucalyptus"); %#ok<AGROW>
 end
 
 fprintf('[S4 world] route %.1f m (real trunk chain) | %d buildings (spec 41) | %d signs | %d trees (%d median @ 36m, %d eucalyptus @ 6m double row)\n', ...
-        W.Path.Len, numel(W.Buildings), numel(W.Signs), numel(W.Trees), numel(medS), 2*numel(eucS));
+        W.Path.Len, numel(W.Buildings), numel(W.Signs), numel(W.TreeScatter), numel(medS), 2*numel(eucS));
 end

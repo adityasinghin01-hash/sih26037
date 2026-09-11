@@ -780,8 +780,8 @@ end
 % forest carries canopy-cover solving, clumping noise and a reveal-distance mechanic none
 % of the new vegetation needs or claims - this is a plain scatter of crowns, drawn as
 % filled circles, nothing more.
-if isfield(W,'Trees') && ~isempty(W.Trees)
-    Tr = W.Trees;
+if isfield(W,'TreeScatter') && ~isempty(W.TreeScatter)
+    Tr = W.TreeScatter;
     nT = numel(Tr);
     th = linspace(0, 2*pi, 10);
     V = zeros(nT*10, 2);  F = zeros(nT,10);  Cd = zeros(nT,3);
