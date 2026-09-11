@@ -96,7 +96,11 @@ SHOTS=(("hill",   (-1050.0,-100.0,240.0),  aim(-12.0,  0.0), 35.0),
        # close range on the pothole cluster itself (chainage 240/241/243) with the speed
        # breaker just beyond it at 268 m - the S-scale distance these features are meant to
        # be seen at, not a wide establishing shot.
-       ("s1_potholes", (-218.77, 490.28, 1.3), aim(-2.0, 132.2), 40.0))
+       ("s1_potholes", (-218.77, 490.28, 1.3), aim(-2.0, 132.2), 40.0),
+       # component 4 pass 2 item 1: the S5 temple, at the climb's real measured terminus.
+       # camera position/aim measured off TEMPLE_SANCTUM's own real bounding box (diag script),
+       # not guessed - same method as every other scenario-specific shot in this list.
+       ("temple", (-1056.79, 871.16, 31.49), aim(-20.3, 303.7), 24.0))
 dg=bpy.context.evaluated_depsgraph_get()
 def ground_at(x,y):
     hit,loc_,_,_,_,_ = sc.ray_cast(dg, Vector((x,y,3000.0)), Vector((0,0,-1)))
