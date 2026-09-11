@@ -87,6 +87,12 @@ def prism(name, m, cx, cy, z0, z1, r0, r1, segs=16):
     return ob
 
 def join(name, obs):
+    # deselect first - not a live risk here (this script starts from a genuinely empty scene,
+    # read_factory_settings(use_empty=True), so nothing else exists to accidentally absorb), but
+    # 04c_temple.py's own identical join() DID silently merge the scene's real HILL object into
+    # TEMPLE_SANCTUM this way on its first run against a non-empty file (found 11 Sep) - matching
+    # the fix here too, defensively, since this is the same operator with the same real footgun.
+    bpy.ops.object.select_all(action='DESELECT')
     for o in obs: o.select_set(True)
     bpy.context.view_layer.objects.active = obs[0]
     bpy.ops.object.join()

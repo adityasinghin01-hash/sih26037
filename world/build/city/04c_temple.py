@@ -107,6 +107,14 @@ def prism(name, m, cx, cy, z0, z1, r0, r1, segs=16, ang0=0.0, ang1=2*math.pi):
     return ob
 
 def join(name, obs):
+    # a REAL bug, found 11 Sep: without deselecting first, join() silently absorbed the scene's
+    # ENTIRE 35,053-vertex HILL object into TEMPLE_SANCTUM on this script's very first run against
+    # a fresh file (whatever was left selected/active from the previous script's own save state
+    # joined right along with the intended parts) - HILL then no longer existed as a separate
+    # object for any later ground-height lookup, and every run after that silently read wrong,
+    # incomplete terrain data. bpy.ops.object.join() operates on the CURRENT selection, which is
+    # never guaranteed clean when opening a file another script just saved.
+    bpy.ops.object.select_all(action='DESELECT')
     for o in obs: o.select_set(True)
     bpy.context.view_layer.objects.active = obs[0]
     bpy.ops.object.join()
