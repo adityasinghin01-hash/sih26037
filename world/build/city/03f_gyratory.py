@@ -35,6 +35,14 @@ def terrain_z(wx, wy):
 if "GYRATORY" not in bpy.data.collections:
     c = bpy.data.collections.new("GYRATORY"); bpy.context.scene.collection.children.link(c)
 GCOL = bpy.data.collections["GYRATORY"]
+# clear this script's own previous output before rebuilding - same defensive fix applied to
+# 03c_bridges.py/03d_flyovers.py/03e_railway.py/03g_s5climb.py 11 Sep after finding stale
+# duplicate generations in 03_ROADS.blend
+for ob in list(GCOL.objects):
+    me = ob.data
+    bpy.data.objects.remove(ob, do_unlink=True)
+    if me and me.users == 0:
+        bpy.data.meshes.remove(me)
 
 def ring_mat():
     m = bpy.data.materials.new("GYRATORY_RING"); m.use_nodes = True

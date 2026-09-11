@@ -120,6 +120,15 @@ def terrain_z(wx, wy):
 if "RAILWAY" not in bpy.data.collections:
     c = bpy.data.collections.new("RAILWAY"); bpy.context.scene.collection.children.link(c)
 RCOL = bpy.data.collections["RAILWAY"]
+# clear any previous run's objects first - this script was heavily re-run during its own
+# development (see S0-THE-WORLD.md's "the rail crossings' real shortfall" note) with no cleanup
+# step, unlike 03c/03d/03f - found and fixed 11 Sep while investigating a matching S5 duplication
+# bug in 03g_s5climb.py.
+for ob in list(RCOL.objects):
+    me = ob.data
+    bpy.data.objects.remove(ob, do_unlink=True)
+    if me and me.users == 0:
+        bpy.data.meshes.remove(me)
 
 def formation_mat():
     m = bpy.data.materials.new("RAIL_FORMATION"); m.use_nodes = True

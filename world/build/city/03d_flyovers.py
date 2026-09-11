@@ -131,6 +131,13 @@ def terrain_z(wx, wy):
 if "FLYOVERS" not in bpy.data.collections:
     c = bpy.data.collections.new("FLYOVERS"); bpy.context.scene.collection.children.link(c)
 FCOL = bpy.data.collections["FLYOVERS"]
+# clear this script's own previous output before rebuilding - same defensive fix applied to
+# 03e_railway.py/03g_s5climb.py 11 Sep after finding stale duplicate generations in 03_ROADS.blend
+for ob in list(FCOL.objects):
+    me = ob.data
+    bpy.data.objects.remove(ob, do_unlink=True)
+    if me and me.users == 0:
+        bpy.data.meshes.remove(me)
 
 def concrete():
     m = bpy.data.materials.new("RCC_CONCRETE_FLY"); m.use_nodes = True

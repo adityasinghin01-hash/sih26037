@@ -125,6 +125,16 @@ for hp_i in HAIRPIN_LEG:
 if "S5CLIMB" not in bpy.data.collections:
     c = bpy.data.collections.new("S5CLIMB"); bpy.context.scene.collection.children.link(c)
 CCOL = bpy.data.collections["S5CLIMB"]
+# clear any previous run's objects first - found 11 Sep building the temple: this script was
+# re-run several times while tuning MAX_GRADE and, with no cleanup, left 4 stale generations of
+# S5_CLIMB_ROAD/.001/.002/.003 (and their WALL/OUTSIDE pieces) stacked in the cumulative
+# 03_ROADS.blend, each with a different reached elevation. Every build script that can be re-run
+# against a cumulative file must clear its own prior output first (03c/03d/03f already do this).
+for ob in list(CCOL.objects):
+    me = ob.data
+    bpy.data.objects.remove(ob, do_unlink=True)
+    if me and me.users == 0:
+        bpy.data.meshes.remove(me)
 
 def surf_mat(kind):
     cols = {'good1': (0.06, 0.06, 0.06), 'cracked': (0.10, 0.095, 0.085),
