@@ -231,6 +231,8 @@ def make_building(name, cx, cy, width, depth, height, heading_deg, ground_z, det
     if len(BOXMESH.materials) == 0:
         BOXMESH.materials.append(WALL_MAT)
     ob["wall_height_m"] = float(height)
+    ob["detailed"] = bool(detailed)
+    ob["ground_shop"] = bool(ground_floor_shop)
     BCOL.objects.link(ob)
     return ob
 

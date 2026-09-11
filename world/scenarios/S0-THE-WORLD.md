@@ -770,10 +770,8 @@ Every wall gets the §5 base treatment (dust band, per-floor colour variation, o
 via the shared `BUILDING_WALL` procedural material, driven by each object's own hashed Random
 value (REF-09's own per-instance-colour mechanism) — cheap, and applied at every detail level
 including shells, since it is the dust layer that "ties separate objects together," per §6 below.
-**Deferred, honestly, not forgotten**: the kutcha/rural house mix (REF-03 §5, away from the paved
-network — the current gap gives EMPTY plots there, not kutcha houses yet) · street vendor carts
-and stalls (REF-03 §8) — each is its own Component 4 Pass 2 item, written before it is built, same
-as Component 3's items were.
+**Deferred, honestly, not forgotten**: street vendor carts and stalls (REF-03 §8) — its own
+Component 4 Pass 2 item, written before it is built, same as Component 3's items were.
 
 **COMPONENT 4 PASS 2 · ITEM 1 — THE S5 TEMPLE, written 11 Sep 2026 before building, per Rule 1.**
 S5-THE-MOUNTAIN-ROAD.md's own "THE TEMPLE — at the top, 1150 m": sanctum with a **latina
@@ -824,6 +822,30 @@ rural scatter has working fields and yards between houses, not continuous buildi
 **Never on the town's own paved-frontage classes** (tertiary/secondary/trunk_link) — kutcha
 housing is specifically the rural counterpart to the pucca shop-house frontage, per REF-03 §5's
 own title, so it only fills gaps on residential/unclassified/living_street.
+
+**COMPONENT 4 PASS 2 · ITEM 3 — STREET VENDOR CARTS AND STALLS, written 11 Sep 2026 before
+building, per Rule 1.** Closes Component 4. REF-03 §8's own real manufacturer sizes, never
+invented: **tea cart (chai thela) ~4 ft (1.22 m) long** · **steel thela 6×3×7 ft
+(1.83×0.91×2.13 m, the 7 ft including the canopy frame)** · **fruit/vegetable cart 5×3 ft
+(1.52×0.91 m), bed height ~0.75 m**. Rule of thumb for the shared frame: **1.2–1.8 m long,
+0.7–0.9 m wide, bed at 0.75 m, canopy at 2.0–2.2 m**, bicycle-type wheels ~0.6 m diameter (two
+at one end, a prop stand at the other), a tarpaulin/sheet on a light frame, weighted with bricks,
+**sagging between corners** — REF-03's own explicit point, same "never a hard line/flat plane"
+principle already applied to the road markings and the kutcha roof.
+**Placement, causally — carts cluster where there is foot traffic to sell to, never scattered at
+random** (REF-09 §11's own "repeat what a reason would repeat"): one cart per **detailed**
+building only (the ~150 m-of-a-scenario-anchor tier already computed in Item 3's own
+`is_detailed()`), at a **60% draw** (engineering default — not every shopfront has a cart outside
+it, but enough do that a real bazaar frontage reads busy), positioned at the building's own front
+edge, offset sideways per-building so a row of carts does not overlap. **Never on kutcha
+plots or shells** — a vendor cart belongs to the paved shopfront frontage a real customer walks
+along, not a rural yard or a background box nobody will get close enough to see.
+**Three real cart types, drawn per-placement** (REF-03 §8's own three named sizes, not one
+generic box): the steel thela (tallest, a canopy frame + tarp), the tea cart (shortest, a simple
+counter), the fruit/veg cart (open bed, no canopy — REF-03 does not describe one on this type).
+Each built as one combined multi-material mesh per instance (same `material_index` technique
+`04b_buildings.py`'s kutcha huts already use, for the same reason: thousands of tiny separate
+objects measurably cost real Blender-side overhead at this project's own object counts).
 
 ## 6 · THE SHARED LAYERS
 **Vegetation, seven layers:** kans grass 2.2–3.0 m · sugarcane 2.25 m in rows 1.35 m ·
