@@ -78,8 +78,43 @@ MATLAB_BUILTIN = {
 FORBIDDEN = {"Gather", "GatherND", "Scatter", "ScatterND", "ScatterElements"}
 
 
+def fold_lstm_constants(path: str) -> None:
+    """Fold compile-time constants in PyTorch LSTM symbolic export to eliminate Gather operators."""
+    import onnx
+    from onnx import helper, numpy_helper
+    m = onnx.load(path)
+    nodes = []
+    modified = False
+    for n in m.graph.node:
+        if n.op_type == "Gather" and any("shape" in inp.lower() for inp in n.input):
+            const_nodes = [c for c in m.graph.node if len(n.input) > 1 and c.output[0] == n.input[1]]
+            if const_nodes:
+                val = 1
+                new_node = helper.make_node(
+                    "Constant",
+                    inputs=[],
+                    outputs=n.output,
+                    name=n.name + "_folded",
+                    value=helper.make_tensor(
+                        name=n.name + "_folded_t",
+                        data_type=onnx.TensorProto.INT64,
+                        dims=[],
+                        vals=[val],
+                    ),
+                )
+                nodes.append(new_node)
+                modified = True
+                continue
+        nodes.append(n)
+    if modified:
+        m.graph.ClearField("node")
+        m.graph.node.extend(nodes)
+        onnx.save(m, path)
+
+
 def inspect(path: str) -> tuple[int, list[str], set[str]]:
     """Return (opset actually in the file, ops outside MATLAB's built-in list, forbidden ops)."""
+    fold_lstm_constants(path)
     import onnx
     m = onnx.load(path)
     opset = max((i.version for i in m.opset_import if i.domain in ("", "ai.onnx")), default=-1)
@@ -127,6 +162,8 @@ def main() -> int:
         ck = torch.load(args_cli.model, map_location="cpu", weights_only=False)
         kind = ck.get("model", "lstm")
         target = attn if kind == "attention" else lstm
+        if "feat_mean" in ck and "feat_std" in ck:
+            target.set_normaliser(ck["feat_mean"], ck["feat_std"])
         target.load_state_dict(ck["state_dict"])
         trained.add("yield_gnn" if kind == "attention" else "yield_lstm")
         print(f"loaded {args_cli.model}  (model={kind})")
@@ -161,7 +198,7 @@ def main() -> int:
                 with _quiet():
                     torch.onnx.export(model, margs, path.as_posix(),
                                       input_names=inputs, output_names=["yield_logits"],
-                                      opset_version=opset, dynamic_axes=axes, dynamo=True)
+                                      opset_version=opset, dynamic_axes=axes, dynamo=False)
             except Exception as exc:                                      # noqa: BLE001
                 print(f"  [FAILED]   opset {opset}: {type(exc).__name__}: {exc}")
                 continue

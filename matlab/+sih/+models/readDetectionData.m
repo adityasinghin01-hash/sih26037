@@ -44,12 +44,13 @@ alias = dictionary( ...
 % If either matters later, decide what it should be and add it - do not let it through by
 % accident.
 
-xmls = dir(fullfile(annDir, '*.xml'));
+xmls = dir(fullfile(annDir, '**', '*.xml'));
 files = strings(0, 1);
 boxes = {};
 labels = {};
 dropped = dictionary(string.empty, double.empty);
 
+annRootLen = strlength(string(annDir));
 for i = 1:numel(xmls)
     xmlPath = fullfile(xmls(i).folder, xmls(i).name);
     try
@@ -58,7 +59,11 @@ for i = 1:numel(xmls)
         continue                                     % unreadable file, not a fatal error
     end
 
-    img = iFindImage(imgDir, erase(xmls(i).name, '.xml'));
+    relPath = extractAfter(string(xmlPath), annRootLen);
+    relPath = regexprep(relPath, '^[/\\]+', '');
+    relStem = regexprep(relPath, '\.xml$', '', 'ignorecase');
+
+    img = iFindImage(imgDir, relStem);
     if img == ""
         continue
     end

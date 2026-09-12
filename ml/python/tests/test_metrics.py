@@ -92,6 +92,62 @@ def main() -> int:
     thr2, c2 = pick_threshold(np.full(50, 0.5), np.zeros(50, dtype=int), target=0.01)
     check("degrades to the safest point rather than raising", np.isfinite(thr2))
 
+    print("\nStep 91 - known-answer tests for both label directions (Part 17)")
+
+    # 1. A high P(yield) that is wrong counts as dangerous for a yield-trained model
+    c_yield_danger = confusion(np.array([0.90, 0.20]), np.array([0, 0]), 0.50, label_mode="yield")
+    check("yield-mode: high P(yield) on non-yield is dangerous",
+          c_yield_danger["dangerous_errors"] == 1 and c_yield_danger["n_go"] == 1 and close(c_yield_danger["dangerous_rate"], 1.0))
+
+    # 2. A low P(assert) followed by a real assertion counts as dangerous for an assert-trained model
+    c_assert_danger = confusion(np.array([0.05, 0.80]), np.array([1, 1]), 0.10, label_mode="assert")
+    check("assert-mode: low P(assert) followed by real assertion is dangerous",
+          c_assert_danger["dangerous_errors"] == 1 and c_assert_danger["correct_go"] == 0 and c_assert_danger["n_go"] == 1 and close(c_assert_danger["dangerous_rate"], 1.0))
+
+    # 3. A high P(assert) followed by no assertion is conservative for the planner, not the dangerous GO mistake
+    c_assert_cons = confusion(np.array([0.90]), np.array([0]), 0.10, label_mode="assert")
+    check("assert-mode: high P(assert) with no assertion is harmless waiting, not dangerous",
+          c_assert_cons["dangerous_errors"] == 0 and c_assert_cons["harmless_errors"] == 1 and c_assert_cons["n_go"] == 0 and c_assert_cons["dangerous_rate"] == 0.0)
+
+    # 4. Threshold equality is handled consistently in both directions
+    c_eq_yield = confusion(np.array([0.50]), np.array([1]), 0.50, label_mode="yield")
+    check("yield-mode: threshold equality score >= thr permits GO",
+          c_eq_yield["correct_go"] == 1 and c_eq_yield["n_go"] == 1)
+
+    c_eq_assert = confusion(np.array([0.10]), np.array([0]), 0.10, label_mode="assert")
+    check("assert-mode: threshold equality score <= thr permits GO",
+          c_eq_assert["correct_go"] == 1 and c_eq_assert["n_go"] == 1)
+
+    # In pick_threshold, score ties stay together so identical probabilities are never split
+    thr_tie, c_tie = pick_threshold(np.array([0.05, 0.05, 0.20]), np.array([0, 1, 0]), target=0.01, label_mode="assert")
+    check("assert-mode: score ties stay together across threshold in pick_threshold",
+          c_tie["n_go"] != 1 and c_tie["n_go"] in (0, 2, 3))
+
+    # Also check pick_threshold on assert mode with clear hand-computed cut
+    # Scores: [0.001, 0.002, 0.003, 0.05, 0.90], truth: [0, 0, 0, 1, 1]. Target 1%.
+    # Ranks: at 0.003, safe 3/3 (0% risk). At 0.05, 1 error in 4 (25% risk). Must pick thr 0.003, n_go 3.
+    thr_assert, c_assert_pick = pick_threshold(np.array([0.001, 0.002, 0.003, 0.05, 0.90]),
+                                               np.array([0, 0, 0, 1, 1]), target=0.01, label_mode="assert")
+    check("assert-mode: pick_threshold selects largest safe GO region",
+          close(thr_assert, 0.003) and c_assert_pick["n_go"] == 3 and c_assert_pick["dangerous_errors"] == 0)
+
+    # 5. n_go = 0 is reported as no coverage, not as a successful zero-percent dangerous rate
+    c_nogo = confusion(np.array([0.80, 0.90]), np.array([1, 0]), 0.10, label_mode="assert")
+    coverage_nogo = c_nogo["n_go"] / 2
+    check("n_go = 0 reports 0 coverage, not a valid 0% safety victory",
+          c_nogo["n_go"] == 0 and coverage_nogo == 0.0)
+
+    # 6. PYield = 1 - P(assert) is checked without changing the ONNX output tensor
+    # Model emits logits for [class 0, class 1]. Softmax on class 1 is P(assert).
+    # S3 specifies PYield = 1 - P(assert), while ONNX tensor remains yield_logits.
+    logits = np.array([0.0, 2.0])
+    exp_logits = np.exp(logits - logits.max())
+    probs = exp_logits / exp_logits.sum()
+    p_assert = float(probs[1])
+    p_yield = 1.0 - p_assert
+    check("PYield == 1 - P(assert) identity holds", close(p_yield, float(probs[0])))
+    check("high P(assert) maps to low PYield", p_assert > 0.85 and p_yield < 0.15)
+
     print("\nexpected_calibration_error")
     # A model that says 0.0 for 100 negatives and 1.0 for 100 positives is perfectly calibrated.
     p = np.concatenate([np.zeros(100), np.ones(100)])

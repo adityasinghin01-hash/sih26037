@@ -38,6 +38,11 @@ arguments
     opts.InputSize     (1,3) double = [640 640 3]
     opts.ValFraction   (1,1) double {mustBeInRange(opts.ValFraction, 0, 0.9)} = 0.2
     opts.Execution     (1,1) string {mustBeMember(opts.Execution, ["auto","gpu","cpu"])} = "auto"
+    opts.CheckpointPath string = ""
+    opts.InitialDetector = []
+    opts.InitialLearnRate (1,1) double {mustBePositive} = 1e-3
+    opts.DomainAugment (1,1) logical = false
+    opts.MaxImages (1,1) double = Inf
 end
 
 %% Preflight - fail with an instruction, never with a missing-function error
@@ -88,26 +93,49 @@ end
 
 rng(0);                                     % a split you can reproduce
 idx = randperm(n);
+if isfinite(opts.MaxImages) && opts.MaxImages < n
+    idx = idx(1:opts.MaxImages);
+    n = numel(idx);
+end
 nVal = max(1, round(opts.ValFraction * n));
 valIdx = idx(1:nVal);
 trainIdx = idx(nVal+1:end);
 fprintf('Split: %d train, %d validation\n', numel(trainIdx), numel(valIdx));
 
 dsTrain = combine(subset(imds, trainIdx), subset(blds, trainIdx));
+if opts.DomainAugment
+    fprintf('Applying domain augmentation to mimic synthetic/rendered graphics...\n');
+    dsTrain = transform(dsTrain, @iDomainAugment);
+end
 dsVal   = combine(subset(imds, valIdx),   subset(blds, valIdx));
 
 %% Train
-detector = yoloxObjectDetector("small-coco", names, InputSize=opts.InputSize);
+if ~isempty(opts.InitialDetector)
+    detector = opts.InitialDetector;
+    fprintf('Resuming training from provided detector checkpoint.\n');
+else
+    detector = yoloxObjectDetector("small-coco", names, InputSize=opts.InputSize);
+end
 
-options = trainingOptions("adam", ...
-    MaxEpochs            = opts.MaxEpochs, ...
-    MiniBatchSize        = opts.MiniBatchSize, ...
-    InitialLearnRate     = 1e-3, ...
-    ValidationData       = dsVal, ...
-    ExecutionEnvironment = opts.Execution, ...
-    ResetInputNormalization = false, ...
-    Verbose              = true, ...
-    Plots                = "none");
+optArgs = { ...
+    "adam", ...
+    "MaxEpochs", opts.MaxEpochs, ...
+    "MiniBatchSize", opts.MiniBatchSize, ...
+    "InitialLearnRate", opts.InitialLearnRate, ...
+    "ValidationData", dsVal, ...
+    "ExecutionEnvironment", opts.Execution, ...
+    "ResetInputNormalization", false, ...
+    "Verbose", true, ...
+    "Plots", "none" ...
+};
+
+if opts.CheckpointPath ~= ""
+    if ~isfolder(opts.CheckpointPath); mkdir(opts.CheckpointPath); end
+    optArgs = [optArgs, {"CheckpointPath", opts.CheckpointPath}];
+    fprintf('Checkpoints will be saved every epoch to: %s\n', opts.CheckpointPath);
+end
+
+options = trainingOptions(optArgs{:});
 
 fprintf('\nTraining YOLOX. This is the one model here that genuinely wants a GPU.\n');
 detector = trainYOLOXObjectDetector(dsTrain, detector, options);
@@ -124,7 +152,10 @@ for k = 1:numel(names)
     if iscell(v); v = v{1}; end
     fprintf('  %-18s AP %.4f\n', names(k), mean(v, 'omitnan'));
 end
-fprintf('  overall mAP %.4f\n', mean(metrics.DatasetMetrics.mAP, 'omitnan'));
+mAP_val = metrics.DatasetMetrics.mAP;
+if istable(mAP_val); mAP_val = mAP_val{1,1}; end
+if iscell(mAP_val); mAP_val = mAP_val{1}; end
+fprintf('  overall mAP %.4f\n', double(mAP_val));
 
 save(outFile, 'detector', 'names', 'metrics', '-v7.3');
 fprintf('\nSaved %s\n', outFile);
@@ -141,3 +172,22 @@ if startsWith(string(fullfile(outFile)), string(here))
          'and .gitignore blocks .mat - write it somewhere else.'], outFile);
 end
 end
+
+
+function dataOut = iDomainAugment(data)
+% IDOMAINAUGMENT  Simulate synthetic 3D rendering pipeline characteristics.
+%   1. Gaussian filter to eliminate natural CMOS camera sensor noise/grain.
+%   2. Dynamic range expansion and contrast stretching matching Cycles rendering.
+%   3. Color saturation boost in HSV space matching CAD/CGI surface materials.
+I = data{1};
+if size(I, 3) == 3
+    I_smooth = imgaussfilt(I, 0.6);
+    I_adj = imadjust(I_smooth, stretchlim(I_smooth, [0.02 0.98]), []);
+    hsv = rgb2hsv(I_adj);
+    hsv(:, :, 2) = min(1.0, hsv(:, :, 2) * 1.25);
+    I = im2uint8(hsv2rgb(hsv));
+end
+dataOut = data;
+dataOut{1} = I;
+end
+

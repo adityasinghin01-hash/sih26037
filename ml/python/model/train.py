@@ -54,11 +54,12 @@ def load(features: Path, names: list[str], group_by_frame: bool):
             torch.from_numpy(np.stack(ga)))
 
 
-def metrics(pred: np.ndarray, true: np.ndarray) -> dict:
+def metrics(pred: np.ndarray, true: np.ndarray, c1_name: str = "yield") -> dict:
     keep = true >= 0
     pred, true = pred[keep], true[keep]
+    c0_name = f"no-{c1_name}"
     out = {}
-    for cls, name in ((1, "yield"), (0, "no-yield")):
+    for cls, name in ((1, c1_name), (0, c0_name)):
         tp = int(((pred == cls) & (true == cls)).sum())
         fp = int(((pred == cls) & (true != cls)).sum())
         fn = int(((pred != cls) & (true == cls)).sum())
@@ -81,8 +82,14 @@ def main() -> int:
     ap.add_argument("--pos-weight", type=float, default=0.0,
                     help="0 = compute it from the data. Essential when yielding is rare.")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
 
     sp = args.features / "split.json"
     if not sp.exists():
@@ -91,8 +98,14 @@ def main() -> int:
     split = json.loads(sp.read_text())
     grouped = args.model == "attention"
 
+    from model.evaluate import read_label_mode
+    label_mode, _ = read_label_mode(args.features)
+    c1_name = "assert" if label_mode == "assert" else "yield"
+    c0_name = f"no-{c1_name}"
+
+    cal_key = "calibration" if "calibration" in split else "val"
     xtr, ytr, atr = load(args.features, split["train"], grouped)
-    xva, yva, ava = load(args.features, split["val"], grouped)
+    xva, yva, ava = load(args.features, split[cal_key], grouped)
     if args.limit:
         xtr, ytr = xtr[: args.limit], ytr[: args.limit]
         if atr is not None:
@@ -162,17 +175,19 @@ def main() -> int:
                 xb = xva[i: i + args.batch].to(dev)
                 lg = net(xb, ava[i: i + args.batch].to(dev)) if grouped else net(xb)
                 preds.append(lg.argmax(-1).cpu().numpy().reshape(-1))
-            m = metrics(np.concatenate(preds), yva.numpy().reshape(-1))
+            m = metrics(np.concatenate(preds), yva.numpy().reshape(-1), c1_name=c1_name)
         print(f"epoch {ep:>3}  loss={tot/n:.4f}  "
-              f"yield P={m['yield']['precision']:.3f} R={m['yield']['recall']:.3f} "
-              f"(n={m['yield']['support']})  "
-              f"no-yield P={m['no-yield']['precision']:.3f} R={m['no-yield']['recall']:.3f}")
+              f"{c1_name} P={m[c1_name]['precision']:.3f} R={m[c1_name]['recall']:.3f} "
+              f"(n={m[c1_name]['support']})  "
+              f"{c0_name} P={m[c0_name]['precision']:.3f} R={m[c0_name]['recall']:.3f}")
 
     out = args.out or (args.features / f"yield_{args.model}.pt")
     torch.save({"state_dict": net.state_dict(), "model": args.model,
                 "hidden": args.hidden, "pos_weight": pw,
                 "feat_mean": fmean.tolist(), "feat_std": fstd.tolist(),
-                "train_clips": split["train"], "val_clips": split["val"]}, out)
+                "label_mode": label_mode, "lr": args.lr, "epochs": args.epochs,
+                "seed": args.seed, "batch_size": args.batch,
+                "train_clips": split["train"], "val_clips": split[cal_key]}, out)
     print(f"\nsaved {out}")
     print("Report precision and recall for BOTH classes. Never report accuracy alone.")
     return 0
