@@ -21,7 +21,7 @@ torch.
 for 9, 11 or 13 and you get a file that is really 18, under a filename that lies about it.
 **Fix:** already handled — `to_onnx.py` writes only 17, 18 and 20 and reads the version back out
 of each file. **Never report the number you asked for; report the one the file contains.** This
-number goes to Stream D, and a wrong one costs them a day.
+number goes to the Planner track, and a wrong one costs them a day.
 
 ### `Gather` appears in the graph and MATLAB will not convert it
 **Cause is almost never what people assume.** `Gather` comes from ordinary indexing, not only

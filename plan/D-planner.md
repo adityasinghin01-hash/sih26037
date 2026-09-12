@@ -1,20 +1,24 @@
-# Stream D — The Planner
+# The planner build order (formerly "Stream D — The Planner")
 
+> **Retired framing, kept as reference, not a live assignment sheet.** This file predates the
+> 10 September restructure and describes a two-person "Person A writes functions, Person B owns
+> the Simulink model" split. That doesn't describe Antara and Anjali's current, independent work
+> — check `HANDOFF.md` at the repo root for what they're actually doing, and `TEAM.md` for the
+> current org. The build order below (D1 through D11) reflects what's actually been built, which
+> is still real and accurate.
+>
 > ## Read [`plan/ReadThis.md`](ReadThis.md) first.
 >
-> `plan/` is your folder. It explains what you are building in plain language, the mechanism,
-> and why each piece exists.
+> `plan/` is the Planner track's folder. It explains what you are building in plain language, the
+> mechanism, and why each piece exists.
 >
 > - **[`plan/ReadThis.md`](ReadThis.md)** — the roadmap. Read once, top to bottom
-> - **[`plan/CONTRACT-AB.md`](CONTRACT-AB.md)** — **the boundary between the two of you.
->   Read this before writing anything**
->
-> **You are two people and you must not share files.** A Simulink `.slx` is binary — git cannot
-> merge two people's edits, so one of you silently loses a day's work.
+> - **[`plan/CONTRACT-AB.md`](CONTRACT-AB.md)** — retired; described the old Person A/B split
 >
 > ### Stay inside the planner
 >
-> **Yours:** `matlab/+sih/+planner/` (Person A), the Simulink model and chart (Person B), `plan/`.
+> **Yours:** `matlab/+sih/+planner/`, `matlab/+sc/`, the Simulink model and chart if it's still
+> live work for anyone, `plan/`.
 > **Not yours, and you must not open them:** `ml/` and everything in it, `matlab/+sih/+prediction/`,
 > `+models/`, `matlab/+sih/+scenario/`, `+perception/`, and `matlab/baseline/`.
 >

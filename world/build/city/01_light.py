@@ -12,7 +12,7 @@
 import bpy, math, os, sys, time
 from mathutils import Vector
 
-REF  = os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF  = os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 OUT  = f"{REF}/blend/01_LIGHT.blend"
 RND  = f"{REF}/renders/city"
 os.makedirs(RND, exist_ok=True)
@@ -35,6 +35,14 @@ BAND         = 78.0          # interior band width: the density falloff INWARD f
                               # This is the single control that decides vapour vs rock. It is ABSOLUTE METRES, so it must
                               # stay small relative to the SMALLEST cloud or that population becomes pure
                               # falloff - grey mush with no form. 135 m swallowed the fractus entirely.
+# L1 distance-banded voxel sizes: DEFAULT OFF. `GeometryNodeJoinGeometry` of separate VOLUME
+# geometries yields nothing (the field evaluated to 0 verts and rendered near-empty on the RTX -
+# isolated 6 Sep). It is not needed: the A100 render target has 40 GB VRAM, and the RTX field is
+# 30 km + disc-culled and fits at ~1.2 GB. A real fix (3 separate volume OBJECTS, no join) can
+# come later if the A1000 ever has to hold the whole field. Toggle with SIH_BANDS=1 to test that.
+BANDED_VOXELS = os.environ.get("SIH_BANDS","0")=="1"
+HOLE_MASK     = os.environ.get("SIH_HOLES","1")=="1"   # L2: large-scale blue-hole density mask - ON
+RIM_HALATION  = os.environ.get("SIH_HALO","0")=="1"    # L4: OFF - pass 3 re-tune still blew out; grade handles final tone
 FADE_START   =  9000.0        # radial density fade so the field edge never shows.
                               # MEASURED: a 1400 m cloud at 10 deg elevation is 7940 m away and at
                               # 6 deg is 13320 m. The old 4200/12000 fade deleted everything below
@@ -111,17 +119,27 @@ air.visible_camera=False
 def cloud_material():
     m=bpy.data.materials.new("CLOUD"); m.use_nodes=True
     t=m.node_tree; t.nodes.clear()
-    pv=t.nodes.new("ShaderNodeVolumePrincipled"); pv.inputs["Anisotropy"].default_value=0.32
+    pv=t.nodes.new("ShaderNodeVolumePrincipled"); pv.inputs["Anisotropy"].default_value=0.50
+    #   0.32 -> 0.50: stronger FORWARD scatter is the forward-lit halo round the sun (item 4).
     at=t.nodes.new("ShaderNodeAttribute"); at.attribute_name="density"   # the grid, soft at the edge
     n1=t.nodes.new("ShaderNodeTexNoise"); n1.inputs["Scale"].default_value=0.9
     n1.inputs["Detail"].default_value=12.0; n1.inputs["Roughness"].default_value=0.66
+    # CAULIFLOWER (item 3): a SECOND, finer noise so each lobe carries sub-lobes instead of
+    # reading as a smooth ball. Kept in [0.55,1.0] via mul+add so it carves, never erases.
+    n2=t.nodes.new("ShaderNodeTexNoise"); n2.inputs["Scale"].default_value=3.6
+    n2.inputs["Detail"].default_value=8.0; n2.inputs["Roughness"].default_value=0.62
+    n2m=t.nodes.new("ShaderNodeMath"); n2m.operation='MULTIPLY'; n2m.inputs[1].default_value=0.45
+    n2a=t.nodes.new("ShaderNodeMath"); n2a.operation='ADD'; n2a.inputs[1].default_value=0.55
+    ncomb=t.nodes.new("ShaderNodeMath"); ncomb.operation='MULTIPLY'
     mp=t.nodes.new("ShaderNodeMapping"); mp.inputs["Scale"].default_value=(0.0075,0.0075,0.0125)
     tc=t.nodes.new("ShaderNodeTexCoord")
     rm=t.nodes.new("ShaderNodeValToRGB")
     rm.color_ramp.elements[0].position=0.19; rm.color_ramp.elements[1].position=0.77
     # a WIDE ramp = a gradual, semi-transparent boundary. A narrow one renders a hard shell.
     a1=t.nodes.new("ShaderNodeMath"); a1.operation='MULTIPLY'
-    a2=t.nodes.new("ShaderNodeMath"); a2.operation='MULTIPLY'; a2.inputs[1].default_value=0.090
+    a2=t.nodes.new("ShaderNodeMath"); a2.operation='MULTIPLY'; a2.inputs[1].default_value=0.062
+    #   0.090 -> 0.068 (pass 2) -> 0.052 (pass 3 - BLEW OUT with bounces 12 + albedo .965 + halation)
+    #   -> 0.062 (pass 4). Back near pass-2's known-good. One small step lighter, nothing else moved.
     # RADIAL FADE: density falls to zero before the field edge, so the boundary never reads
     gp2=t.nodes.new("ShaderNodeNewGeometry"); sp2=t.nodes.new("ShaderNodeSeparateXYZ")
     cxy=t.nodes.new("ShaderNodeCombineXYZ")
@@ -136,18 +154,40 @@ def cloud_material():
     t.links.new(cxy.outputs["Vector"], ln.inputs[0])
     t.links.new(ln.outputs["Value"], fade.inputs["Value"])
     t.links.new(tc.outputs["Object"],mp.inputs["Vector"]); t.links.new(mp.outputs["Vector"],n1.inputs["Vector"])
-    t.links.new(n1.outputs["Fac"],rm.inputs["Fac"])
+    t.links.new(mp.outputs["Vector"],n2.inputs["Vector"])
+    t.links.new(n2.outputs["Fac"],n2m.inputs[0]); t.links.new(n2m.outputs["Value"],n2a.inputs[0])
+    t.links.new(n1.outputs["Fac"],ncomb.inputs[0]); t.links.new(n2a.outputs["Value"],ncomb.inputs[1])
+    t.links.new(ncomb.outputs["Value"],rm.inputs["Fac"])
     t.links.new(at.outputs["Fac"],a1.inputs[0]); t.links.new(rm.outputs["Color"],a1.inputs[1])
     t.links.new(a1.outputs["Value"],a2.inputs[0])
     t.links.new(a2.outputs["Value"],a3.inputs[0]); t.links.new(fade.outputs["Result"],a3.inputs[1])
     t.links.new(a3.outputs["Value"],pv.inputs["Density"])
+    # HALATION on the backlit RIM (item 4, REF-12 s4). PASS 3, re-tuned against the real density
+    # range. The first cut used a 0.02->0.22 edge window, but peak density is only ~0.052, so the
+    # window sat ABOVE the whole cloud and the "edge" fired everywhere -> giant area light, blew
+    # the ground 2-3 stops. Now the shell is 0.0015 < a3 < 0.022: `present` kills empty space,
+    # `edge` kills the >0.022 core, so ONLY the wispy fringe emits, at a low strength.
+    if RIM_HALATION:
+        present=t.nodes.new("ShaderNodeMapRange")
+        present.inputs["From Min"].default_value=0.0015; present.inputs["From Max"].default_value=0.005
+        present.inputs["To Min"].default_value=0.0; present.inputs["To Max"].default_value=1.0; present.clamp=True
+        edge=t.nodes.new("ShaderNodeMapRange")
+        edge.inputs["From Min"].default_value=0.004; edge.inputs["From Max"].default_value=0.022
+        edge.inputs["To Min"].default_value=1.0; edge.inputs["To Max"].default_value=0.0; edge.clamp=True
+        hg=t.nodes.new("ShaderNodeMath"); hg.operation='MULTIPLY'
+        hs=t.nodes.new("ShaderNodeMath"); hs.operation='MULTIPLY'; hs.inputs[1].default_value=0.14
+        t.links.new(a3.outputs["Value"],present.inputs["Value"]); t.links.new(a3.outputs["Value"],edge.inputs["Value"])
+        t.links.new(present.outputs["Result"],hg.inputs[0]); t.links.new(edge.outputs["Result"],hg.inputs[1])
+        t.links.new(hg.outputs["Value"],hs.inputs[0])
+        pv.inputs["Emission Color"].default_value=(1.0,0.93,0.82,1.0)
+        t.links.new(hs.outputs["Value"],pv.inputs["Emission Strength"])
     # top/bottom colour gradient with Z offset (REF-12 s4)
     gp=t.nodes.new("ShaderNodeNewGeometry"); sx=t.nodes.new("ShaderNodeSeparateXYZ")
     mr=t.nodes.new("ShaderNodeMapRange")
     mr.inputs["From Min"].default_value=CLOUD_BASE
     mr.inputs["From Max"].default_value=CLOUD_BASE+640.0
     cr=t.nodes.new("ShaderNodeValToRGB")
-    cr.color_ramp.elements[0].color=(0.90,0.92,0.96,1.0)      # near-white ALBEDO, faint cool tint:
+    cr.color_ramp.elements[0].color=(0.945,0.955,0.98,1.0)    # near-white ALBEDO, faint cool tint:
     #   fair-weather cumulus, not storm cloud. Aditya asked for "peaceful", and a dark base is the
     #   difference between a fair-weather sky and a monsoon one.
     cr.color_ramp.elements[1].color=(1.0,1.0,1.0,1.0)         # pure white: droplets absorb ~nothing
@@ -184,6 +224,47 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     dp.inputs["Density Max"].default_value=dens_max
     dp.inputs["Seed"].default_value=seed
     L.new(gi.outputs[0], dp.inputs["Mesh"])
+    # BLUE HOLES (item 2): drive Density Factor with a LARGE-SCALE noise (~6 km wavelength),
+    # ramped to a narrow window so it reads bimodal - gaps CLUSTER and come in very different
+    # sizes, instead of the even deck a bare Poisson gives. Same field for all three heights: a
+    # hole is a hole at every altitude. base_jitter marks the fractus pop - shift its mask so the
+    # shreds drift ACROSS the holes rather than stacking on the cumulus.
+    hpos=n.new("GeometryNodeInputPosition")
+    hscl=n.new("ShaderNodeVectorMath"); hscl.operation='MULTIPLY'
+    hscl.inputs[1].default_value=(0.00016,0.00016,0.0)      # ~6 km wavelength; Mapping is shader-only
+    L.new(hpos.outputs["Position"], hscl.inputs[0])
+    hoff=n.new("ShaderNodeVectorMath"); hoff.operation='ADD'
+    hoff.inputs[1].default_value=(0.6 if base_jitter>0 else 0.0, 0.0, 0.0)   # fractus drifts off the deck
+    L.new(hscl.outputs["Vector"], hoff.inputs[0])
+    hn=n.new("ShaderNodeTexNoise"); hn.inputs["Scale"].default_value=1.0
+    hn.inputs["Detail"].default_value=2.0; hn.inputs["Roughness"].default_value=0.5
+    L.new(hoff.outputs["Vector"], hn.inputs["Vector"])
+    hr=n.new("ShaderNodeMapRange")
+    # narrower, lower window: noise Fac ~centres on 0.5, so 0.43->0.55 sends the lowest ~30% of
+    # the field to a HARD zero (a real blue hole) and the rest to full density, with a short ramp
+    # between. The first try (0.42->0.60) averaged ~0.45 everywhere and just thinned the deck.
+    hr.inputs["From Min"].default_value=0.43; hr.inputs["From Max"].default_value=0.55; hr.clamp=True
+    L.new(hn.outputs["Fac"], hr.inputs["Value"])
+    if HOLE_MASK:
+        L.new(hr.outputs["Result"], dp.inputs["Density Factor"])
+    # PLAN s10 Phase 3 item 12: DISC, NOT SQUARE. The field mesh is a flat square, so a Poisson
+    # scatter across it wastes ~21% of its points in the corners - past FIELD_RADIUS, which is
+    # already past the visibility fade anyway (~21% free is the plan's own estimate). Delete at
+    # the POINT stage so real geometry never gets born there, not just hidden by the shader fade
+    # further down - that fade changes the PICTURE, not the memory.
+    pos=n.new("GeometryNodeInputPosition")
+    sxyz=n.new("ShaderNodeSeparateXYZ"); L.new(pos.outputs["Position"], sxyz.inputs["Vector"])
+    cxy=n.new("ShaderNodeCombineXYZ")
+    L.new(sxyz.outputs["X"], cxy.inputs["X"]); L.new(sxyz.outputs["Y"], cxy.inputs["Y"])
+    plen=n.new("ShaderNodeVectorMath"); plen.operation='LENGTH'
+    L.new(cxy.outputs["Vector"], plen.inputs[0])
+    beyond=n.new("ShaderNodeMath"); beyond.operation='GREATER_THAN'
+    beyond.inputs[1].default_value=CLOUD_FIELD/2.0
+    L.new(plen.outputs["Value"], beyond.inputs[0])
+    ddel=n.new("GeometryNodeDeleteGeometry"); ddel.domain='POINT'
+    L.new(dp.outputs["Points"], ddel.inputs["Geometry"])
+    L.new(beyond.outputs["Value"], ddel.inputs["Selection"])
+    dp_pts=ddel.outputs["Geometry"]
     # the envelope this population's lobes live inside
     env=n.new("GeometryNodeMeshUVSphere"); env.inputs["Segments"].default_value=10
     env.inputs["Rings"].default_value=6; env.inputs["Radius"].default_value=1.0
@@ -206,9 +287,10 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     L.new(lb.outputs["Points"], i2.inputs["Points"]); L.new(ico.outputs["Mesh"], i2.inputs["Instance"])
     L.new(rv.outputs["Value"], i2.inputs["Scale"])
     r2=n.new("GeometryNodeRealizeInstances"); L.new(i2.outputs["Instances"], r2.inputs["Geometry"])
-    # place a cluster at every point of this population
+    # place a cluster at every point of this population - dp_pts, the DISC-culled points, not
+    # dp.outputs["Points"] directly.
     iop=n.new("GeometryNodeInstanceOnPoints")
-    L.new(dp.outputs["Points"], iop.inputs["Points"]); L.new(r2.outputs["Geometry"], iop.inputs["Instance"])
+    L.new(dp_pts, iop.inputs["Points"]); L.new(r2.outputs["Geometry"], iop.inputs["Instance"])
     rs=n.new("FunctionNodeRandomValue"); rs.data_type='FLOAT_VECTOR'
     rs.inputs[0].default_value=(smin,smin,smin*0.85)
     rs.inputs[1].default_value=(smax,smax,smax*1.25)   # Z varies MORE: some tower, some stay flat
@@ -218,11 +300,18 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     rr.inputs[0].default_value=(0,0,0); rr.inputs[1].default_value=(0,0,6.2832)
     rr.inputs["Seed"].default_value=seed+71
     L.new(rr.outputs["Value"], iop.inputs["Rotation"])
-    # lift so the BASE sits on the plane. base_jitter>0 breaks that deliberately (fractus has no
-    # flat base; cumulus and stratocumulus do - REF-13 s3).
+    # COPLANAR BASES (S0 s2: "EVERY CUMULUS AND STRATOCUMULUS BASE AT ONE HEIGHT" - the single
+    # loudest tell). The old lift (rs.Z * env_z) ignored the lobes that protrude PAST the
+    # envelope, so a bigger cloud floated ~lobe_max*rs.Z m higher and bases scattered. Measure
+    # the realized cluster's true min-Z and lift by exactly -minZ*rs.Z: every base lands on the
+    # plane whatever the cloud's size. base_jitter>0 then breaks it on purpose for fractus.
     sz=n.new("ShaderNodeSeparateXYZ"); L.new(rs.outputs["Value"], sz.inputs["Vector"])
-    zm=n.new("ShaderNodeMath"); zm.operation='MULTIPLY'; zm.inputs[1].default_value=env_z
-    L.new(sz.outputs["Z"], zm.inputs[0])
+    _bb=n.new("GeometryNodeBoundBox"); L.new(r2.outputs["Geometry"], _bb.inputs["Geometry"])
+    _bbs=n.new("ShaderNodeSeparateXYZ"); L.new(_bb.outputs["Min"], _bbs.inputs["Vector"])
+    _negz=n.new("ShaderNodeMath"); _negz.operation='MULTIPLY'; _negz.inputs[1].default_value=-1.0
+    L.new(_bbs.outputs["Z"], _negz.inputs[0])
+    zm=n.new("ShaderNodeMath"); zm.operation='MULTIPLY'          # lift = rs.Z * (-clusterMinZ)
+    L.new(sz.outputs["Z"], zm.inputs[0]); L.new(_negz.outputs["Value"], zm.inputs[1])
     if base_jitter>0.0:
         rj=n.new("FunctionNodeRandomValue"); rj.data_type='FLOAT'
         rj.inputs[2].default_value=-base_jitter; rj.inputs[3].default_value=base_jitter
@@ -238,22 +327,68 @@ def population(tag, min_dist, dens_max, seed, env_xy, env_z,
     rl=n.new("GeometryNodeRealizeInstances"); L.new(tr.outputs["Instances"], rl.inputs["Geometry"])
     return rl.outputs["Geometry"]
 
+# FOUR populations = S0 s2's THREE TYPES (cumulus / stratocumulus / fractus) plus a size split
+# on the cumulus. STRATOCU is the missing one: broad (env_xy 640), FLAT (env_z 50), densely
+# spaced (min_d 1200) so adjacent clusters MERGE into a continuous lumpy sheet - it is what fills
+# the gaps between the discrete cumulus and stops the deck reading as "separate stones".
+# LARGE/MID envelopes widened + lobe density up so the cumulus itself merges into masses.
 #                tag          min_d  densMax   seed  envXY  envZ  smin  smax  lmin  lmax  lobeD    jitter
-pA=population("LARGE",        2500.0, 0.0000060,  7, 360.0, 330.0, 1.30, 3.10, 60.0, 140.0, 0.0000060,   0.0)
-pB=population("MID",           950.0, 0.0000160, 23, 275.0, 235.0, 0.55, 1.50, 42.0,  98.0, 0.0000075,   0.0)
+pA=population("LARGE",        2500.0, 0.0000060,  7, 430.0, 330.0, 1.30, 3.10, 60.0, 140.0, 0.0000082,   0.0)
+pB=population("MID",           950.0, 0.0000160, 23, 335.0, 235.0, 0.55, 1.50, 42.0,  98.0, 0.0000098,   0.0)
 pC=population("FRACTUS",       620.0, 0.0000180, 41, 185.0, 115.0, 0.30, 0.68, 30.0,  66.0, 0.0000130, 140.0)
+pD=population("STRATOCU",     1200.0, 0.0000110, 61, 640.0,  50.0, 0.90, 1.90, 55.0, 120.0, 0.0000120,   0.0)
 
 jn=n.new("GeometryNodeJoinGeometry")
-for sock in (pA,pB,pC): L.new(sock, jn.inputs["Geometry"])
+for sock in (pA,pB,pC,pD): L.new(sock, jn.inputs["Geometry"])
 
-m2v=n.new("GeometryNodeMeshToVolume"); m2v.resolution_mode='VOXEL_SIZE'
-m2v.inputs["Voxel Size"].default_value=VOXEL
-m2v.inputs["Density"].default_value=1.0
-m2v.inputs["Interior Band Width"].default_value=BAND     # the soft edge - the "reads as rock" fix
-L.new(jn.outputs["Geometry"], m2v.inputs["Mesh"])
+# ============================================================================================
+# VOXEL SIZE VARIES WITH DISTANCE (S0 s2 "THE 4K CLOUD PASS" item 1, PLAN s10 item 12).
+# One 26 m voxel size across all 30 km is what put the M1 at 11.97 GB and swapped 433->1335 s.
+# Split the joined cloud MESH into three concentric bands by XY distance from the origin (the
+# camera sits near it) and voxelise each at its own size, then JOIN THE VOLUMES. The far annulus
+# is ~5x the near disc's area, so coarsening it is the single biggest memory saving - and it is
+# invisible: past ~2 km the haze has already flattened every cloud edge (REF-13 s5).
+# ============================================================================================
+BANDS=[(5000.0, 24.0), (10000.0, 48.0), (CLOUD_FIELD/2.0, 96.0)]   # (outer radius, voxel size)
+def _band_selection(hi):
+    p=n.new("GeometryNodeInputPosition"); s=n.new("ShaderNodeSeparateXYZ")
+    L.new(p.outputs["Position"], s.inputs["Vector"])
+    c=n.new("ShaderNodeCombineXYZ")
+    L.new(s.outputs["X"], c.inputs["X"]); L.new(s.outputs["Y"], c.inputs["Y"])
+    d=n.new("ShaderNodeVectorMath"); d.operation='LENGTH'; L.new(c.outputs["Vector"], d.inputs[0])
+    lt=n.new("ShaderNodeMath"); lt.operation='LESS_THAN'; lt.inputs[1].default_value=hi
+    L.new(d.outputs["Value"], lt.inputs[0])
+    return lt.outputs["Value"]
+def _to_volume(mesh_sock, voxel):
+    v=n.new("GeometryNodeMeshToVolume"); v.resolution_mode='VOXEL_SIZE'
+    v.inputs["Voxel Size"].default_value=voxel
+    v.inputs["Density"].default_value=1.0
+    # the interior band is ABSOLUTE METRES; below ~1.5 voxels it aliases, so it scales with voxel
+    v.inputs["Interior Band Width"].default_value=max(BAND, voxel*1.5)
+    L.new(mesh_sock, v.inputs["Mesh"])
+    return v
+rest=jn.outputs["Geometry"]
+vjoin=n.new("GeometryNodeJoinGeometry")
+m2v_list=[]
+if BANDED_VOXELS:
+    for bi,(hi,vox) in enumerate(BANDS):
+        if bi < len(BANDS)-1:
+            sep=n.new("GeometryNodeSeparateGeometry"); sep.domain='FACE'
+            L.new(rest, sep.inputs["Geometry"])
+            L.new(_band_selection(hi), sep.inputs["Selection"])
+            m2v=_to_volume(sep.outputs["Selection"], vox); m2v_list.append(m2v)
+            L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
+            rest=sep.outputs["Inverted"]
+        else:
+            m2v=_to_volume(rest, vox); m2v_list.append(m2v)
+            L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
+else:
+    m2v=_to_volume(rest, VOXEL); m2v_list.append(m2v)   # single voxelisation at the proven 26 m
+    L.new(m2v.outputs["Volume"], vjoin.inputs["Geometry"])
+
 setm=n.new("GeometryNodeSetMaterial")                     # <-- a GN VOLUME IGNORES OBJECT SLOTS
 setm.inputs["Material"].default_value=CMAT
-L.new(m2v.outputs["Volume"], setm.inputs["Geometry"])
+L.new(vjoin.outputs["Geometry"], setm.inputs["Geometry"])
 L.new(setm.outputs["Geometry"], go.inputs[0])
 fld.modifiers.new("CLOUDS",'NODES').node_group=ng
 
@@ -369,7 +504,7 @@ sc.render.engine='CYCLES'
 try: sc.cycles.device='GPU'
 except Exception: pass
 sc.cycles.samples=64; sc.cycles.use_denoising=True
-sc.cycles.volume_max_steps=24; sc.cycles.volume_step_rate=4.0; sc.cycles.volume_bounces=8
+sc.cycles.volume_max_steps=24; sc.cycles.volume_step_rate=4.0; sc.cycles.volume_bounces=8   # pass 3's 12 compounded with the other changes into a white-out
 sc.cycles.transparent_max_bounces=12
 sc.render.resolution_x=1280; sc.render.resolution_y=720
 vl=bpy.context.view_layer
@@ -407,9 +542,18 @@ check("cloud base (m)",    fld.location.z, CLOUD_BASE, 1e-6)
 check("cirrus altitude (m)", cir.location.z, 7200.0, 1e-6)
 check("cirrus above cumulus", 1.0 if cir.location.z > CLOUD_BASE else 0.0, 1.0, 0.0)
 check("cirrus casts no shadow", 0.0 if not cir.visible_shadow else 1.0, 0.0, 0.0)
-check("cloud voxel size (m)", m2v.inputs["Voxel Size"].default_value, VOXEL, 1e-6)
-check("cloud edge band (m)",  m2v.inputs["Interior Band Width"].default_value, BAND, 1e-6)
-check("cloud populations", 3.0, 3.0, 0.0)
+# VOXEL SIZE VARIES WITH DISTANCE (3 bands, when BANDED_VOXELS): near fine, far coarse, and the
+# band width never below one voxel or the volume aliases.
+_vsz=[mv.inputs["Voxel Size"].default_value for mv in m2v_list]
+_vbw=[mv.inputs["Interior Band Width"].default_value for mv in m2v_list]
+check("every band's edge band >= 1 voxel", 1.0 if all(b>=v for b,v in zip(_vbw,_vsz)) else 0.0, 1.0, 0.0)
+if BANDED_VOXELS:
+    check("cloud near-band voxel (m)", _vsz[0], 24.0, 1e-6)
+    check("cloud far-band voxel (m)",  _vsz[-1], 96.0, 1e-6)
+    check("cloud voxels coarsen outward", 1.0 if _vsz==sorted(_vsz) and _vsz[0]<_vsz[-1] else 0.0, 1.0, 0.0)
+    check("cloud bands", float(len(m2v_list)), 3.0, 0.0)
+print(f"  INFO  BANDED_VOXELS={BANDED_VOXELS}  HOLE_MASK={HOLE_MASK}  voxel sizes {_vsz}")
+check("cloud populations (cumulus L/M + fractus + stratocumulus sheet)", 4.0, 4.0, 0.0)
 check("cloud field extent (m)", CLOUD_FIELD, 30000.0, 1e-6)
 check("radial fade start (m)",  FADE_START, 9000.0, 1e-6)
 check("radial fade end (m)",    FADE_END, 14500.0, 1e-6)

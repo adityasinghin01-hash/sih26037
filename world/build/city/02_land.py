@@ -19,7 +19,7 @@ import bpy, bmesh, math, os, sys, json, time
 import numpy as np
 from mathutils import Vector
 
-REF  = os.environ.get("SIH_REF", "/Users/aditya/Desktop/SIH26037-Reference")
+REF  = os.environ.get("SIH_REF", "/Users/aditya/dev/sih2026/world")
 OUT  = f"{REF}/blend/02_LAND.blend"
 RND  = f"{REF}/renders/city"
 os.makedirs(RND, exist_ok=True)
@@ -68,11 +68,29 @@ for m in ("bl_ext.blender_org.antlandscape","bl_ext.blender_org.sapling_tree_gen
     try: bpy.ops.preferences.addon_enable(module=m)
     except Exception as e: print("addon enable failed:", m, e)
 sc = bpy.context.scene
+# Cycles must be the engine for material.cycles / object.cycles to exist - D2 sets
+# displacement_method='BOTH' and adaptive subdivision, and those live on those property groups.
+try:
+    bpy.ops.preferences.addon_enable(module='cycles')
+except Exception as e: print("cycles addon enable:", e)
+sc.render.engine='CYCLES'
+# D2's adaptive subdivision + true displacement ('BOTH') only render under the EXPERIMENTAL
+# feature set. Without this the terrain silently falls back to BUMP only and the 4K circle
+# relief never reaches the silhouette. Saved into the .blend so it propagates to 03/04.
+sc.cycles.feature_set='EXPERIMENTAL'
 sc.unit_settings.system='METRIC'; sc.unit_settings.length_unit='METERS'
 sc.view_settings.view_transform='Standard'; sc.view_settings.exposure=-3.06
 COL={}
 for n in ("TERRAIN","WATER","HILL","DISTANT"):
     c=bpy.data.collections.new(n); sc.collection.children.link(c); COL[n]=c
+
+# RULE 7: the render split is decided HERE, at build time - never discovered later by
+# pass_render.py. Every top-level collection this script produces is one separately renderable
+# pass; write that down so nothing downstream ever hardcodes a collection name.
+def write_pass_manifest():
+    names=sorted(c.name for c in sc.collection.children if c.objects)
+    json.dump(names, open(os.path.splitext(OUT)[0]+".passes.json","w"), indent=1)
+    print(f"  INFO  {len(names)} separately renderable collections: {names}")
 
 # ---------------------------------------------------------------- the Malin centreline
 mp=json.load(open(f"{REF}/map/najibabad_metres.json"))
@@ -341,6 +359,22 @@ _b2[0::4]=SURF['spoil'].ravel();  _b2[1::4]=0.0; _b2[2::4]=0.0; _b2[3::4]=1.0
 _gr.data.foreach_set("color",_b1); _g2.data.foreach_set("color",_b2)
 print(f"  GROUND/GROUND2 attributes baked onto {_nv} terrain vertices")
 
+# CIRCLE: the mask for D2 - the 4K displacement tier lives INSIDE the five scenario circles only
+# (PLAN s9 C2 step 8). 1.0 in the core, a 40 m cosine rim so the tessellation boundary never
+# reads, 0.0 outside - where bump alone is right and cheap. The centres MUST match SCEN_CIRCLES
+# used by the rock scatter below; asserted.
+SCEN_CIRCLES=[(-280.0,450.0,205.0,"S1"),(340.0,-580.0,165.0,"S2"),(-155.0,-476.0,185.0,"S3"),
+              (130.0,-800.0,235.0,"S4"),(-690.0,760.0,205.0,"S5")]
+_cm=np.zeros_like(X)
+for _cx,_cy,_cr,_tg in SCEN_CIRCLES:
+    _d=np.hypot(X-_cx,Y-_cy)
+    _w=np.clip((_cr-_d)/40.0,0.0,1.0)              # 0 at the edge, 1 by 40 m inside
+    _cm=np.maximum(_cm, 0.5-0.5*np.cos(np.pi*_w)) # cosine ease
+_cc=me.color_attributes.new(name="CIRCLE",type='FLOAT_COLOR',domain='POINT')
+_bc=np.empty(_nv*4); _bc[0::4]=_cm.ravel(); _bc[1::4]=_cm.ravel(); _bc[2::4]=_cm.ravel(); _bc[3::4]=1.0
+_cc.data.foreach_set("color",_bc)
+print(f"  CIRCLE attribute baked: {(_cm>0.5).mean()*100:.2f}% of the plain inside the five circles")
+
 # ---------------------------------------------------------------- the hill: A.N.T. + the ERODER
 print("building the hill ...")
 # A ridge, built analytically so its FORM is controlled, then eroded. A.N.T.'s hetero_terrain
@@ -437,6 +471,14 @@ for _ in range(11):
     zg=(pad[0:-2,1:-1]+pad[2:,1:-1]+pad[1:-1,0:-2]+pad[1:-1,2:]+4.0*zg)/8.0
 FORM_W=0.82
 blended = relief_keep*FORM_W + zg*(1.0-FORM_W)      # both are now (NY, NX) and ALIGNED
+# THE RIM MUST BE EXACT ZERO, NOT approximately zero. relief_keep (the analytic dome) is clipped
+# to exactly 0 beyond the inscribed ellipse, by construction - but EROSION IS A SIMULATION, NOT
+# CONFINED TO THE ELLIPSE, and zg can carry a small residual there. At FORM_W=0.82 that residual
+# survives at 18% strength - a hard jagged black seam tracing the WHOLE hill footprint in every
+# render since 5 Sep (found by comparing against that day's own "scree" render, not a new bug;
+# confirmed by measurement, not reasoning - two wrong terrace-side theories were tried first).
+# Hard-clamp wherever the analytic dome says there is no hill at all.
+blended[relief_keep<=1e-6]=0.0
 zs = blended[_gi,_gj]                                # gather back to the scrambled vertex order
 zs = zs/max(zs.max(),1e-9)*HILL_H
 for i,v in enumerate(hill.data.vertices): v.co.z=float(zs[i])
@@ -682,6 +724,19 @@ def closed_wedge(wet, ztop, zbot, name, shore=0.05):
     to bound its path length, and an open shell is what let absorption run away."""
     ny,nx = wet.shape
     cell = wet[:-1,:-1] & wet[:-1,1:] & wet[1:,1:] & wet[1:,:-1]     # fully-wet quads
+    # DE-PINCH (audit's standing WATER_PIT_1 warning). Two wet quads meeting only on a diagonal -
+    # the other two diagonals dry - make the rim wrap ONE vertical edge with FOUR faces (each of
+    # the four boundary edges round that node spawns a rim quad, and they all share the a->b
+    # vertical edge). A non-manifold shell lets the Principled Volume's path length run away.
+    # Fix causally: drop one quad of every diagonal-only pair until none remain. The bodies are
+    # 5 cm-tall sub-pixel wedges, so a 1-2 cell loss at a pinch is invisible.
+    for _dp in range(20):
+        NW=cell[:-1,:-1]; NE=cell[:-1,1:]; SE=cell[1:,1:]; SW=cell[1:,:-1]
+        p1 = NW & SE & ~NE & ~SW
+        p2 = NE & SW & ~NW & ~SE
+        if not (p1.any() or p2.any()): break
+        cell[1:,1:][p1]  = False        # clear SE of a NW-SE pinch
+        cell[1:,:-1][p2] = False        # clear SW of a NE-SW pinch
     used=np.zeros_like(wet)
     used[:-1,:-1]|=cell; used[:-1,1:]|=cell; used[1:,1:]|=cell; used[1:,:-1]|=cell
     # a node is SHORE if it touches any quad that is not a water quad
@@ -720,7 +775,9 @@ def closed_wedge(wet, ztop, zbot, name, shore=0.05):
     # otherwise". The rim quads' winding is not guaranteed by the order they were built in.
     bm=bmesh.new(); bm.from_mesh(me)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    nonman=sum(1 for e in bm.edges if not e.is_manifold)
     bm.to_mesh(me); bm.free(); me.update()
+    assert nonman==0, f"{name}: {nonman} non-manifold edges after de-pinch - the shell is not a closed solid"
     return ob, len(vs), len(fs), nrim, used, top_z
 
 wat, _nv, _nf, _nrim, WETN, WTOP = closed_wedge(wet, surf_field, H, "WATER_MALIN")
@@ -811,7 +868,7 @@ def _math(nt,op,a,b=None,c=None):
         else: n.inputs[k].default_value=v
     return n.outputs[0]
 
-def soil_material(fields=True):
+def soil_material(fields=True, subcell=()):
     """S0 s3 'THE GROUND MATERIAL', 5 Sep. The bund grid is REAL GEOMETRY - 75 x 120 m parcels,
     each with its own id and its own level - and it was INVISIBLE, because all 4 km2 wore one
     material keyed only to height. That, not the terrain, is why the plain read featureless.
@@ -942,11 +999,36 @@ def soil_material(fields=True):
         wet_,_      = two_freq(0.34, 11.0,(0.058,0.052,0.040,1),(0.140,0.126,0.098,1))
         # S0 s3 items 7,12: raw excavated spoil - unvegetated, and the bank IS the tell
         spo,_       = two_freq(0.70, 16.0,(0.128,0.104,0.074,1),(0.262,0.222,0.162,1))
+        # --- SURFACES SMALLER THAN THE GRID (S0 s3, amended 5 Sep). A threshing floor is 11 m
+        # across on a 6.67 m grid and lands on 1-2 vertices, so a colour attribute cannot carry
+        # it at ANY size the spec allows. It is evaluated PER PIXEL from its own centre instead.
+        # REF-04 s9: hard swept BARE earth - no crop, no furrow, and it overrides the plot tone.
+        sub=None
+        if subcell:
+            pxy=nt.nodes.new("ShaderNodeCombineXYZ")           # kill z: these are ground discs
+            nt.links.new(pos.outputs["X"],pxy.inputs["X"]); nt.links.new(pos.outputs["Y"],pxy.inputs["Y"])
+            for _cx,_cy,_r in subcell:
+                dn=nt.nodes.new("ShaderNodeVectorMath"); dn.operation='DISTANCE'
+                nt.links.new(pxy.outputs["Vector"],dn.inputs[0])
+                dn.inputs[1].default_value=(_cx,_cy,0.0)
+                # a swept floor has a HARD edge with a scuffed metre at its rim, not a fade
+                mr=nt.nodes.new("ShaderNodeMapRange")
+                mr.inputs["From Min"].default_value=_r; mr.inputs["From Max"].default_value=_r*0.82
+                mr.inputs["To Min"].default_value=0.0;  mr.inputs["To Max"].default_value=1.0
+                mr.clamp=True; nt.links.new(dn.outputs["Value"],mr.inputs["Value"])
+                sub = mr.outputs["Result"] if sub is None else \
+                      _math(nt,'MAXIMUM',sub,mr.outputs["Result"])
         col=_mix(nt,gs.outputs["Blue"],  col, bare)    # bare first: it OVERRIDES the plot tone
+        if sub is not None: col=_mix(nt,sub, col, bare)
         col=_mix(nt,gs.outputs["Green"], col, peb)
         col=_mix(nt,gs.outputs["Red"],   col, grav)
-        col=_mix(nt,gs.outputs["Alpha"] if False else ga.outputs["Alpha"], col, wet_)
-        col=_mix(nt,g2.outputs["Color"], col, spo)
+        col=_mix(nt,ga.outputs["Alpha"], col, wet_)
+        # GROUND2 is baked R=spoil, G=B=0. Feeding the COLOR into a float Factor socket makes
+        # Blender average the three channels, so the spoil mask was landing at a THIRD of its
+        # value and the excavated banks - "the bank IS the tell" - were nearly invisible.
+        # Separate it like every other channel and take Red. Found by reading, asserted below.
+        g2s=nt.nodes.new("ShaderNodeSeparateColor"); nt.links.new(g2.outputs["Color"],g2s.inputs["Color"])
+        col=_mix(nt,g2s.outputs["Red"], col, spo)
     nt.links.new(col,b.inputs["Base Color"])
 
     # micro grain everywhere, and roughness must vary or it reads as plastic
@@ -973,6 +1055,22 @@ def soil_material(fields=True):
                   _math(nt,'MULTIPLY',_math(nt,'GREATER_THAN',state,0.80),0.42),hgt)
     nt.links.new(hgt,bump.inputs["Height"])
     nt.links.new(bump.outputs["Normal"],b.inputs["Normal"])
+    if fields:
+        # D2 - THE 4K DISPLACEMENT TIER, INSIDE THE FIVE SCENARIO CIRCLES ONLY (PLAN s9 C2 step 8).
+        # The SAME causally-placed S-scale relief (stones on the bars/apron, clods on the ploughed,
+        # cracked crust on the fallow) that drives the bump also drives REAL micro-displacement
+        # inside the circles - so at street / 2 m range the dirt has a SILHOUETTE, not just a
+        # shaded normal. Gated by the CIRCLE attribute: exactly 0 outside, where bump alone is
+        # right and cheap. The HEIGHT (Scale) and the dicing rate are an RTX judgement - 0.08 m of
+        # relief is invisible at 800x450 - so this ships as scaffold + assertions, tuned there.
+        circ=nt.nodes.new("ShaderNodeAttribute"); circ.attribute_name="CIRCLE"
+        dh=_math(nt,'MULTIPLY',_math(nt,'SUBTRACT',hgt,0.5),circ.outputs["Fac"])
+        disp=nt.nodes.new("ShaderNodeDisplacement")
+        disp.inputs["Scale"].default_value=0.10; disp.inputs["Midlevel"].default_value=0.0
+        nt.links.new(dh,disp.inputs["Height"])
+        _out=nt.nodes.get("Material Output") or next(nd for nd in nt.nodes if nd.type=='OUTPUT_MATERIAL')
+        nt.links.new(disp.outputs["Displacement"],_out.inputs["Displacement"])
+        m.displacement_method='BOTH'      # Blender 4.5: a core Material property, not material.cycles
     rr=nt.nodes.new("ShaderNodeValToRGB"); rr.color_ramp.elements[0].position=0.35
     rr.color_ramp.elements[0].color=(0.78,0.78,0.78,1); rr.color_ramp.elements[1].color=(0.98,0.98,0.98,1)
     nt.links.new(fine.outputs["Fac"], rr.inputs["Fac"])
@@ -1039,7 +1137,8 @@ def rock_material():
     nt.links.new(nz.outputs["Fac"], rr.inputs["Fac"])
     nt.links.new(rr.outputs["Color"], b.inputs["Roughness"])
     return m
-SOIL=soil_material(fields=True)
+# the threshing floors go in as SHADER instances, not through the attribute - S0 s3, 5 Sep
+SOIL=soil_material(fields=True, subcell=[(cx,cy,THRESH_R) for cx,cy,_ in thresh_xy])
 def hill_material():
     """ONE material for the hill: earth and rock in a single shader, mixed by a NOISE-MASKED
     HEIGHT GRADIENT. Two materials on two sets of faces can only ever meet along a face
@@ -1092,6 +1191,17 @@ def hill_material():
     return m
 ROCK=rock_material()
 terr.data.materials.append(SOIL)
+# D2 - Cycles ADAPTIVE SUBDIVISION carries the displacement above. It tessellates ONLY what the
+# camera sees and ONLY at render, so build and preview stay at 720k tris. A Subdivision Surface
+# modifier must be present and last in the stack for Cycles to pick it up; the dicing rate is the
+# RTX knob (lower = finer = more memory) and starts conservative.
+_tsub=terr.modifiers.new("ADAPTIVE_DICE",'SUBSURF')
+_tsub.subdivision_type='SIMPLE'; _tsub.levels=0; _tsub.render_levels=0
+try:
+    terr.cycles.use_adaptive_subdivision=True
+    terr.cycles.dicing_rate=2.0        # px/micropolygon at render; tune on the RTX against a 2 m crop
+except Exception as _e:
+    print("  NOTE adaptive subdivision flags not set headlessly:", _e)
 # 2 · ROCK ON THE UPPER THIRD - assigned per FACE by height and slope, so it appears where
 # soil cannot hold, exactly as REF-13 s6 read it off ref_33.
 # THE THREE-SCALE DEBRIS LAW (S0 s3, PLAN s3b) NEEDS THE SHADER TO KNOW WHERE DEBRIS IS.
@@ -1194,6 +1304,265 @@ def water_material():
 _wmat=water_material()
 for _o in COL["WATER"].objects:            # EVERY water body, not just the river: the ponds and
     _o.data.materials.append(_wmat)        # pits carried no material at all and rendered white
+
+# ================================================================================================
+# PLAN.md s10 PHASE 2 - DETAIL THAT EARNS ITS PLACE. Written before building, per Rule 1.
+# STEP 8 first (terraces edit the hill's z), THEN step 7 (rocks, so they snap to the FINAL
+# terraced surface, not a stale one), THEN step 10 (the reference figure, cheapest last).
+# ================================================================================================
+
+# ---------------------------------------------------------------- STEP 8: CULTIVATED TERRACES
+# REF-13 s6: "cut into every workable slope, as thin horizontal steps... they read at 2 km as
+# fine horizontal lines and they are what tells you people live there." Currently missing
+# entirely. Gated the way the quarry benches were gated - REF-05 s10k: a mask that GATES an
+# effect must also WEIGHT it, or the edge is a cliff.
+print("cutting cultivated terraces on the hill's workable slopes ...")
+_hco=np.array([[v.co.x,v.co.y,v.co.z] for v in hill.data.vertices])
+_tgj=np.clip(np.round((_hco[:,0]+HILL_GX/2)/(HILL_GX/(HILL_NX-1))).astype(int),0,HILL_NX-1)
+_tgi=np.clip(np.round((_hco[:,1]+HILL_GY/2)/(HILL_GY/(HILL_NY-1))).astype(int),0,HILL_NY-1)
+_tzg=np.zeros((HILL_NY,HILL_NX)); _tcnt=np.zeros((HILL_NY,HILL_NX))
+np.add.at(_tzg,(_tgi,_tgj),_hco[:,2]); np.add.at(_tcnt,(_tgi,_tgj),1.0)
+_tzg=np.where(_tcnt>0,_tzg/np.maximum(_tcnt,1),0.0)
+_cellx=HILL_GX/(HILL_NX-1); _celly=HILL_GY/(HILL_NY-1)
+_gyv,_gxv=np.gradient(_tzg,_celly,_cellx)
+_tslope_deg=np.degrees(np.arctan(np.hypot(_gxv,_gyv)))
+_tworld_x=np.linspace(-HILL_GX/2,HILL_GX/2,HILL_NX)+HILL_X
+_tworld_y=np.linspace(-HILL_GY/2,HILL_GY/2,HILL_NY)+HILL_Y
+_tWX,_tWY=np.meshgrid(_tworld_x,_tworld_y,indexing='xy')
+_trelief=_tzg-terrain_z(_tWX,_tWY)
+_tsoil=_trelief<(zmax_h*0.55)               # below the rock line - soil holds here
+_tworkable=(_tslope_deg>=8.0)&(_tslope_deg<=32.0)&_tsoil&(_trelief>2.0)
+TERR_RISER=1.15
+_stepped=np.floor(_tzg/TERR_RISER)*TERR_RISER
+def _blur(a,iters=4):
+    for _ in range(iters):
+        p=np.pad(a,1,mode='edge')
+        a=(p[0:-2,1:-1]+p[2:,1:-1]+p[1:-1,0:-2]+p[1:-1,2:]+4.0*a)/8.0
+    return a
+_tw=_blur(_tworkable.astype(float),4)
+# THE RIM MUST STAY UNTOUCHED - S0 s3 "THE HILL HAS NO PAD": every rim vertex reaches ZERO
+# relief at the ellipse and therefore lands exactly on the ground, self-correcting, by
+# construction. The blur above SPREADS the workable-slope mask outward by a few cells, which can
+# bleed terracing right up to that rim and break the self-correction - a probe of the render
+# found a hard jagged black seam tracing the ENTIRE hill footprint, and this is why: found by
+# LOOKING, not assumed. Hard-zero the weight wherever relief is low enough to matter.
+_tw[_trelief<5.0]=0.0
+_tzg_new=_tzg*(1-_tw)+_stepped*_tw
+for i,v in enumerate(hill.data.vertices): v.co.z=float(_tzg_new[_tgi[i],_tgj[i]])
+hill.data.update()
+_terr_cov=float(_tworkable.mean())
+print(f"  terraces: workable-slope coverage {_terr_cov*100:.1f}% of the hill grid, riser {TERR_RISER} m")
+
+# ---------------------------------------------------------------- STEP 7: REAL 3-D ROCKS
+# REF-07 s4, quoting the UE5 breakdown: "I did not put 3D rocks all over my mountains, only in
+# areas where there was light and they could add detail." So: the hill's LIT FACE, and inside
+# the five scenario circles where the plain's own gravel bars / Bhabar apron make rocks real
+# (never scattered on plain farmland, which has none). THREE-SCALE DEBRIS LAW (PLAN s3b,
+# REF-07 s4): slab -> boulders BELOW it -> pebbles caught by the boulders. Causal, not random -
+# scattering the small stuff randomly is the tell that fails Aditya's zoom test.
+print("scattering real 3-D rocks (three-scale debris law: slab -> boulder -> pebble) ...")
+def make_rock(seed,radius,flatten,elong,rough,subdiv=2):
+    # radius,flatten,elong ARE NOISE MULTIPLIERS, and they COMPOUND - the first build measured a
+    # "large" slab at 5.4 m across against an intended 1.5-4.0 m, and the shadows it cast (33 deg
+    # sun) are exactly the stray diagonal stripes found by probing the render. Fix: build the
+    # shape, then MEASURE its own half-extent and rescale to land radius EXACTLY, so noise and
+    # elongation can vary the FORM without ever silently inflating the SIZE. Rule 6: measure,
+    # don't hope a formula behaves.
+    bm=bmesh.new()
+    bmesh.ops.create_icosphere(bm,subdivisions=subdiv,radius=1.0)
+    for v in bm.verts:
+        x,y,z=v.co
+        th=math.atan2(y,x); ph=math.acos(max(-1.0,min(1.0,z)))
+        r=1.0+rough*(math.sin(3*th+seed)*math.cos(2*ph+seed*1.3)
+                     +0.5*math.sin(5*ph-seed*0.7+th*2.0)
+                     +0.3*math.cos(7*th+seed*2.1))
+        v.co.x=x*r*(1.0+elong); v.co.y=y*r; v.co.z=z*r*flatten
+    ext=max(max(abs(v.co.x) for v in bm.verts),max(abs(v.co.y) for v in bm.verts),
+            max(abs(v.co.z) for v in bm.verts))
+    if ext>1e-9:
+        s=radius/ext
+        for v in bm.verts: v.co.x*=s; v.co.y*=s; v.co.z*=s
+    bmesh.ops.recalc_face_normals(bm,faces=bm.faces)
+    me=bpy.data.meshes.new(f"ROCKMESH_{seed}")
+    bm.to_mesh(me); bm.free(); me.update(); me.materials.append(ROCK)
+    return me
+_rrng=np.random.default_rng(20260906)
+# radius is now the EXACT half-extent of the longest axis, measured, not a raw multiplier -
+# so these ranges are the real metre sizes: REF-07 s4's "large slabs -> medium boulders ->
+# small pebbles". A tighter instance-scale jitter (0.85-1.15, not 0.8-1.3) keeps the worst case
+# sane too.
+LARGE_MESHES=[make_rock(100+i,_rrng.uniform(0.8,2.0),_rrng.uniform(0.35,0.55),
+              _rrng.uniform(0.1,0.5),_rrng.uniform(0.18,0.30),2) for i in range(8)]
+MEDIUM_MESHES=[make_rock(200+i,_rrng.uniform(0.3,0.65),_rrng.uniform(0.65,0.85),
+               _rrng.uniform(0.0,0.25),_rrng.uniform(0.20,0.32),2) for i in range(10)]
+SMALL_MESHES=[make_rock(300+i,_rrng.uniform(0.05,0.13),_rrng.uniform(0.75,0.95),
+              _rrng.uniform(0.0,0.15),_rrng.uniform(0.22,0.35),1) for i in range(8)]
+COL["ROCKS_3D"]=bpy.data.collections.new("ROCKS_3D"); sc.collection.children.link(COL["ROCKS_3D"])
+COL_ROCKS=COL["ROCKS_3D"]
+counters={'n':0,'large':0,'medium':0,'small':0}
+ROCK_LOG={'LARGE':[],'MED':[],'SM':[]}
+def place_family(wx,wy,wz,down2d,slope,tag,counters):
+    lm=LARGE_MESHES[_rrng.integers(0,len(LARGE_MESHES))]
+    lob=bpy.data.objects.new(f"ROCK_L_{tag}_{counters['n']}",lm)
+    lob.location=(wx,wy,wz+0.15)
+    lob.rotation_euler=(_rrng.uniform(-0.15,0.15),_rrng.uniform(-0.15,0.15),_rrng.uniform(0,2*math.pi))
+    s=_rrng.uniform(0.85,1.15); lob.scale=(s,s,s)
+    COL_ROCKS.objects.link(lob); counters['large']+=1; counters['n']+=1
+    ROCK_LOG['LARGE'].append((wx,wy,wz))
+    perp=(-down2d[1],down2d[0])
+    for _ in range(int(_rrng.integers(2,5))):
+        dist=_rrng.uniform(1.5,4.5); lateral=_rrng.uniform(-1.5,1.5)
+        mx=wx+down2d[0]*dist+perp[0]*lateral; my=wy+down2d[1]*dist+perp[1]*lateral
+        mz=wz-slope*dist*_rrng.uniform(0.6,1.1)
+        mm=MEDIUM_MESHES[_rrng.integers(0,len(MEDIUM_MESHES))]
+        mob=bpy.data.objects.new(f"ROCK_M_{tag}_{counters['n']}",mm)
+        mob.location=(mx,my,mz+0.08)
+        mob.rotation_euler=(_rrng.uniform(-0.2,0.2),_rrng.uniform(-0.2,0.2),_rrng.uniform(0,2*math.pi))
+        s=_rrng.uniform(0.85,1.15); mob.scale=(s,s,s)
+        COL_ROCKS.objects.link(mob); counters['medium']+=1; counters['n']+=1
+        ROCK_LOG['MED'].append((mx,my,mz,(wx,wy,wz)))
+        for _s in range(int(_rrng.integers(3,6))):
+            sx=mx+_rrng.uniform(-0.6,0.6); sy=my+_rrng.uniform(-0.6,0.6); sz=mz+_rrng.uniform(-0.05,0.05)
+            sm=SMALL_MESHES[_rrng.integers(0,len(SMALL_MESHES))]
+            sob=bpy.data.objects.new(f"ROCK_S_{tag}_{counters['n']}",sm)
+            sob.location=(sx,sy,sz+0.03)
+            sob.rotation_euler=(_rrng.uniform(0,math.pi),_rrng.uniform(0,math.pi),_rrng.uniform(0,2*math.pi))
+            s=_rrng.uniform(0.7,1.4); sob.scale=(s,s,s)
+            COL_ROCKS.objects.link(sob); counters['small']+=1; counters['n']+=1
+            ROCK_LOG['SM'].append((sx,sy,mx,my))
+
+# hill's lit face: recompute fresh AFTER terracing. foreach_get("center",...) is used instead of
+# the earlier _lt/vertex-index reshape - that assumed every face is a quad, which foreach_get
+# CANNOT confirm from outside, and it silently fell back to a slow Python loop rather than fail
+# loudly (found here: _lt held np.empty's uninitialised garbage, not real indices - a false-OK
+# in the same family as REF-05 s13's PRINCIPLED_VOLUME string mismatch). "center" needs no
+# vertex-count assumption at all, for a quad OR an n-gon.
+_pcen_fresh=np.empty(_np_f*3); hill.data.polygons.foreach_get("center",_pcen_fresh)
+_pcen_fresh=_pcen_fresh.reshape(_np_f,3)
+_pz_abs=_pcen_fresh[:,2]
+_pnrm_full=np.empty(_np_f*3); hill.data.polygons.foreach_get("normal",_pnrm_full)
+_pnrm_full=_pnrm_full.reshape(_np_f,3)
+SUN_DIR=np.array([math.cos(math.radians(33.11))*math.sin(math.radians(246.87)),
+                  math.cos(math.radians(33.11))*math.cos(math.radians(246.87)),
+                  math.sin(math.radians(33.11))])
+_lit=(_pnrm_full@SUN_DIR)>0.15
+_rockface=(_mi==1)
+_hill_cand=np.where(_lit&_rockface)[0]
+n_hill_sites=0
+if len(_hill_cand)>0:
+    BIN=25.0
+    bx=np.floor(_pc[_hill_cand,0]/BIN).astype(int); by=np.floor(_pc[_hill_cand,1]/BIN).astype(int)
+    key=bx.astype(np.int64)*100003+by
+    order=np.argsort(-_zc[_hill_cand])
+    seen=set(); hill_sites=[]
+    for oi in order:
+        k=key[oi]
+        if k in seen: continue
+        seen.add(k); hill_sites.append(_hill_cand[oi])
+        if len(hill_sites)>=10: break
+    n_hill_sites=len(hill_sites)
+    for fi in hill_sites:
+        wx=float(_pc[fi,0]+HILL_X); wy=float(_pc[fi,1]+HILL_Y); wz=float(_pz_abs[fi])
+        nx,ny,nz=_pnrm_full[fi]
+        dn=math.hypot(nx,ny)
+        down2d=(nx/dn,ny/dn) if dn>1e-6 else (1.0,0.0)
+        slope=dn/max(nz,1e-3)
+        place_family(wx,wy,wz,down2d,slope,"HILL",counters)
+print(f"  hill: {len(_hill_cand)} lit-rock-face candidates, {n_hill_sites} slab sites used")
+
+# the five scenario circles, on the PLAIN - only where gravel bars / the Bhabar apron make a
+# real rock believable (S0 s3, REF-13 s6). Never scattered on farmland, which has none.
+print("scattering rocks on the plain's gravel bars / Bhabar apron, inside the five circles ...")
+CIRCLES=SCEN_CIRCLES          # ONE source of truth - also drives the D2 CIRCLE displacement mask
+_Hgy,_Hgx=np.gradient(H,2*GEXT/NG,2*GEXT/NG)
+circle_log=[]
+for cx,cy,cr,tag in CIRCLES:
+    dist=np.hypot(X-cx,Y-cy)
+    cmask=(dist<=cr)&((SURF['gravel']>0.30)|(SURF['pebble']>0.30))
+    n_qual=int(cmask.sum())
+    if n_qual<20:
+        circle_log.append((tag,n_qual,0)); continue
+    rows,cols=np.where(cmask)
+    val=np.where(SURF['gravel'][rows,cols]>=SURF['pebble'][rows,cols],
+                 SURF['gravel'][rows,cols],SURF['pebble'][rows,cols])
+    cellm=2*GEXT/NG; binn=max(1,int(round(18.0/cellm)))
+    bx=(cols//binn).astype(np.int64); by=(rows//binn).astype(np.int64)
+    key=bx*100003+by
+    order=np.argsort(-val)
+    seen=set(); sites=[]
+    for oi in order:
+        k=key[oi]
+        if k in seen: continue
+        seen.add(k); sites.append((rows[oi],cols[oi]))
+        if len(sites)>=3: break
+    for (r,c) in sites:
+        wx=float(X[r,c]); wy=float(Y[r,c]); wz=float(H[r,c])
+        gx_=float(_Hgx[r,c]); gy_=float(_Hgy[r,c])
+        gn=math.hypot(gx_,gy_)
+        down2d=(-gx_/gn,-gy_/gn) if gn>1e-9 else (1.0,0.0)
+        place_family(wx,wy,wz,down2d,gn,tag,counters)
+    circle_log.append((tag,n_qual,len(sites)))
+for _tag,_nq,_np_ in circle_log:
+    print(f"    {_tag}: {_nq} qualifying grid cells (gravel/apron), {_np_} slab sites placed")
+
+# ---------------------------------------------------------------- STEP 10: 1.70 m REFERENCE FIGURE
+# REF-07 s8: "would have caught the 5.6 m road and the 13 m poles." A fixed, permanent,
+# dumb scale-check - NOT component 7's people.
+def make_figure():
+    R=0.22; H_BODY=1.30; R_HEAD=0.20; N=10
+    verts=[]; faces=[]
+    ang=np.linspace(0,2*np.pi,N,endpoint=False)
+    for z in (0.0,H_BODY):
+        for a in ang: verts.append((R*math.cos(a),R*math.sin(a),z))
+    for i in range(N):
+        j=(i+1)%N; faces.append((i,j,N+j,N+i))
+    bi=len(verts); verts.append((0,0,0.0)); ti=len(verts); verts.append((0,0,H_BODY))
+    for i in range(N):
+        j=(i+1)%N; faces.append((bi,j,i)); faces.append((ti,N+i,N+j))
+    HZ=H_BODY+R_HEAD; LAT=6; LON=10; head_start=len(verts)
+    for la in range(LAT+1):
+        theta=math.pi*la/LAT
+        for lo in range(LON):
+            phi=2*math.pi*lo/LON
+            verts.append((R_HEAD*math.sin(theta)*math.cos(phi),R_HEAD*math.sin(theta)*math.sin(phi),
+                          HZ+R_HEAD*math.cos(theta)))
+    for la in range(LAT):
+        for lo in range(LON):
+            lo2=(lo+1)%LON
+            a=head_start+la*LON+lo; b=head_start+la*LON+lo2
+            c=head_start+(la+1)*LON+lo2; d=head_start+(la+1)*LON+lo
+            faces.append((a,b,c,d))
+    me=bpy.data.meshes.new("FIGURE_1_70M"); me.from_pydata(verts,[],faces); me.update(); me.shade_smooth()
+    m=bpy.data.materials.new("FIGURE_MAT"); m.use_nodes=True
+    m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value=(0.35,0.30,0.28,1.0)
+    me.materials.append(m)
+    return bpy.data.objects.new("FIGURE_1_70M",me)
+COL["REFERENCE"]=bpy.data.collections.new("REFERENCE"); sc.collection.children.link(COL["REFERENCE"])
+fig_ob=make_figure()
+_fx,_fy=HILL_X,HILL_Y-260.0
+_fz=float(terrain_z(np.array([_fx]),np.array([_fy]))[0])
+fig_ob.location=(_fx,_fy,_fz)
+COL["REFERENCE"].objects.link(fig_ob)
+print(f"  1.70 m reference figure placed at ({_fx:.0f},{_fy:.0f},{_fz:.1f}) near the hill's southern foot")
+
+# ---------------------------------------------------------------- STEP 9: FINE SCULPTED DETAIL
+# PLAN s10 Phase 2 item 9: "multires sculpt + normal bake ... judged by rendering a small CROP at
+# full resolution." Implemented as Subdivision Surface + Displace (a legacy CLOUDS texture,
+# high-frequency) ON THE HILL DIRECTLY, not a baked UV normal map: a 57k-vertex irregular terrain
+# mesh has no clean UV layout to bake onto without a large separate unwrap effort, and this
+# modifier stack gives the SAME thing PLAN actually wants - real sculpted-looking form, cheap
+# until render time, judged by a full-resolution crop (REF-07 s8's Ctrl+B trick, scripted) -
+# without that fragility. render_levels only bites at RENDER time, so build/preview stay cheap.
+print("adding fine sculpted detail (subdivision + displacement) to the hill ...")
+_subsurf=hill.modifiers.new("FINE_SUBSURF",'SUBSURF')
+_subsurf.subdivision_type='CATMULL_CLARK'
+_subsurf.levels=1; _subsurf.render_levels=2   # 2 -> ~16x faces AT RENDER ONLY: measured, kept modest
+_dtex=bpy.data.textures.new("HILL_FINE_DETAIL",'CLOUDS')
+_dtex.noise_basis='BLENDER_ORIGINAL'; _dtex.noise_scale=0.018; _dtex.noise_depth=3
+_disp=hill.modifiers.new("FINE_DISPLACE",'DISPLACE')
+_disp.texture=_dtex; _disp.texture_coords='OBJECT'; _disp.mid_level=0.5; _disp.strength=0.55
+print(f"  fine detail: subsurf render_levels={_subsurf.render_levels}, displace strength "
+      f"{_disp.strength} m, noise_scale {_dtex.noise_scale}")
 
 # ---------------------------------------------------------------- ASSERTIONS
 print("\n================= COMPONENT 2 - LAND : ASSERTIONS =================")
@@ -1333,26 +1702,122 @@ flag("no hillpad layer exists - nothing flattens the Malin (S0 s3, 5 Sep)",
      'hillpad' not in LAYER)
 flag(f"bhabar apron at the hill foot (max {LAYER['apron'].max():.2f} m)", LAYER['apron'].max()>1.5)
 
-# --- PLAN.md s10 Phase 1 gate: "the terrain uses more than one surface, and every one of
-# the 14 features is visible as itself." Bounds are sanity ranges around the measured coverage
-# (gravel 5.20% / pebble 5.99% / bare 0.07% / wet 19.95% / spoil 0.02% of the 4 km2), not the
-# exact numbers themselves - the mask is procedural and a re-run will not hit them to the digit.
+# ================== THE GROUND SURFACES - S0 s3, PLAN s10 Phase 1 ==================
+# THE GATE: "the terrain uses more than one surface, and every one of the 14 features is
+# VISIBLE AS ITSELF." A surface is a CHAIN and it is only as strong as its weakest link, so
+# all three links are asserted separately:
+#   A  the mask has real coverage      - an empty mask surfaces nothing
+#   B  the attribute is ON THE MESH    - and reads back the values that were written
+#   C  the MATERIAL ACTUALLY READS IT  - a baked mask nothing reads is NOT a surface
+# C is the link that would otherwise pass in silence, and that is REF-05 s13's lesson exactly:
+# the audit's volume check tested a node type that does not exist and reported a confident OK.
+# A FALSE OK IS WORSE THAN A MISSING CHECK.
+print("\n  --- A - surface coverage (mask > 0.25, as a share of the 4 km2) ---")
+# Bounds are sanity ranges around the measured coverage (gravel 5.20% / pebble 5.99% /
+# bare 0.07% / wet 19.95% / spoil 0.02%), not the exact numbers - the masks are procedural and
+# a re-run will not hit them to the digit. The band is TWO-SIDED on purpose: a mask at 0%
+# surfaces nothing, and a mask at 60% has escaped its cause and is painting the whole plain.
 _cov={k:(v>0.25).mean()*100 for k,v in SURF.items()}
-flag(f"gravel/bar surface reads, bars+banks ({_cov['gravel']:.2f}% of 4 km2)",
+flag(f"A - gravel/bar surface reads, bars+banks ({_cov['gravel']:.2f}% of 4 km2)",
      0.5 < _cov['gravel'] < 20.0)
-flag(f"Bhabar pebble apron surface reads ({_cov['pebble']:.2f}%)",
+flag(f"A - Bhabar pebble apron surface reads ({_cov['pebble']:.2f}%)",
      0.5 < _cov['pebble'] < 20.0)
-flag(f"bare-earth surface reads, threshing floors + kiln pit floors ({_cov['bare']:.3f}%)",
+flag(f"A - bare-earth surface reads, threshing floors + kiln pit floors ({_cov['bare']:.3f}%)",
      0.0 < _cov['bare'] < 5.0)
-flag(f"wet/sediment surface reads, nala+irrig+paleo+terrace ({_cov['wet']:.2f}%)",
+flag(f"A - wet/sediment surface reads, nala+irrig+paleo+terrace ({_cov['wet']:.2f}%)",
      2.0 < _cov['wet'] < 35.0)
-flag(f"spoil-earth surface reads, pond/pit banks ({_cov['spoil']:.3f}%)",
+flag(f"A - spoil-earth surface reads, pond/pit banks ({_cov['spoil']:.3f}%)",
      0.0 < _cov['spoil'] < 3.0)
 _union=np.zeros_like(X)
 for _v in SURF.values(): _union=np.maximum(_union,_v)
 _union_cov=(_union>0.25).mean()*100
-flag(f"the ground is NOT one material any more: {_union_cov:.1f}% of the 4 km2 carries a keyed "
+flag(f"A - the ground is NOT one material any more: {_union_cov:.1f}% of the 4 km2 carries a keyed "
      f"surface, the rest stays farmland", 5.0 < _union_cov < 60.0)
+
+# --- A2 - EVERY FEATURE VISIBLE AS ITSELF, measured PER INSTANCE, never in aggregate.
+# An aggregate percentage HIDES A DEAD FEATURE behind a live one sharing its channel. `bare`
+# carries BOTH threshing floors and kiln pit floors, and three big pits satisfy any total on
+# their own while all seven floors are missing. This is REF-05 s10h - a feature smaller than
+# the grid can carry SIMPLY DOES NOT EXIST - so each instance is counted on its own.
+# EVERY INSTANCE IS COUNTED WITH ITS OWN PROFILE. The first version of this check used one
+# curve for all three and reported two of the three ponds as failures - they were fine, and the
+# ASSERTION was measuring the wrong quantity. A probe that measures the wrong thing manufactures
+# defects, which is worse than not measuring: it sends the next hour to the wrong place.
+def _nodes_where(mask,thresh=0.25): return int((mask>thresh).sum())
+_tn=sorted(_nodes_where(np.clip(1.0-np.hypot(X-cx,Y-cy)/THRESH_R,0,1)**0.6)
+           for cx,cy,_ in thresh_xy)                      # floors: clip(1-d/r)**0.6
+_pn=sorted(_nodes_where(1.0-np.clip(np.hypot(X-cx,Y-cy)/r,0,1)**2.0)
+           for cx,cy,r in pond_xy)                        # ponds: 1-(d/r)**2, a PARABOLOID
+_kn=sorted(_nodes_where(1.0-np.clip(np.hypot(X-cx,Y-cy)/r,0,1))
+           for cx,cy,r in kiln_xy)                        # pits: 1-(d/r), a cone
+flag(f"A2 - every POND spans >=12 grid nodes: {_pn}", bool(_pn) and all(n>=12 for n in _pn))
+flag(f"A2 - every CLAY PIT spans >=12 grid nodes: {_kn}", bool(_kn) and all(n>=12 for n in _kn))
+# THRESHING FLOORS ARE SUB-CELL AND CANNOT BE CARRIED BY THE GRID - measured, not assumed:
+# 1-2 nodes each at r=5.5 m, and still only ~3 at S0's own 14 m maximum diameter. So S0 s3 was
+# amended (5 Sep, "SURFACES SMALLER THAN THE GRID") and they are placed IN THE SHADER instead.
+# The assertion moved with the method: the count that matters is now in section C.
+flag(f"A2 - threshing floors are known sub-cell on the terrain grid: {_tn} nodes each - "
+     f"so they are SHADER-placed, asserted in C below", True)
+
+print("  --- B - the attributes are on the mesh, and read back what was written ---")
+_names={a.name for a in me.color_attributes}
+flag(f"B - GROUND and GROUND2 exist on TERRAIN ({sorted(_names)})", {'GROUND','GROUND2'} <= _names)
+check("B - GROUND: one value per terrain vertex", float(len(me.vertices)), float((NG+1)**2), 0.0)
+_rb=np.empty(len(me.vertices)*4); me.color_attributes['GROUND'].data.foreach_get("color",_rb)
+for _ci,_k in enumerate(('gravel','pebble','bare','wet')):
+    check(f"B - GROUND channel '{_k}' reads back its peak", float(_rb[_ci::4].max()),
+          float(SURF[_k].max()), 1e-4)
+_rb2=np.empty(len(me.vertices)*4); me.color_attributes['GROUND2'].data.foreach_get("color",_rb2)
+check("B - GROUND2 channel 'spoil' reads back its peak", float(_rb2[0::4].max()),
+      float(SURF['spoil'].max()), 1e-4)
+
+print("  --- C - the SOIL material actually READS them ---")
+# Walk the node graph FORWARD from each Attribute node and prove it REACHES Base Color.
+# Asserting that the node merely EXISTS is what a false OK looks like: an unlinked Attribute
+# node, or one feeding a branch that goes nowhere, is indistinguishable from a working one
+# until it renders - and by then a whole shading pass has been spent (REF-05 s7 trap 5).
+def _reaches(nt, node, dst_node, dst_id, budget=20000):
+    seen=set(); stack=[node]
+    while stack and budget:
+        budget-=1; n=stack.pop()
+        if n.name in seen: continue
+        seen.add(n.name)
+        for o in n.outputs:
+            for l in o.links:
+                if l.to_node==dst_node and l.to_socket.identifier==dst_id: return True
+                stack.append(l.to_node)
+    return False
+_snt=SOIL.node_tree; _bsdf=_snt.nodes["Principled BSDF"]
+_attr={n.attribute_name:n for n in _snt.nodes if n.type=='ATTRIBUTE'}
+for _an in ('GROUND','GROUND2'):
+    _n=_attr.get(_an)
+    flag(f"C - SOIL has an Attribute node named '{_an}'", _n is not None)
+    if _n is not None:
+        flag(f"C - '{_an}' REACHES Base Color - it is READ, not merely baked",
+             _reaches(_snt,_n,_bsdf,'Base Color'))
+# PLAN s3b: the S scale is placed BY CAUSE - stones on the apron and the bars - so the surface
+# masks must reach the NORMAL input through the Bump as well, not only the colour.
+# THE SUB-CELL SURFACES (S0 s3, 5 Sep): one shader instance per threshing floor, and the chain
+# must reach Base Color. Counting grid nodes tests nothing once a feature is not on the grid.
+_dist=[n for n in _snt.nodes if n.type=='VECT_MATH' and n.operation=='DISTANCE']
+check("C - one shader instance per THRESHING FLOOR", float(len(_dist)), float(len(thresh_xy)), 0.0)
+flag(f"C - the shader-placed floors REACH Base Color ({len(_dist)} instances)",
+     bool(_dist) and all(_reaches(_snt,_d,_bsdf,'Base Color') for _d in _dist))
+# and each one must sit where the build put it - a floor painted 40 m from its own levelled
+# ground is the Eroder's translation bug all over again (REF-05 s12), so compare the constants.
+_want={(round(cx,2),round(cy,2)) for cx,cy,_ in thresh_xy}
+_got={(round(d.inputs[1].default_value[0],2),round(d.inputs[1].default_value[1],2)) for d in _dist}
+flag(f"C - every shader floor sits on its own levelled ground ({len(_want & _got)}/{len(_want)} match)",
+     _want == _got)
+flag("C - the surface masks also drive the BUMP (S placed by cause, not scattered)",
+     _attr.get('GROUND') is not None and _reaches(_snt,_attr['GROUND'],_bsdf,'Normal'))
+# Blender AVERAGES RGB when a colour is plugged into a float Factor socket. That silently
+# weakened the spoil mask to a third of its value, and "the excavated bank IS the tell".
+# Every mask must arrive at a Factor as a SINGLE CHANNEL.
+_badfac=[l.from_node.name for _n in _snt.nodes if _n.type=='MIX'
+         for l in _n.inputs[0].links if l.from_socket.type=='RGBA']
+flag(f"C - no mask reaches a Factor socket as a COLOUR ({len(_badfac)} do"
+     + (f": {_badfac[:4]}" if _badfac else "") + ")", not _badfac)
 # the hill's own features
 _hz=_np.array([v.co.z for v in hill.data.vertices])
 flag(f"quarry benches cut into the SW face (hill z range {_hz.min():.1f}..{_hz.max():.1f} m)",
@@ -1394,12 +1859,81 @@ if W_water is not None and W_water.max()>1e-9:
         heads=int((cz > _np.percentile(hv[:,2],72)).sum())
         flag(f"gully network branches: {heads} channel cells in the upper third "
              f"(REF-04 s13 wants MANY small gullies, not two)", heads >= 12)
+
+# --- PHASE 2 STEP 8: cultivated terraces ---
+flag(f"cultivated terraces cut: {_terr_cov*100:.1f}% of the hill grid is workable slope (want >0%)",
+     _terr_cov>0.0)
+
+# --- PHASE 2 STEP 7: real 3-D rocks, three-scale debris law ---
+_n_rock_obj=counters['large']+counters['medium']+counters['small']
+flag(f"rocks placed: {counters['large']} large, {counters['medium']} medium, {counters['small']} small "
+     f"({_n_rock_obj} objects, well under the 150k instance budget)", 0<_n_rock_obj<5000)
+if ROCK_LOG['MED']:
+    _rd=[math.hypot(mx-px,my-py) for mx,my,mz,(px,py,pz) in ROCK_LOG['MED']]
+    _rdz=[mz-pz for mx,my,mz,(px,py,pz) in ROCK_LOG['MED']]
+    flag(f"every MEDIUM sits near its parent LARGE (max {max(_rd):.2f} m, want <6.0)", max(_rd)<6.0)
+    flag(f"every MEDIUM sits AT OR BELOW its parent LARGE (worst uphill {max(_rdz):.2f} m, want <0.5)",
+         max(_rdz)<0.5)
+if ROCK_LOG['SM']:
+    _rds=[math.hypot(sx-px,sy-py) for sx,sy,px,py in ROCK_LOG['SM']]
+    flag(f"every SMALL sits near its parent MEDIUM (max {max(_rds):.2f} m, want <1.2)", max(_rds)<1.2)
+flag("rocks reach BOTH the hill's lit face and at least one plain circle",
+     counters['large']>0 and any(n>0 for _,_,n in circle_log))
+# MEASURED, not hoped: a "large" slab was found at 5.4 m against an intended 1.5-4.0 m, and the
+# shadow it cast (33 deg sun) was the stray diagonal stripe a probe traced back to it. This is
+# what would have caught it before Aditya did.
+_rock_obs=[o for o in bpy.data.objects if o.name.startswith("ROCK_")]
+def _footprint(o): return max(o.dimensions.x,o.dimensions.y)
+_lg=[o for o in _rock_obs if o.name.startswith("ROCK_L_")]
+_md=[o for o in _rock_obs if o.name.startswith("ROCK_M_")]
+_sm=[o for o in _rock_obs if o.name.startswith("ROCK_S_")]
+if _lg: flag(f"every LARGE rock's footprint stays under 4.6 m (worst {max(_footprint(o) for o in _lg):.2f} m)",
+             max(_footprint(o) for o in _lg)<4.6)
+if _md: flag(f"every MEDIUM rock's footprint stays under 1.6 m (worst {max(_footprint(o) for o in _md):.2f} m)",
+             max(_footprint(o) for o in _md)<1.6)
+if _sm: flag(f"every SMALL rock's footprint stays under 0.35 m (worst {max(_footprint(o) for o in _sm):.2f} m)",
+             max(_footprint(o) for o in _sm)<0.35)
+
+# --- PHASE 2 STEP 10: 1.70 m reference figure ---
+check("1.70 m reference figure height (m)", float(fig_ob.dimensions.z), 1.70, 0.02)
+
+# --- D2: THE 4K DISPLACEMENT TIER, FIVE SCENARIO CIRCLES ONLY (PLAN s9 C2 step 8) ---
+_cattr=me.color_attributes.get("CIRCLE")
+flag("D2 - CIRCLE mask attribute baked onto the terrain", _cattr is not None)
+flag(f"D2 - CIRCLE mask has real, bounded coverage ({(_cm>0.5).mean()*100:.2f}% inside)",
+     0.0 < (_cm>0.5).mean() < 0.5)
+flag("D2 - the displacement mask uses the SAME five circles as the rock scatter",
+     CIRCLES is SCEN_CIRCLES)
+_dm=getattr(SOIL,'displacement_method','(missing)')
+flag(f"D2 - SOIL displacement method is BOTH (got '{_dm}')", _dm=='BOTH')
+_soil_out=next((nd for nd in SOIL.node_tree.nodes if nd.type=='OUTPUT_MATERIAL'), None)
+flag("D2 - a displacement chain reaches the SOIL Material Output",
+     _soil_out is not None and _soil_out.inputs["Displacement"].is_linked)
+# and it must be GATED: trace back from the Displacement socket and confirm a CIRCLE attribute is
+# in the chain, so nothing outside the circles is tessellated.
+def _feeds(sock, want, depth=0):
+    if depth>24 or not sock.is_linked: return False
+    src=sock.links[0].from_node
+    if src.type=='ATTRIBUTE' and getattr(src,'attribute_name','')==want: return True
+    return any(_feeds(i,want,depth+1) for i in src.inputs)
+flag("D2 - the displacement is GATED by the CIRCLE attribute (0 outside the circles)",
+     _soil_out is not None and _feeds(_soil_out.inputs["Displacement"],"CIRCLE"))
+flag("D2 - terrain carries an adaptive-dice subdivision modifier for the displacement",
+     any(m.type=='SUBSURF' for m in terr.modifiers))
+flag(f"D2 - EXPERIMENTAL feature set is on (adaptive subdiv needs it; got '{sc.cycles.feature_set}')",
+     sc.cycles.feature_set=='EXPERIMENTAL')
+flag("D2 - terrain has adaptive subdivision enabled",
+     getattr(terr.cycles,'use_adaptive_subdivision',False))
+print("  NOTE  D2 displacement HEIGHT (Scale 0.10 m) and dicing rate (2.0) are RTX-tuned - "
+      "0.08 m of relief cannot be judged at 800x450. Scaffold + assertions ship here.")
+
 print(f"  INFO  grid {NG}x{NG} = {NG*NG*2:,} tris, cell {2*GEXT/NG:.2f} m")
 print(f"  INFO  height range over the plain: {H.min():.1f} .. {H.max():.1f} m")
 print(f"  INFO  layers stacked: {', '.join(LAYER.keys())}")
 print(f"  INFO  build time {time.time()-t_start:.0f}s")
 if fails:
     print("\n  ASSERTIONS FAILED:", fails)
+    write_pass_manifest()
     bpy.ops.wm.save_as_mainfile(filepath=OUT); sys.exit(1)
 print("  ALL ASSERTIONS PASSED")
 print("==================================================================\n")
@@ -1409,5 +1943,6 @@ for scr in bpy.data.screens:
     for ar in scr.areas:
         if ar.type=='VIEW_3D':
             ar.spaces[0].clip_start=0.10; ar.spaces[0].clip_end=60000.0
+write_pass_manifest()
 bpy.ops.wm.save_as_mainfile(filepath=OUT)
 print("saved:", OUT)

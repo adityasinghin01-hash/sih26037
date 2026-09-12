@@ -1,28 +1,28 @@
 ---
-description: Stream D - what to build next in the planner, in order, with the maths already specified and the traps named.
+description: The planner build order - what to build next, in order, with the maths already specified and the traps named.
 ---
 
 # /plan-work — build the planner, in order
 
 **Read `AGENTS.md` section 3 first.** S4 is what you produce, S1/S3/S9/S10 are what you consume.
-Then check `plan/CONTRACT-AB.md` — Stream D is two people and they do not share files.
 
-**You are Person A.** You write **pure MATLAB functions** in `matlab/+sih/+planner/`. They take
-a state and return a command. **You never open the Simulink model** — that is Person B's, it is
-a binary file, and two people editing it cannot merge. One of you simply loses their work.
+**You write pure MATLAB functions** in `matlab/+sih/+planner/`. They take a state and return a
+command. Whether the Simulink model is anyone's active work right now is a separate question —
+check `HANDOFF.md` rather than assuming; the old "Person A/Person B, don't touch the `.slx`"
+split described a different, no-longer-current arrangement.
 
 ## Stay inside the planner
 
 | Yours | NOT yours — say so in one sentence and stop |
 |---|---|
-| `matlab/+sih/+planner/` (A) and the Simulink model (B) | **`ml/` and everything in it** |
-| | `matlab/+sih/+prediction/`, `+models/` — Stream C |
-| | `matlab/+sih/+scenario/`, `+perception/` — Streams A and B |
+| `matlab/+sih/+planner/`, `matlab/+sc/` | **`ml/` and everything in it** |
+| the Simulink model, if it's still live work for anyone | `matlab/+sih/+prediction/`, `+models/` — the ML track |
+| | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | | `matlab/baseline/` — the competitor. **Never** |
 
 **The yield predictor is not yours.** You consume `S3 PYield` through the contract and never open
-the model that produced it. If `PYield` looks wrong, report it to Stream C — do not retrain
-anything, and do not go reading `ml/` to work out why.
+the model that produced it. If `PYield` looks wrong, report it to the ML track (Shourya or
+Kishan) — do not retrain anything, and do not go reading `ml/` to work out why.
 
 ---
 
@@ -170,8 +170,8 @@ already crossed — while you wait there, you are an obstacle.
 ## How to work
 
 **Write the function, then write its test, then run the whole suite** with `runtests('matlab/tests')`. Your work must be
-testable **without Simulink** — that is the whole reason the A/B split exists. Simulink iteration
-is minutes; a MATLAB function is seconds.
+testable **without Simulink** — a MATLAB function iterates in seconds; the Simulink model, if
+anyone is actively working in it, iterates in minutes.
 
 ```matlab
 runtests('matlab/tests')
@@ -182,7 +182,8 @@ that invents its own struct shape is wrong, however well it works.
 
 ## Never
 
-- **Never open the `.slx`.** Person B owns it. It cannot be merged
+- **Never open the `.slx` without checking it's actually yours to touch.** A binary file two
+  people edit cannot be merged — if someone else is actively in it, that's still true
 - **Never edit `matlab/baseline/`** — the control arm. Editing it makes every result worthless
 - **Never change `AGENTS.md` section 3.** Stop and ask Aditya
 - **Never use 0.5 as a fallback probability.** S3 says use the geometric role alone
@@ -194,5 +195,5 @@ BUILT      : <function, and what it consumes and produces>
 TESTS      : <n> passing, <n> new
 VERIFIED   : <what you actually ran>
 NOT DONE   : <what you noticed and left alone>
-FOR B      : <the signature they should call>
+SIGNATURE  : <what anyone consuming this needs to call>
 ```

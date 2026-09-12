@@ -514,3 +514,63 @@ them — **the same bug already fixed on the hill, not yet fixed on the plain.**
   judged at 800 × 450 — and a crop render only validates the hill, not five whole circles.
 - **If the cloud cull does not bring the field under ~4 GB, Phase 3 ships without volumetric cloud**
   and says so, rather than handing over a file that hangs the machine.
+
+
+---
+
+# 11 · HOW THE 16 STAGES AND THE 8 COMPONENTS FIT TOGETHER
+**Settled with Aditya 5 Sep 2026. He asked the question directly: "are we doing each component
+0 to 13, then the whole city 14, 15?" The answer is NO, and this section is the answer.**
+The stage list is `notes/BLENDER-PIPELINE.md` Part Seven, stages **0-15**. The component list is
+§9 above, components **1-8**. They are not two plans. **They are the same plan on two axes.**
+
+## THE RULE
+**Stages 2-9 ARE the components. They are not repeated per component and they are not a second
+pass over the world.** Stages 10-15 are whole-city and run ONCE, after component 8.
+
+| runs | stages | what happens |
+|---|---|---|
+| **ONCE, already done** | **0 reference · 1 environment script** | 13 clips, 43 photographs, REF-01..13, S0 + S1-S5 (794 lines). **Closed.** |
+| **PER COMPONENT, eight times** | **2 blockout · 3 road · 4 assets · 5 vegetation · 6 surroundings · 7 texture · 8 blending · 9 light and air** | each component runs §3's six steps a-f: **write -> shape -> detail -> sculpt -> texture -> audit + look**. That inner loop IS these stages. |
+| **ONCE, whole city** | **10 look dev** | **ADITYA'S GATE.** Side by side against his own dashcam frames. |
+| **ONCE, whole city** | **11 MATLAB · 12 animation · 13 render** | 11 belongs to the INTEGRATOR chat, not this one. 12-13 need every component to exist. |
+| **ONCE, at the very end** | **14 grade · 15 output** | **Seasonal / full-finish, Aditya's word for it 5 Sep.** DaVinci Resolve over the FINISHED frames, compared against everything: contrast, colour, haze, grain, lens distortion, compression. **Match the camera's flaws, do not fight them.** Then the film plus the table of numbers. |
+
+## WHY 14 AND 15 CANNOT BE PER COMPONENT
+A grade is a relationship between the whole frame and the reference footage. Grading a component
+in isolation grades it against nothing, and every later component then shifts the frame it was
+matched to. **The three outputs stay distinct (Part Seven): the plain MATLAB view is the truth,
+the film is the same truth rendered.**
+
+## THE COMPONENT ORDER IS A DEPENDENCY CHAIN, NOT A PREFERENCE
+`C2 LAND (finish) -> C3 ROADS pass 2 -> C4 BUILDINGS -> C5 INFRASTRUCTURE -> C6 VEGETATION ->
+C7 LIFE -> C8 BLENDING -> C1 LIGHT finalised -> stage 10 gate -> stages 12-15`
+Roads are **cut into** land · buildings line roads · **trees are pruned by the wires**, which is
+why infrastructure precedes vegetation · blending IS the relationships, so it cannot be earlier.
+**C1 LIGHT is built first and finalised last** - built so every material is judged under the real
+sun, finalised once there is geometry for haze, shafts and cloud shadows to land on.
+
+## WHERE EACH PIECE RUNS - decided by whether it can be JUDGED, never by whether it can be built
+| this M1 | nvidiapc1 (RTX A1000) |
+|---|---|
+| every build, every assertion, every cheap preview (9 s/angle) | multires sculpt + normal bake |
+| all geometry, materials, masks, A/Bs, `probe.py`, `audit.py` | 4K displacement inside the five circles |
+| — | the cloud cull and any full-resolution judging render |
+| — | final frames, **OptiX** (the A1000 has RT cores; the M1 has none) |
+**VRAM there is ~7.3 GB, not 8** - the desktop already holds 885 MiB. **The render ceiling did NOT
+move.** The 11.97 GB cloud field still does not fit and must be split BY CONTENT or run on that
+machine's 20 CPU cores, which can address all 64 GB.
+
+## THE PIPELINE BETWEEN THE TWO MACHINES
+Scripts and `map/` travel through git; **`.blend` files never do.** The scripts rebuild the world,
+so nothing can arrive half-saved. After every component: sync the changed files into `world/`,
+push, and hand Aditya ONE command -
+`"C:\Users\admin\sih\blender45\blender.exe" --background --python world\build\city\<script>.py`
+**Always that full quoted path** - the machine also carries Blender 5.2.1, and a 5.2.1 file will
+not reopen in the Mac's 4.5.11. `SIH_REF` is already a permanent environment variable there, and
+every script reads `REF = os.environ.get("SIH_REF", "<mac path>")`. **Never hardcode a path again.**
+
+## THE DEADLINE, STATED PLAINLY
+The MATLAB film is the 7 September demo. **The detailed city is NOT on that critical path.** It
+runs to the specification, not to the date - which is the whole reason it will not become another
+component-at-60% failure.

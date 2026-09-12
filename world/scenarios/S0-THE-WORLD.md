@@ -123,6 +123,32 @@ is a look call for Aditya, not a number to sweep. **Recorded rather than papered
 Wind 0.5 m/s from the north-west — it decides which way leaves drift and washing hangs.
 **6 of the 13 dashcam clips are shot at NIGHT** — a condition the scripts still do not cover.
 
+**THE 4K CLOUD PASS — AMENDED 6 Sep 2026. Pass 1 of the 2–3 promised; runs on the RTX.**
+Four things the 4 Sep build did not have, each a named gap in DEFERRED.md / PLAN §9 C1:
+1. **VOXEL SIZE VARIES WITH DISTANCE.** One 26 m voxel size across the whole 30 km field is what
+   put the M1 at 11.97 GB. Split the joined cloud mesh into **three radial bands by XY distance
+   from the origin** (the camera sits near it) and voxelise each at its own size:
+   **near 0–5 km → 24 m · mid 5–10 km → 48 m · far 10–15 km → 96 m**, then join the *volumes*.
+   The far annulus is ~5× the area of the near disc, so coarsening it is the largest single
+   memory saving and it is invisible: past ~2 km the haze has already flattened all cloud detail
+   (REF-13 §5). **This is the one change that makes a 4K cloud frame fit ~7.3 GB of VRAM.**
+2. **BLUE HOLES ARE DRIVEN BY A LARGE-SCALE MASK, not by Poisson spacing.** Even Poisson gives an
+   even deck. Feed every population's *Density Factor* a shared noise field at a **4–8 km
+   wavelength**, ramped toward bimodal, so gaps **cluster and come in very different sizes** —
+   S0 §2's "blue holes ... of very different sizes", made real. One mask for all three heights: a
+   hole is a hole at every altitude.
+3. **CAULIFLOWER: each lobe carries sub-lobes.** A second, **finer** noise (≈10–20 m wavelength)
+   multiplied into the density ramp, plus a gentle normal-displace on the lobe mesh, so a 100 m
+   lobe reads as knobbly cumulus, not a smooth ball.
+4. **HALATION ON BACKLIT RIMS** (REF-12 §4, "coverage 3–6"; named in DEFERRED.md, never applied).
+   A warm emission (≈1.0/0.93/0.82) gated to **low density only** — the thin edge glows, the core
+   does not — plus anisotropy raised toward **~0.5** for the forward-scatter halo around the sun.
+**Measured, not eyeballed:** after the pass, sweep cover %, hole-size spread and lobe scale off
+the render against the 43 photographs, the same way the sky was fixed.
+**Parked, and they stay parked until the whole city exists (PLAN §11):** cloud shadows landing on
+real street/terrain geometry, haze collapsing local contrast as well as saturation, and the water
+re-measured against REF-13 §6 — items 13–15.
+
 ## 3 · THE LAND
 Alluvial plain, falling gently south. Three scales of undulation (600 m swells, 160 m, field
 scale) plus **abandoned river channels** as shallow broad depressions and **field bunds every
@@ -329,6 +355,38 @@ tiling.** It applies to every surface in the table above.
 - **cracked, curling dry crust** on the fallow, because the monsoon left ~17 September and the
   ground is drying (REF-04 §9). **Not on the ploughed plots, which were turned wet.**
 All three are **material and bump, never geometry** — 20 mm features on a 6.67 m grid (REF-05 §10h).
+
+**SURFACES SMALLER THAN THE GRID — AMENDED 5 Sep 2026, and it was MEASURED, not assumed.**
+The method above bakes each mask into a colour attribute on the terrain. That attribute lives on
+**vertices**, so it can carry nothing finer than the 6.67 m grid — and one of the fourteen features
+is finer than that. Measured, per instance, at the moment the mask is built:
+| feature | its own size | grid nodes it lands on | verdict |
+|---|---|---|---|
+| clay pits | 52–90 m across | **51, 69, 72** | carried |
+| ponds | 32–60 m across | **14, 28, 48** | carried |
+| **threshing floors** | **11 m across** | **1, 1, 2, 2, 2, 2, 2** | **NOT carried** |
+**And widening does not rescue it.** S0 §3 item 13 fixes threshing floors at **8–14 m across**;
+even at that maximum the mask lands on **~3 nodes**. So this is not an under-built feature — the
+terrain grid **cannot represent it at any size the specification allows.**
+
+**THE RULE THIS IS AN INSTANCE OF — REF-05 §10h, already paid for twice** (the 0.9 m irrigation
+ditch, POND_2 at 2×2 cells): *"either widen the feature to something the grid can carry, or build
+it as a material, never as geometry."* Widening is closed by the spec, so it is a material.
+
+**THE SPECIFICATION: a surface feature under ~3 terrain cells across is placed IN THE SHADER, from
+its own centre, never through a vertex attribute.** The build already knows every centre — it chose
+them — so they are passed to the material as constants and the mask is evaluated **per pixel**.
+Resolution then stops being the grid's business, which is the whole point of PLAN §3b's rule that
+**S is a material, never geometry**; this simply says the same of anything the grid cannot hold.
+1. The floors keep everything else they already have: they still **level the ground** through the
+   height field, and they still read as **hard swept bare earth, no crop, no furrow** (REF-04 §9).
+2. **The assertion moves with the method.** Counting grid nodes tests nothing once the feature is
+   not on the grid, so the check becomes: **one shader instance per floor, and that chain must
+   reach Base Color** — the same three-link A/B/C test the other surfaces get.
+3. **HONEST LIMIT, stated here rather than discovered later: the LEVELLING stays sub-cell.** A
+   circle 11 m across cannot be flattened accurately by a 6.67 m grid, and no shader fixes
+   geometry. **The tone will read; the flatness will not.** Making it read as *level* needs a finer
+   terrain under the five circles, which is PLAN §10 Phase 2's displacement work, not this one.
 
 **AND THE RULE THAT DECIDES WHAT IS *NOT* HERE:** these surfaces are EARTH. What grows on them is
 component 6. The plain will still not read as *farmland* until the crops land — **that is expected

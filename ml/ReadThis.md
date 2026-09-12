@@ -1,10 +1,17 @@
-# ReadThis — the ML stream, start to finish
+# ReadThis — the ML track, start to finish
 
 
 **Install your fence before you start.** `cp .claude/fences/ml.settings.local.json .claude/settings.local.json`
-It refuses reads outside your stream instead of relying on you to remember. See `.claude/fences/README.md`.
-**You are Stream C. This folder is yours.** Everything the machine-learning side of SIH26037
-needs is here or linked from here.
+It refuses reads outside your track instead of relying on you to remember. See `.claude/fences/README.md`.
+**You are on the ML track — Shourya or Kishan. This folder is yours.** Everything the
+machine-learning side of SIH26037 needs is here or linked from here.
+
+**As of the 10 September restructure, you and your counterpart are independent, not shared
+work.** Shourya: calibrating both yield models, fixing YOLOX's domain-gap problem, the GRU/TCN
+architecture bake-off, the asymmetric safety-weighted loss. Kishan: leave-one-station-out
+cross-validation, a real baseline comparison, the YOLOX domain-gap measurement, wiring OOD
+detection into the `Valid=false` fallback. Check `HANDOFF.md` at the repo root for the current,
+detailed version of this.
 
 Read this once, top to bottom, before you run anything. It is long because it tries to leave
 nothing out — but you only have to read it once, and after that you work from the checklists.
@@ -56,9 +63,9 @@ auto-rickshaw and pushcart, which no Western dataset contains.
 
 | Yours | Not yours |
 |---|---|
-| `ml/` — this whole folder | **`plan/`** — Stream D's folder |
-| `matlab/+sih/+prediction/` — the feature twin | `matlab/+sih/+planner/` and the Simulink model |
-| `matlab/+sih/+models/` — the three MATLAB models | `matlab/+sih/+scenario/`, `+perception/` |
+| `ml/` — this whole folder | **`plan/`** — the Planner track's folder |
+| `matlab/+sih/+prediction/` — the feature twin | `matlab/+sih/+planner/`, `matlab/+sc/`, and the Simulink model |
+| `matlab/+sih/+models/` — the three MATLAB models | `matlab/+sih/+scenario/`, `+perception/` — Aditya's World track |
 | | **`matlab/baseline/`** — the competitor. Never |
 
 **You produce `S3 PYield`. You do not consume it.** The planner reads it through the contract and
@@ -240,7 +247,7 @@ gate has been removed — stop and say so.** Before the gate existed, this featu
 
 # 4 · The feature vector — the 31 numbers
 
-This is the interface between you and Stream D. **It is frozen.** Positions 1–31 never move.
+This is the interface between you and the Planner track (Antara, Anjali). **It is frozen.** Positions 1–31 never move.
 New features can only be added at position 32 or later, and only with a changelog entry,
 because the planner reads them **by position** — if you reorder them it silently reads the
 wrong thing and nobody gets an error.
@@ -405,9 +412,9 @@ check04_onnx_lstm
 cannot convert does not throw an error — it becomes an empty custom layer that a human has to
 fill in. A network full of placeholders "imported successfully" and is useless.
 
-### Step 8 — tell Stream D, immediately
+### Step 8 — tell the Planner track, immediately
 
-**The opset number is the one thing blocking the planner stream.** Send it the moment you have
+**The opset number is the one thing blocking their work.** Send it the moment you have
 it. Do not wait until the rest of your work is finished.
 
 ### Step 9 — models 3, 4 and 5
@@ -447,7 +454,7 @@ Send the whole error.
 | Training | Precision and recall for both classes, both models, side by side |
 | Evaluation | `evaluate.py` run and its verdict reported **even when it fails** |
 | Export | `check04` imports a real file with **no placeholder layers** |
-| **Handoff** | **Stream D has the opset number** |
+| **Handoff** | **The Planner track has the opset number** |
 | Models 3–5 | Per-class scores, with cow, auto-rickshaw and pushcart named |
 
 **And four things are true of every one of them:**
@@ -499,7 +506,7 @@ Send the whole error.
 # 10 · If you only remember five things
 
 1. **Model 1 is the one that matters.** Finish it before anything else.
-2. **Send Stream D the opset number the moment you have it.** They are blocked until you do.
+2. **Send the Planner track the opset number the moment you have it.** They are blocked until you do.
 3. **`--force` after any change to the feature code or the label.** Otherwise you measure old code.
 4. **Precision and recall, both classes, with the confidence interval.** Never accuracy alone.
 5. **A failing check is information.** Report it. Do not tune until it goes green.
