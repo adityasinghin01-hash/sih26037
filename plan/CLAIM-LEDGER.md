@@ -1,5 +1,55 @@
 # The claim ledger — what we may say, and what we may not
 
+> ## CORRECTIONS — 17 September 2026. Read this block before quoting anything below.
+> Everything here was produced by running it on 16–17 Sep. Where it contradicts a row
+> further down, **this wins** — the older rows are kept, as this file's own convention
+> requires, not because they are current.
+>
+> ### 1. "0.965 m clearance" IS NOT A PLANNER RESULT. It never was.
+> It is geometry: (3.830 − 1.900) ÷ 2 — half the spare width of the gap the scenario
+> provides. **This file's own scope note already calls using it as a planner claim
+> "forbidden"**, and Part 1 above does exactly that. The measured numbers are:
+>
+> | run | minimum clearance |
+> |---|---|
+> | sparse S1, `demo_play('demo1')` | **0.618 m** |
+> | dense S1 (traffic + 51 background actors + the road's 14 hazards) | **0.135 m** |
+>
+> **A realistic world costs this planner ~80% of its safety margin** while it never
+> once fails to plan. And the binding actor is the tractor's **trolley at 0.119 m**,
+> not the cow at 1.015 m. The scenario's famous obstacle is not its hardest moment.
+>
+> ### 2. ONE RUN IN EIGHT MAKES CONTACT.
+> `benchRuns('s1', 8)` — same scenario, entry position perturbed by under two metres:
+> `M6: mean 0.1427, sd 0.0600, **min −0.0010**, 95% CI [0.0926, 0.1928]`
+> **That run still reported `M9_completed = 1` and 0 plan failures.** The planner did
+> not know it had touched anything. No single deterministic run could ever reveal this.
+> **Never quote one run's clearance.** Quote the interval and the observed minimum.
+>
+> ### 3. The ML dangerous-error rate is 2.089%, not 20.18%.
+> 95% CI [1.315%, 2.854%], on a 233-clip / 694,864-sample test set opened exactly once
+> (11 Sep). The bar is ≤1.00%. The CI upper bound exceeds it, so `Valid=false` stands
+> and the predictor drives nothing — now enforced by `sih.prediction.gateYield` and
+> shown live on the HUD as `OFF for all 1108`, a measured tally rather than a caption.
+>
+> ### 4. The test suite is 348/348, not 344/335/9.
+> Re-run 16 Sep. The 9 previously-incomplete are gone — `OpenTrafficLab/` is cloned.
+>
+> ### 5. S3 dense STALLS. This is new, and it matters more than it looks.
+> `densityPlannerRunS3` stops dead at **s = 81.4 m of 382.2 m** and never moves again —
+> 150 s at the identical station, cycling ABORT/COMMIT. **This is the same permanent-
+> stall mechanism already disclosed for S2.** Two scenarios showing one pathology makes
+> it a property of the **planner**, not a quirk of one scenario. S3 works sparse; adding
+> a realistic world breaks it.
+>
+> ### 6. Ghost tracks were real, and they changed an outcome.
+> 3,707 actor samples reported a velocity while their position had not moved —
+> `moto_over` sat at the route end claiming 17.22 m/s (62 km/h) from t=49.95 s. The
+> planner believed a parked motorcycle was sprinting away and drove through it.
+> Zeroing velocity for non-moving actors turned a **−0.800 m overlap into +0.299 m**.
+> Same planner, same route; only the honesty of the input changed.
+
+
 > ## REWRITTEN IN FULL — 10 September 2026. This supersedes the 4 September original below,
 > ## and its own 10 September "superseded in part" note, both kept underneath for history.
 >
