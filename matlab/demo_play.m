@@ -1067,6 +1067,7 @@ LOG.PlannerFP  = plannerFingerprint();
 LOG.PlanEvery  = planEvery;
 fprintf('  PHASE 5 ML gate: USE %d / FALLBACK %d - no validated band, geometric right-of-way\n', ...
         nGateUse, nGateFallback);
+LOG.GateUse = nGateUse;  LOG.GateFallback = nGateFallback;
 fprintf('planner run done in %.1f s (%d plan failures)\n', toc(tRun), nFail);
 end
 
@@ -1770,6 +1771,13 @@ d = struct('t',LOG.t(i),'s',LOG.s(i),'e',LOG.e(i),'v',LOG.v(i), ...
            'ego',[LOG.x(i) LOG.y(i)],'yaw',LOG.yaw(i), ...
            'tracks',LOG.tracks{i},'cmd',LOG.cmd{i}, ...
            'HazardNote',LOG.capWhy(i),'Chapter',LOG.chapter(i));
+% PHASE 7 - hand the gate's REAL decision counts to the HUD. Until now the panel
+% carried a hand-written "gated off" caption and a judge had to take it on trust;
+% sc.plannerView's gateRow now prints the measured tally instead. Absent counts
+% are passed as absent, never as zero - gateRow reports "not reported" for that,
+% because a missing measurement and a measurement of zero are different claims.
+if isfield(LOG,'GateUse'),      d.GateUse      = LOG.GateUse;      end
+if isfield(LOG,'GateFallback'), d.GateFallback = LOG.GateFallback; end
 end
 
 function v = pick(y, p)

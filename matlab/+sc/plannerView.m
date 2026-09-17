@@ -297,7 +297,7 @@ case 'init'
     text(S.axMdl, 0.0, 0.905, sprintf(gtMsg), ...
          'VerticalAlignment','top', 'FontName','Menlo','FontSize',8.5, ...
          'Color',gtColor, 'Interpreter','none');
-    S.NM = 6;                                  % 4 models + planner + slack
+    S.NM = 7;                                  % 4 models + ML GATE + planner + slack
     S.mdlDot  = gobjects(1,S.NM);
     S.mdlName = gobjects(1,S.NM);
     S.mdlStat = gobjects(1,S.NM);
@@ -496,7 +496,7 @@ case 'step'
         end
     end
     S.mdlCache = M;  S.mdlS = d.s;
-    M = [M(:).', plannerRow(cmd, d)];
+    M = [M(:).', gateRow(d), plannerRow(cmd, d)];
     for k = 1:S.NM
         % Guard every handle. A demo must not die on stage because one panel
         % object went stale - and one WILL, whenever this file is edited while
@@ -1222,6 +1222,37 @@ M = struct( ...
   'Model',  {"Models 1+2", "Model 3",  "Model 4",     "Fusion"}, ...
   'Status', {"gated",      "stub",     "stub",        "stub"}, ...
   'Detail', {"intent/traj gated off - planner runs on geometry", d, d, d});
+end
+
+function r = gateRow(d)
+%GATEROW  PHASE 7 - the ML gate's own line, built from the decisions it actually
+%   made this run, not from a sentence someone typed.
+%
+%   WHY THIS EXISTS: sih.prediction.gateYield returns USE or FALLBACK per track
+%   per planning step, and until now that verdict only ever reached a log file. A
+%   judge watching the screen saw a hand-written "gated off" caption and had to
+%   take it on trust. This row is the measured result: N of M tracks, live.
+%
+%   It reads d.GateUse / d.GateFallback when the caller supplies them and says so
+%   honestly when it cannot - an absent count is reported as absent, never as zero.
+if isfield(d,'GateUse') && isfield(d,'GateFallback')
+    u = double(d.GateUse); f = double(d.GateFallback); tot = u + f;
+    if tot == 0
+        r = struct('Model',"ML GATE",'Status',"no decisions yet", ...
+                   'Detail',"planner has not stepped");
+        return
+    end
+    if u == 0
+        st = "OFF for all " + string(tot);
+    else
+        st = sprintf('ON %d / %d', u, tot);
+    end
+    r = struct('Model',"ML GATE", 'Status',st, ...
+        'Detail',"no validated confidence band (2.089% vs a <=1% bar) - geometric right-of-way");
+else
+    r = struct('Model',"ML GATE",'Status',"not reported", ...
+               'Detail',"caller supplied no gate counts - not the same as zero");
+end
 end
 
 function r = plannerRow(cmd, d)
