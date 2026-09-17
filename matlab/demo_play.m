@@ -182,7 +182,7 @@ assert(~isempty(which('sih.planner.planContingency')), ...
 DT = 0.05;                                    % s, the seat's own step (20 Hz)
 
 % ================================================================= the route
-D = loadRoute(route, opts.Cow);
+D = loadRoute(route, opts.Cow, opts.Dense, opts.Reactive);
 D.Sensed = opts.Sensed;              % must be set before the cache tag/stamp below -
                                       % it changes what the planner sees every step, so a
                                       % Sensed run must never load or overwrite an exact-
@@ -236,7 +236,9 @@ end
 % =========================================================================
 %                             ROUTE LOADING
 % =========================================================================
-function D = loadRoute(route, cowMode)
+function D = loadRoute(route, cowMode, dense, reactive)
+if nargin < 3, dense = false; end
+if nargin < 4, reactive = false; end
 %LOADROUTE  Chat 3 delivers sc.demo1Route / sc.demo2Route; sc.demo3Route is
 %   this file's own (10 Sep). Falls back to a route built here if a Route
 %   function is ever absent or errors, so this file is never blocked waiting.
@@ -248,17 +250,19 @@ if ~isempty(which(char(fn)))
     fprintf('using %s\n', fn);
     try
         got = feval(char(fn));
-        D = normaliseRoute(got, route, cowMode);
+        D = normaliseRoute(got, route, cowMode, dense, reactive);
         return
     catch me
         warning('demo_play:route', '%s errored (%s) - falling back to the built-in route', fn, me.message);
     end
 end
 fprintf('%s not on the path yet - using the built-in temporary %s route\n', fn, route);
-D = builtinRoute(route, cowMode);
+D = builtinRoute(route, cowMode, dense, reactive);
 end
 
-function D = normaliseRoute(got, route, cowMode)
+function D = normaliseRoute(got, route, cowMode, dense, reactive)
+if nargin < 4, dense = false; end
+if nargin < 5, reactive = false; end
 if isstruct(got) && isfield(got,'W') && isfield(got,'Hazards')
     D = got;
 elseif isstruct(got) && isfield(got,'Type')          % a bare hazard array
@@ -267,10 +271,10 @@ elseif isstruct(got) && isfield(got,'Type')          % a bare hazard array
     % route - but the title must say so honestly rather than keep calling
     % itself a stand-in when the real hazards are in fact loaded.
     if route == "demo3"
-        D = builtinRouteS3();  D.Hazards = got;
+        D = builtinRouteS3(dense, reactive);  D.Hazards = got;
         D.Title = 'SIH26037  DEMO3 - hazards from demo3Route, road from sc.s3world';
     else
-        D = builtinRoute(route, cowMode);  D.Hazards = got;
+        D = builtinRoute(route, cowMode, dense, reactive);  D.Hazards = got;
         D.Title = sprintf('SIH26037  %s - hazards from %sRoute, road from sc.s1world', ...
                           upper(route), route);
     end
@@ -286,7 +290,9 @@ D = fill(D, 'CruiseV', 52/3.6);
 D.Hazards = fillHazards(D.Hazards);
 end
 
-function D = builtinRoute(route, cowMode)
+function D = builtinRoute(route, cowMode, dense, reactive)
+if nargin < 3, dense = false; end
+if nargin < 4, reactive = false; end
 %BUILTINROUTE  A TEMPORARY Demo 1, so this file is never blocked on Chat 3.
 %   Real road (the Najibabad tertiary centreline sc.s1world already loads), real
 %   cow station, and a dense hazard sequence to the frozen contract. Chat 3's
@@ -344,7 +350,7 @@ D.Hazards = fillHazards(D.Hazards);
 % road and truncates the log to what it actually drove.
 D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, cowMode);
 nSteps = ceil(D.TEnd/0.05);
-D.Tracks = builtinTracks(W, D.CS, cowMode, nSteps, 0.05);
+D.Tracks = builtinTracks(W, D.CS, cowMode, nSteps, 0.05, dense, reactive);
 % D.Poses/D.Who/D.DIMS: the SAME three actors, raw (unsensed) - built off the
 % identical per-step kinematics as D.Tracks above (see actorSpec/activeActorsAt),
 % so the two can never silently disagree about where anything is. Built
@@ -372,7 +378,9 @@ for k = 1:numel(H)
 end
 end
 
-function TR = builtinTracks(W, CS, cowMode, n, DT)
+function TR = builtinTracks(W, CS, cowMode, n, DT, dense, reactive)
+if nargin < 6, dense = false; end
+if nargin < 7, reactive = false; end
 %BUILTINTRACKS  A handful of road users so the road is not empty.
 %
 %   THE ONCOMING VEHICLES ACTUALLY MOVE, and that was forced by measurement,
@@ -424,10 +432,38 @@ P = W.Path;
 %       Cow="blocking" is now the better scenario AND it works. Flip it if
 %       you want the real S1 encounter on screen.
 spec = actorSpec(W, CS, cowMode);
+densitySpec = {};
+if dense, densitySpec = sc.s1density(); end
+nReact = 0;
 TR = cell(1, n);
 for i = 1:n
     t = (i-1)*DT;
     A = activeActorsAt(spec, P, t);
+
+    % PHASE 8 - agents respond to the ego. This CAN work here and could not work
+    % in densityPlannerRun: demo_play REGENERATES its actors from actorSpec every
+    % step via activeActorsAt, so their velocity is computed. The density runner
+    % replays a RECORDED drivingScenario, where changing a velocity without
+    % changing the baked position recreates the ghost-track defect fixed 16 Sep.
+    % These actors - the cow, the motorcycle, the child, the dog - are also
+    % actually ON the road, unlike the density layer's parked scenery, which is
+    % why reactStep fired 0 times there and can fire here.
+    % OFF BY DEFAULT: reactStep returns A untouched when disabled.
+    if reactive
+        [A, rlog] = sc.reactStep(A, struct('XY', egoNominalXY(P, i, DT)), DT, struct('Enabled',true));
+        nReact = nReact + numel(rlog.Reacted);
+    end
+
+    % PHASE 1 - the density world's background actors, ON TOP OF the negotiation
+    % set and never instead of it: 50 of the 51 sit off the carriageway, so alone
+    % they give the planner nothing to negotiate with - measured, it cruised past
+    % at 51.6 km/h with h=NaN on every one of 817 steps.
+    if dense && ~isempty(densitySpec)
+        Ad = sc.activeDensityActorsAt(densitySpec, P, t);
+        for q = 1:numel(Ad)
+            A(end+1) = Ad(q);
+        end
+    end
     Ti = emptyTrackList();
     for a = 1:numel(A)
         Ti(end+1) = struct('TrackID',uint32(900+A(a).Row),'ClassID',uint8(A(a).ClassID), ...
@@ -435,6 +471,9 @@ for i = 1:n
             'Yaw',A(a).YawRad,'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
     end
     TR{i} = Ti;
+end
+if reactive
+    fprintf('  PHASE 8 reactive: %d agent reactions over %d steps\n', nReact, n);
 end
 end
 
@@ -548,7 +587,9 @@ end
 % =========================================================================
 %                    DEMO 3 - THE GALLI, ITS OWN WORLD AND ACTORS
 % =========================================================================
-function D = builtinRouteS3()
+function D = builtinRouteS3(dense, reactive)
+if nargin < 1, dense = false; end
+if nargin < 2, reactive = false; end
 %BUILTINROUTES3  Demo 3's own route builder - sc.s3world instead of s1world,
 %   the oncoming motorcycle instead of the cow/car/moto trio. No dedicated
 %   fallback content is needed the way demo1/demo2's builtinRoute has, since
@@ -623,7 +664,7 @@ D.Hazards = fillHazards(sc.demo3Route());
 
 D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, "none");
 nSteps = ceil(D.TEnd/0.05);
-D.Tracks = builtinTracksS3(W, nSteps, 0.05);
+D.Tracks = builtinTracksS3(W, nSteps, 0.05, dense, reactive);
 [D.Poses, D.Who, D.DIMS] = builtinPosesS3(W, nSteps, 0.05);
 end
 
@@ -757,15 +798,45 @@ spec = { ...
 };
 end
 
-function TR = builtinTracksS3(W, n, DT)
+function TR = builtinTracksS3(W, n, DT, dense, reactive)
+if nargin < 4, dense = false; end
+if nargin < 5, reactive = false; end
 %BUILTINTRACKSS3  Exact ground truth for S3's one actor - same construction
 %   as builtinTracks, just off actorSpecS3 instead of actorSpec.
 P = W.Path;
 spec = actorSpecS3();
+densitySpec = {};
+if dense, densitySpec = sc.s3density(); end
+nReact = 0;
 TR = cell(1, n);
 for i = 1:n
     t = (i-1)*DT;
     A = activeActorsAt(spec, P, t);
+
+    % PHASE 8 - agents respond to the ego. This CAN work here and could not work
+    % in densityPlannerRun: demo_play REGENERATES its actors from actorSpec every
+    % step via activeActorsAt, so their velocity is computed. The density runner
+    % replays a RECORDED drivingScenario, where changing a velocity without
+    % changing the baked position recreates the ghost-track defect fixed 16 Sep.
+    % These actors - the cow, the motorcycle, the child, the dog - are also
+    % actually ON the road, unlike the density layer's parked scenery, which is
+    % why reactStep fired 0 times there and can fire here.
+    % OFF BY DEFAULT: reactStep returns A untouched when disabled.
+    if reactive
+        [A, rlog] = sc.reactStep(A, struct('XY', egoNominalXY(P, i, DT)), DT, struct('Enabled',true));
+        nReact = nReact + numel(rlog.Reacted);
+    end
+
+    % PHASE 1 - the density world's background actors, ON TOP OF the negotiation
+    % set and never instead of it: 50 of the 51 sit off the carriageway, so alone
+    % they give the planner nothing to negotiate with - measured, it cruised past
+    % at 51.6 km/h with h=NaN on every one of 817 steps.
+    if dense && ~isempty(densitySpec)
+        Ad = sc.activeDensityActorsAt(densitySpec, P, t);
+        for q = 1:numel(Ad)
+            A(end+1) = Ad(q);
+        end
+    end
     Ti = emptyTrackList();
     for a = 1:numel(A)
         Ti(end+1) = struct('TrackID',uint32(900+A(a).Row),'ClassID',uint8(A(a).ClassID), ...
@@ -773,6 +844,9 @@ for i = 1:n
             'Yaw',A(a).YawRad,'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
     end
     TR{i} = Ti;
+end
+if reactive
+    fprintf('  PHASE 8 reactive: %d agent reactions over %d steps\n', nReact, n);
 end
 end
 
@@ -1756,4 +1830,17 @@ if ~isfolder(d), mkdir(d); end
 save(f, 'LOG', '-v7.3');
 q = dir(f);
 fprintf('cached to %s (%.0f MB)\n', f, q.bytes/1e6);
+end
+
+function xy = egoNominalXY(P, i, DT)
+%EGONOMINALXY  Where the ego roughly is at step i, for the reaction trigger.
+%   The track list is built BEFORE the planner runs, so the ego's true pose is
+%   not available here; this is nominal progress along the route.
+%   Acceptable ONLY because reactStep's trigger is a coarse 'is something in my
+%   lane ahead' test rather than a collision check - AND because a reaction
+%   derived from the planner's ACTUAL state would be precisely the home-field
+%   advantage sih26037-end-goal-locked forbids. Said plainly so nobody mistakes
+%   this for the ego's real pose.
+sNom = min(P.Len - 1, 25 + 12 * (i-1) * DT);
+xy = P.at(sNom, 0);
 end
