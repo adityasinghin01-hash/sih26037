@@ -26,6 +26,11 @@ function info = densityPlannerRunS3(opts)
 
 arguments
     opts.PlanEvery (1,1) double = 3
+    opts.TEnd      (1,1) double = 0   % 0 = compute from the caps; >0 overrides.
+                                      % The stall happens by t=30 s, so a SHORT run
+                                      % reaches it AND still writes results/ - a
+                                      % timeboxed kill writes nothing and leaves
+                                      % nothing to diagnose.
     opts.Reactive  (1,1) logical = false  % PHASE 8 - agents respond to the ego
     opts.GateCfg   struct = struct()      % PHASE 5 - ML gate config; empty = closed
     opts.Quiet     (1,1) logical = false
@@ -79,6 +84,7 @@ TUNE = struct( ...
 % the caps actually in force; "none" avoids S1's blocking-cow time allowance.
 DT = 0.05;
 T_END = sc.estimateDuration(HZ, S_START, P.Len, CRUISE_V, "none");
+if opts.TEnd > 0, T_END = opts.TEnd; end
 A_LON = 1.5;
 D_LON = 3.0;
 R_LAT = 0.9;

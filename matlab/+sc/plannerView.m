@@ -297,21 +297,34 @@ case 'init'
     text(S.axMdl, 0.0, 0.905, sprintf(gtMsg), ...
          'VerticalAlignment','top', 'FontName','Menlo','FontSize',8.5, ...
          'Color',gtColor, 'Interpreter','none');
-    S.NM = 7;                                  % 4 models + ML GATE + planner + slack
+    S.NM = 6;                                  % 3 models + ML GATE + planner + slack
     S.mdlDot  = gobjects(1,S.NM);
     S.mdlName = gobjects(1,S.NM);
     S.mdlStat = gobjects(1,S.NM);
     S.mdlDet  = gobjects(1,S.NM);
-    y0 = 0.735;  dy = 0.142;      % lowered to clear the ground-truth notice above
+    % LAYOUT MEASURED, NOT GUESSED (17 Sep). Rendering the panel and LOOKING at it
+    % showed every row's 2-line Detail colliding with the next row's name. Detail
+    % sat at yk-0.086 while the next name sat at yk-0.142, leaving 0.056 - less
+    % than one wrapped line. Adding the ML GATE row made it worse.
+    % Now: rows start higher, pitch is unchanged, and the sub-lines are pulled in
+    % so a full 2-line Detail still clears the row below.
+    % THE ARITHMETIC, done properly the third time. 6 rows x 3 lines each = 18
+    % lines of text. The panel is ~0.72 tall in normalised units and a line is
+    % ~0.040, so 18 lines need 0.72 - the entire panel, with zero margin. Two-line
+    % Details CANNOT fit, and no amount of offset tuning changes that. I tuned
+    % offsets twice before doing this sum; both attempts still overlapped.
+    % 6 rows x 2 lines = 12 lines = 0.48. That fits with room to spare.
+    y0 = 0.735;  dy = 0.128;
+    dyStat = 0.042;   % status sits under the name; Detail is merged into it below
     for k = 1:S.NM
         yk = y0 - (k-1)*dy;
         S.mdlDot(k)  = plot(S.axMdl, 0.022, yk, 'o', 'MarkerSize',9, ...
                             'MarkerFaceColor',[.7 .7 .7],'MarkerEdgeColor',[.3 .3 .3]);
         S.mdlName(k) = text(S.axMdl, 0.065, yk, '', 'VerticalAlignment','middle', ...
                             'FontName','Menlo','FontSize',10,'FontWeight','bold','Interpreter','none');
-        S.mdlStat(k) = text(S.axMdl, 0.065, yk-0.045, '', 'VerticalAlignment','middle', ...
+        S.mdlStat(k) = text(S.axMdl, 0.065, yk-dyStat, '', 'VerticalAlignment','middle', ...
                             'FontName','Menlo','FontSize',9.5,'Color',[.35 .35 .35],'Interpreter','none');
-        S.mdlDet(k)  = text(S.axMdl, 0.065, yk-0.086, '', 'VerticalAlignment','middle', ...
+        S.mdlDet(k)  = text(S.axMdl, 0.065, yk-dyStat-0.034, '', 'VerticalAlignment','middle', ...
                             'FontName','Menlo','FontSize',9,'Color',[.5 .5 .5],'Interpreter','none');
     end
 
@@ -510,6 +523,9 @@ case 'step'
                               'MarkerFaceColor', statusColour(M(k).Status));
             set(S.mdlName(k), 'String', char(M(k).Model));
             set(S.mdlStat(k), 'String', char(clampStr(M(k).Status, 34)));
+            % Detail is ONE line now - see the layout note above. The full,
+            % untruncated text still goes to the run log, so no caveat is lost,
+            % it just is not competing for pixels it does not have.
             % 46 chars is what fits this panel at 9 pt - measured off a real
             % exported frame, where Model 3's "[placeholder - see
             % modelStatus.m header]" ran off the right-hand edge of the figure.
@@ -522,7 +538,7 @@ case 'step'
             % cow photo, not a road..." on screen. A caveat that is cut off
             % mid-clause is worse than no caveat: it advertises that something
             % is being explained and then withholds it.
-            set(S.mdlDet(k),  'String', wrapStr(M(k).Detail, 46, 2));
+            set(S.mdlDet(k),  'String', char(clampStr(M(k).Detail, 52)));
         else
             set(S.mdlName(k),'String',''); set(S.mdlStat(k),'String','');
             set(S.mdlDet(k),'String','');  set(S.mdlDot(k),'XData',NaN);
@@ -1218,10 +1234,15 @@ function M = stubModels(why)
 %   than one that admits it has none yet.
 d = 'stub - sc.modelStatus not on the path yet';
 if ~isempty(why), d = why; end
+% The "Fusion" row was dropped 17 Sep: its Status AND Detail both read "stub",
+% so it carried no information while consuming a full slot. The panel is sized
+% for a fixed number of rows and the live ML GATE row needed the space. A row
+% that says nothing is worse than no row - it makes the panel look fuller than
+% it is.
 M = struct( ...
-  'Model',  {"Models 1+2", "Model 3",  "Model 4",     "Fusion"}, ...
-  'Status', {"gated",      "stub",     "stub",        "stub"}, ...
-  'Detail', {"intent/traj gated off - planner runs on geometry", d, d, d});
+  'Model',  {"Models 1+2", "Model 3",  "Model 4"}, ...
+  'Status', {"gated",      "stub",     "stub"}, ...
+  'Detail', {"intent/traj gated off - planner runs on geometry", d, d});
 end
 
 function r = gateRow(d)
@@ -1248,7 +1269,7 @@ if isfield(d,'GateUse') && isfield(d,'GateFallback')
         st = sprintf('ON %d / %d', u, tot);
     end
     r = struct('Model',"ML GATE", 'Status',st, ...
-        'Detail',"no validated confidence band (2.089% vs a <=1% bar) - geometric right-of-way");
+        'Detail',"no validated band: 2.089% vs <=1% - geometry drives");
 else
     r = struct('Model',"ML GATE",'Status',"not reported", ...
                'Detail',"caller supplied no gate counts - not the same as zero");
