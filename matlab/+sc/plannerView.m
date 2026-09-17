@@ -178,11 +178,22 @@ case 'init'
     plot(S.axMap, Rm(:,1), Rm(:,2), '-',  'Color',[.35 .35 .35], 'LineWidth',1.2);
     plot(S.axMap, C(:,1),  C(:,2),  '--', 'Color',[.98 .98 .98], 'LineWidth',1.0);
 
-    % the cow, when a scenario has one
+    % the cow, when a scenario has one - NOW LABELLED.
+    % It was an unlabelled orange star, and sc.demo1Route puts a pothole at the
+    % SAME station ("right in the middle of the cow encounter (she's at 300 m)").
+    % So the pothole's label sat next to the star and the star read as the
+    % pothole - the animal the whole scenario is named for was the one thing on
+    % the map with no name on it. The fix is to name the cow, NOT to rename the
+    % pothole: the pothole is real, it is genuinely there, and relabelling it
+    % would make the picture say something untrue.
     if isfinite(S.CS)
         cowXY = S.P.at(S.CS, 0);
         plot(S.axMap, cowXY(1), cowXY(2), 'p', 'MarkerSize',15, ...
              'MarkerFaceColor',[.9 .5 .1],'MarkerEdgeColor','k');
+        text(S.axMap, cowXY(1), cowXY(2) + 6, 'COW', ...
+             'FontName','Menlo','FontSize',10,'FontWeight','bold', ...
+             'Color',[.5 .25 .0],'HorizontalAlignment','center', ...
+             'BackgroundColor',[1 1 1 ],'Margin',1, 'Clipping','on');
     end
 
     % ---- STATIC: every hazard, drawn once, LABELLED ----------------------
