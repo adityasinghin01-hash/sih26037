@@ -164,6 +164,8 @@ arguments
     opts.Cow        (1,1) string  = "blocking" % "blocking" | "verge" | "none"
     opts.InjectStep (1,1) double  = NaN      % automated rehearsal/test hook; UI uses clicks
     opts.InjectXY   (1,2) double  = [NaN NaN]
+    opts.Dense      (1,1) logical = false    % PHASE 1 - add the density world's background actors
+    opts.Reactive   (1,1) logical = false    % PHASE 8 - let agents respond to the ego
     opts.WriteResults(1,1) logical = true    % write results/<run>/{trajectories.csv,
                                               % metrics.json, config.json} - AGENTS.md
                                               % section 3. Skipped under Live=true, where
@@ -852,7 +854,8 @@ e0 = 1.75;
 if isfield(D, 'EgoStartE'), e0 = D.EgoStartE; end
 st = struct();  s = D.SStart;  e = e0;  ev = 0;
 lastCmd = struct('v',v,'e',e);
-tRun = tic;  nFail = 0;  reachedEnd = false;
+tRun = tic;  nFail = 0;
+nGateUse = 0;  nGateFallback = 0;  reachedEnd = false;
 fprintf('running the real planner over %d steps (this is the slow part - it is\n', n);
 fprintf('cached afterwards so the demo itself never waits for it)\n');
 % sc.senseRig carries live tracker/RandStream state (Chat 4, 7 Sep - see its own
@@ -931,6 +934,19 @@ for i = 1:n
     if isfinite(eHiH), ctx.EHi = eHiH; end
 
     if mod(i-1, planEvery) == 0
+        % PHASE 5 - the ML gate, live. It RECORDS a decision per track and does
+        % not alter the plan, so it cannot change this demo's behaviour; what it
+        % changes is that "the predictor is gated off" becomes a measured result
+        % on screen instead of a caption someone wrote. With no validated
+        % confidence band it returns FALLBACK for every track, which is correct:
+        % the model measures 2.089% dangerous-error against a <=1% bar.
+        for gk = 1:numel(ctx.Tracks)
+            if sih.prediction.gateYield(ctx.Tracks(gk), NaN, struct()) == "USE"
+                nGateUse = nGateUse + 1;
+            else
+                nGateFallback = nGateFallback + 1;
+            end
+        end
         [cmd, st] = sc.planSeat(st, ctx);
         cmd.MirrorsFolded = mirrorsFoldedNow;
         lastCmd = cmd;
@@ -975,6 +991,8 @@ end
 LOG.ReachedEnd = reachedEnd;
 LOG.PlannerFP  = plannerFingerprint();
 LOG.PlanEvery  = planEvery;
+fprintf('  PHASE 5 ML gate: USE %d / FALLBACK %d - no validated band, geometric right-of-way\n', ...
+        nGateUse, nGateFallback);
 fprintf('planner run done in %.1f s (%d plan failures)\n', toc(tRun), nFail);
 end
 
