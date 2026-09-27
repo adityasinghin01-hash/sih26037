@@ -1,0 +1,97 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D5 · 10-week build plan with pass/fail gates</title>
+<style>
+@page { size: A2 landscape; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D5 · 10-week build plan with pass/fail gates</h1><div class="sub">Two builders in parallel, merged into ONE Simulink model every week. Gates G1/G2/G5/G8 decide cuts.</div>
+<pre class="mermaid">gantt
+title 10-week build plan (from 1 Oct 2026) — A = Aditya (brain, safety, evaluation) · S = Shourya (world, assets, perception)
+dateFormat YYYY-MM-DD
+axisFormat %d %b
+section A · Brain &amp; safety
+W1 Fix S2/S3 crash + freeze            :a1, 2026-10-01, 7d
+W2 10 Hz planner + safety checker       :a2, after a1, 7d
+W3 Compiled code (MEX) + equal decisions :a3, after a2, 7d
+W4 Control + gears + driver screen      :a4, after a3, 7d
+W5 Motion predictor + belief + scorer   :a5, after a4, 7d
+W6 Hand signals → belief (caution only) :a6, after a5, 7d
+W7 SUMO reactive traffic + siren yield  :a7, after a6, 7d
+W8 All tests + fault modes, DEMO FREEZE :crit, a8, after a7, 7d
+W9 Final numbers + baselines            :a9, after a8, 7d
+W10 Buffer · report · video             :a10, after a9, 7d
+section S · World &amp; perception
+W1 CARLA source build + asset audit     :b1, 2026-10-01, 7d
+W2 Custom cow + auto spawn in CARLA     :b2, after b1, 7d
+W3 Indian asset pipeline + sensor setup :b3, after b2, 7d
+W4 Camera → detector in the loop        :b4, after b3, 7d
+W5 Render + REAL Indian video accuracy  :b5, after b4, 7d
+W6 Village + junction scenes, gestures  :b6, after b5, 7d
+W7 SUMO↔CARLA sync + 5 routes           :b7, after b6, 7d
+W8 Weather + potholes (14DOF)           :b8, after b7, 7d
+W9 Real-vs-sim check + film             :b9, after b8, 7d
+W10 Fresh-machine replay + video        :b10, after b9, 7d
+section Pass/fail gates
+G1 S2 + dense S3 zero contact            :milestone, g1, 2026-10-07, 0d
+G2 p99 ≤100 ms AND custom assets spawn   :milestone, g2, 2026-10-14, 0d
+G5 Per-class accuracy on real + sim      :milestone, g5, 2026-11-04, 0d
+G8 5 scenarios × 10 seeds ≥9/10, 0 contacts :milestone, g8, 2026-11-25, 0d
+</pre>
+
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">ROWS (two parallel tracks, one exit test per week):
+Week | A · Aditya: brain, safety, evaluation | S · Shourya: world, assets, perception | Exit test
+W1 1–7 Oct   | Fix S2 crash/freeze and dense S3 freeze | CARLA source build (165 GB, UE4.26, VS2019), asset audit | S2 + dense S3: zero contact, no false stall &gt;10 s, 3 seeds each
+W2 8–14 Oct  | Remove 88% hotspot; 8–16 moves; safety checker; BLOCKED state | Spawn 1 custom prop (cow) + 1 custom vehicle (auto) | p99 ≤100 ms over 1,000 ticks; 100 unsafe moves all vetoed; assets spawn (else declared stand-ins)
+W3 15–21 Oct | Versioned message contract; planner+checker compiled to MEX | Indian asset pipeline; sensor calibration; bridge smoke test | 5-min S1 run in one model; MATLAB = MEX decisions
+W4 22–28 Oct | Localisation, Stanley+PI control, gears, driver screen, fault path | Fix YOLOX zero-detections; camera+LiDAR+radar → tracks | 5 min sensor→track→certificate→steering/brake; injected loss → logged stop
+W5 29 Oct–4 Nov | Motion predictor, belief, move scorer (yield model stays off) | Label renders; run REAL Indian frames + own dashcam clip | Per-class accuracy on sim AND real + the gap; ML can never bypass checker
+W6 5–11 Nov  | Hand-signal → belief/right-of-way (caution only) | Village + junction CARLA scenes; walker raised-hand poses | All stop gestures slow/stop; zero &#x27;go&#x27; gestures cause an uncertified move
+W7 12–18 Nov | SUMO Client/Reader/Writer, reactive belief, siren yield, yield-rate sweep | Mirror SUMO actors into CARLA; 5 route files; audio events; cattle onset | 1,000 synced ticks; our move changes their move; siren-yield passes; 1 run per scenario
+W8 19–25 Nov | Top-25 + 6 communication probes; fault modes; full-loop timing; DEMO FREEZE | F1–F10 mixes; rain/fog/night; 14DOF potholes; replay one mined failure | 5 scenarios × 10 seeds: ≥9/10 complete, 0 contacts; p50/p95/p99 published
+W9 26 Nov–2 Dec | Frozen holdout, baselines, PS metrics, confidence intervals | Real-vs-sim recheck; film matched runs | All metrics by scenario; 299-seed bound only if all 299 clean
+W10 3–9 Dec  | Fix blockers; report; 8-min script | Fresh-machine replay; final video | One command reproduces every run ID and metric
+CUT ORDER if late: asset variety → rear/side cameras + driver watcher → audio detail → 14DOF breadth → auto failure mining → 299-run claim.
+NEVER CUT: one Simulink model · 5 scenarios · camera+LiDAR+radar loop · safety checker · safe braking · honest timing · 3 PS metrics.</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">gantt
+title 10-week build plan (from 1 Oct 2026) — A = Aditya (brain, safety, evaluation) · S = Shourya (world, assets, perception)
+dateFormat YYYY-MM-DD
+axisFormat %d %b
+section A · Brain &amp; safety
+W1 Fix S2/S3 crash + freeze            :a1, 2026-10-01, 7d
+W2 10 Hz planner + safety checker       :a2, after a1, 7d
+W3 Compiled code (MEX) + equal decisions :a3, after a2, 7d
+W4 Control + gears + driver screen      :a4, after a3, 7d
+W5 Motion predictor + belief + scorer   :a5, after a4, 7d
+W6 Hand signals → belief (caution only) :a6, after a5, 7d
+W7 SUMO reactive traffic + siren yield  :a7, after a6, 7d
+W8 All tests + fault modes, DEMO FREEZE :crit, a8, after a7, 7d
+W9 Final numbers + baselines            :a9, after a8, 7d
+W10 Buffer · report · video             :a10, after a9, 7d
+section S · World &amp; perception
+W1 CARLA source build + asset audit     :b1, 2026-10-01, 7d
+W2 Custom cow + auto spawn in CARLA     :b2, after b1, 7d
+W3 Indian asset pipeline + sensor setup :b3, after b2, 7d
+W4 Camera → detector in the loop        :b4, after b3, 7d
+W5 Render + REAL Indian video accuracy  :b5, after b4, 7d
+W6 Village + junction scenes, gestures  :b6, after b5, 7d
+W7 SUMO↔CARLA sync + 5 routes           :b7, after b6, 7d
+W8 Weather + potholes (14DOF)           :b8, after b7, 7d
+W9 Real-vs-sim check + film             :b9, after b8, 7d
+W10 Fresh-machine replay + video        :b10, after b9, 7d
+section Pass/fail gates
+G1 S2 + dense S3 zero contact            :milestone, g1, 2026-10-07, 0d
+G2 p99 ≤100 ms AND custom assets spawn   :milestone, g2, 2026-10-14, 0d
+G5 Per-class accuracy on real + sim      :milestone, g5, 2026-11-04, 0d
+G8 5 scenarios × 10 seeds ≥9/10, 0 contacts :milestone, g8, 2026-11-25, 0d
+</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>

@@ -1,0 +1,75 @@
+<html><head><meta charset="utf-8"><style>
+body{font-family:Calibri,Arial;font-size:10.5pt;line-height:1.3}
+h1{font-size:16pt;margin:0 0 4pt}h2{font-size:12pt;margin:10pt 0 3pt;color:#1f3864}
+h3{font-size:10.5pt;margin:6pt 0 2pt}
+pre{font-family:Consolas,monospace;font-size:8.5pt;background:#f2f2f2;border:1px solid #ccc;padding:5pt;white-space:pre-wrap;margin:2pt 0 6pt}
+p,li{margin:2pt 0}ul,ol{margin:2pt 0 2pt 16pt}
+</style></head><body>
+<h1>SIH26037 – CARLA Test Guide</h1>
+<p><b>Hi team!</b> Thank you for helping. Aditya can't run CARLA on his Mac, so we need one or more of you to try it on your own computer or the lab PC. <b>Goal:</b> check if CARLA works for us and build a small demo we can screenshot for the PPT. <b>Please don't try to build Najibabad.</b> Use CARLA's ready-made towns. Anyone can do this, alone or together. If several of you try, just tell the group which computer you're using.</p>
+
+<h2>Before you start</h2>
+<ul>
+<li><b>Computer:</b> Windows or Ubuntu with an <b>NVIDIA graphics card, 8 GB or more</b>, and about <b>30 GB free disk</b>. Macs won't work.</li>
+<li><b>Codex settings:</b> model <b>gpt-6-sol</b>, reasoning effort <b>high</b>. <b>Please don't use Astra</b>, because it uses up tokens much faster. Terra is fine if you run low on Sol.<br>
+To start it: open a terminal in an empty folder (e.g. <code>C:\carla-test</code>) and type:<br>
+<code>codex -m gpt-6-sol -c model_reasoning_effort="high"</code><br>
+Or open Codex and type <code>/model</code> to choose it.</li>
+<li>When Codex asks permission to download or run something, read it and allow it if it's about CARLA.</li>
+<li>Give Codex <b>one prompt at a time</b>. Wait until it finishes before moving on.</li>
+</ul>
+
+<h2>Step 1 – Check your computer</h2>
+<pre>Check if this computer can run the CARLA simulator 0.9.16. Tell me in simple words:
+operating system, graphics card name and its memory (use nvidia-smi), free disk space,
+RAM, whether Python 3.10-3.12 is installed, and whether I have administrator rights.
+Then say clearly: CAN RUN / CANNOT RUN / RISKY, and why. Don't install anything yet.</pre>
+<p>If it says <b>CANNOT RUN</b>, stop here and tell the group. Thank you!</p>
+
+<h2>Step 2 – Download and open CARLA</h2>
+<pre>Download the official CARLA 0.9.16 ready-to-run package for this operating system from
+the carla-simulator GitHub releases page (not the source code). Unzip it into this folder.
+Make a Python virtual environment and install the matching "carla" Python package.
+Start the CARLA server with low quality (-quality-level=Low). Connect from Python and
+print the map name. Tell me each step you did and whether it worked.</pre>
+<p><b>Success looks like:</b> a CARLA window opens showing a 3D town.</p>
+
+<h2>Step 3 – Add traffic and our car</h2>
+<pre>With CARLA running, write one Python script that: spawns 30 cars, 10 motorbikes and
+20 walking pedestrians; spawns our own car with a front camera; drives our car on
+autopilot for 60 seconds; and shows the camera view in a window. Measure the frames
+per second and graphics memory used (nvidia-smi). Report the numbers.</pre>
+
+<h2>Step 4 – Build the 3 PPT scenes</h2>
+<pre>Using a ready-made CARLA town, write one Python script per scene. Each should run by
+itself and record a video (mp4) and 3 screenshots into a folder called "shots":
+1. Busy junction with traffic lights switched off: our car goes through while a truck
+   and a motorbike cross close by, with no crash.
+2. Person suddenly walks out from behind a parked vehicle: our car detects it and brakes
+   to a stop in time.
+3. Highway merge: our car joins a highway when there is a safe gap between cars.
+Use CARLA's built-in controls (autopilot or simple brake logic) for now. In each video,
+show the front camera next to a top-down view. Tell me which scenes worked.</pre>
+
+<h2>Step 5 – Try adding our planner (only if Steps 1–4 worked)</h2>
+<pre>Our team repo (sih26037) is in [PUT THE REPO FOLDER PATH HERE]. It has a MATLAB path
+planner. Do NOT change any file in the repo. Just read it and tell me in simple words:
+what would be the easiest way to make CARLA's car follow the path our MATLAB planner
+makes (for example, through MATLAB's ROS Toolbox and the CARLA ROS bridge, or by saving
+the path to a file that a Python script replays)? Is MATLAB installed on this computer,
+and which toolboxes? List what is missing. Don't install anything.</pre>
+
+<h2>Step 6 – Write the report for the group</h2>
+<pre>Write a short report in plain English as a table: Step | Worked? (yes / no / partly) |
+Proof (a number, a file, or a screenshot path) | What blocked it. Add the frames per second
+and graphics memory used. End with one line: "CARLA on this computer is: GOOD / SLOW BUT
+OKAY / NOT USABLE". Save it as REPORT.md.</pre>
+
+<h2>What to send Aditya</h2>
+<ol>
+<li>REPORT.md</li>
+<li>The "shots" folder: screenshots and the 3 videos</li>
+<li>Your computer name and graphics card</li>
+</ol>
+<p><b>Rules:</b> don't change or push anything in the sih26037 repo. Keep all CARLA work in its own folder. If something gets stuck for more than 30 minutes, stop and message the group. Thank you so much!</p>
+</body></html>

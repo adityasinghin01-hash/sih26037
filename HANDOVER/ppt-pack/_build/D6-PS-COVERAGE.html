@@ -1,0 +1,187 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D6 · What the PS asks → how we meet it → beyond the PS</title>
+<style>
+@page { size: A2 landscape; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D6 · What the PS asks → how we meet it → beyond the PS</h1><div class="sub">Left: PS requirements (official text). Middle: our part that answers it. Right: extras beyond the PS. Gold = the one disclosed deviation.</div>
+<pre class="mermaid">flowchart LR
+  subgraph PSR[&quot;WHAT THE PS ASKS&quot;]
+    r1[&quot;Pipeline in MATLAB + Simulink&lt;br/&gt;perception → prediction → planning → decision → vehicle motion&quot;]
+    r2[&quot;Multi-sensor: camera · LiDAR · radar&quot;]
+    r3[&quot;Identify autos · pushcarts · pedestrians · animals&quot;]
+    r4[&quot;Predict short-term, non-lane, irregular motion&quot;]
+    r5[&quot;Safe, collision-free path, replanned in real time&quot;]
+    r6[&quot;Missing lane markings · informal merging&lt;br/&gt;sudden pedestrians · unexpected obstacles&quot;]
+    r7[&quot;≥5 Indian scenarios (village, junction, highway merge, market, cattle)&quot;]
+    r8[&quot;2 detailed RoadRunner scenes&quot;]
+    r9[&quot;Metrics: replanning latency · path smoothness · completion rate&quot;]
+    r10[&quot;Model · scenarios · results · report · video · closed-loop validation&quot;]
+  end
+  subgraph OURS[&quot;HOW WE MEET IT (part of our system)&quot;]
+    o1[&quot;One Simulink ego stack, 13 parts, fixed message contract&quot;]
+    o2[&quot;Cameras ×4 · LiDAR · radar ×3 · ultrasonic · GNSS/IMU&quot;]
+    o3[&quot;YOLOX + road mask, Indian datasets (IDD, DriveIndia) + renders&quot;]
+    o4[&quot;Top-K ego-conditioned predictor + cooperation belief&lt;br/&gt;+ conservative reachable zones&quot;]
+    o5[&quot;Independent safety checker + 10 Hz gate + stale-plan brake&quot;]
+    o6[&quot;Free-space / unknown map · group/cover merge modes&lt;br/&gt;· occlusion zones · BLOCKED state&quot;]
+    o7[&quot;5 CARLA/SUMO scenarios × 10 seeds + F1–F10 families&quot;]
+    o8[&quot;DEVIATION (disclosed): 2 detailed CARLA 0.9.15 scenes&lt;br/&gt;(no RoadRunner licence)&quot;]
+    o9[&quot;Exact formulas: p50/p95/p99 + deadline misses · jerk + curvature · completion&quot;]
+    o10[&quot;Run recorder · replay · report · matched-run video · reactive traffic&quot;]
+  end
+  subgraph BEY[&quot;BEYOND THE PS&quot;]
+    b1[&quot;Hearing: siren / horn&quot;]
+    b2[&quot;Hand-signal reading (caution only)&quot;]
+    b3[&quot;Real Indian dashcam video test&quot;]
+    b4[&quot;Failure mining → regression → frozen holdout&quot;]
+    b5[&quot;Sensor-degradation curves (rain/fog/night)&quot;]
+    b6[&quot;14DOF pothole ride tests&quot;]
+    b7[&quot;Compiled planner (MEX) — path to car hardware&quot;]
+    b8[&quot;Baselines on same seeds + confidence intervals&quot;]
+    b9[&quot;Driver screen, takeover, minimal-risk stop&quot;]
+  end
+  r1 --&gt; o1
+  r2 --&gt; o2
+  r3 --&gt; o3
+  r4 --&gt; o4
+  r5 --&gt; o5
+  r6 --&gt; o6
+  r7 --&gt; o7
+  r8 --&gt; o8
+  r9 --&gt; o9
+  r10 --&gt; o10
+  o3 --&gt; b3
+  o2 --&gt; b1
+  o3 --&gt; b2
+  o10 --&gt; b4
+  o2 --&gt; b5
+  o1 --&gt; b6
+  o5 --&gt; b7
+  o9 --&gt; b8
+  o5 --&gt; b9
+  classDef dev fill:#fff0c2,stroke:#b8860b,stroke-width:2px
+  class o8 dev</pre>
+<p class="note"><b>Honest status today (27 Sep 2026, 40 PS lines):</b> 1 meets · 22 partial · 15 not yet · 2 deviation (RoadRunner). Every line has a planned week and a test (see build plan). Source: P14-PS-COMPLIANCE.md.</p>
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">BOXES (grouped exactly as drawn):
+■ WHAT THE PS ASKS
+  - [r1] Pipeline in MATLAB + Simulink perception → prediction → planning → decision → vehicle motion
+  - [r2] Multi-sensor: camera · LiDAR · radar
+  - [r3] Identify autos · pushcarts · pedestrians · animals
+  - [r4] Predict short-term, non-lane, irregular motion
+  - [r5] Safe, collision-free path, replanned in real time
+  - [r6] Missing lane markings · informal merging sudden pedestrians · unexpected obstacles
+  - [r7] ≥5 Indian scenarios (village, junction, highway merge, market, cattle)
+  - [r8] 2 detailed RoadRunner scenes
+  - [r9] Metrics: replanning latency · path smoothness · completion rate
+  - [r10] Model · scenarios · results · report · video · closed-loop validation
+■ HOW WE MEET IT (part of our system)
+  - [o1] One Simulink ego stack, 13 parts, fixed message contract
+  - [o2] Cameras ×4 · LiDAR · radar ×3 · ultrasonic · GNSS/IMU
+  - [o3] YOLOX + road mask, Indian datasets (IDD, DriveIndia) + renders
+  - [o4] Top-K ego-conditioned predictor + cooperation belief + conservative reachable zones
+  - [o5] Independent safety checker + 10 Hz gate + stale-plan brake
+  - [o6] Free-space / unknown map · group/cover merge modes · occlusion zones · BLOCKED state
+  - [o7] 5 CARLA/SUMO scenarios × 10 seeds + F1–F10 families
+  - [o8] DEVIATION (disclosed): 2 detailed CARLA 0.9.15 scenes (no RoadRunner licence)
+  - [o9] Exact formulas: p50/p95/p99 + deadline misses · jerk + curvature · completion
+  - [o10] Run recorder · replay · report · matched-run video · reactive traffic
+■ BEYOND THE PS
+  - [b1] Hearing: siren / horn
+  - [b2] Hand-signal reading (caution only)
+  - [b3] Real Indian dashcam video test
+  - [b4] Failure mining → regression → frozen holdout
+  - [b5] Sensor-degradation curves (rain/fog/night)
+  - [b6] 14DOF pothole ride tests
+  - [b7] Compiled planner (MEX) — path to car hardware
+  - [b8] Baselines on same seeds + confidence intervals
+  - [b9] Driver screen, takeover, minimal-risk stop
+
+CONNECTIONS (19 arrows, from → to : what flows):
+  Pipeline in MATLAB + Simulink perception → prediction → planning → decision → vehicle motion  →  One Simulink ego stack, 13 parts, fixed message contract
+  Multi-sensor: camera · LiDAR · radar  →  Cameras ×4 · LiDAR · radar ×3 · ultrasonic · GNSS/IMU
+  Identify autos · pushcarts · pedestrians · animals  →  YOLOX + road mask, Indian datasets (IDD, DriveIndia) + renders
+  Predict short-term, non-lane, irregular motion  →  Top-K ego-conditioned predictor + cooperation belief + conservative reachable zones
+  Safe, collision-free path, replanned in real time  →  Independent safety checker + 10 Hz gate + stale-plan brake
+  Missing lane markings · informal merging sudden pedestrians · unexpected obstacles  →  Free-space / unknown map · group/cover merge modes · occlusion zones · BLOCKED state
+  ≥5 Indian scenarios (village, junction, highway merge, market, cattle)  →  5 CARLA/SUMO scenarios × 10 seeds + F1–F10 families
+  2 detailed RoadRunner scenes  →  DEVIATION (disclosed): 2 detailed CARLA 0.9.15 scenes (no RoadRunner licence)
+  Metrics: replanning latency · path smoothness · completion rate  →  Exact formulas: p50/p95/p99 + deadline misses · jerk + curvature · completion
+  Model · scenarios · results · report · video · closed-loop validation  →  Run recorder · replay · report · matched-run video · reactive traffic
+  YOLOX + road mask, Indian datasets (IDD, DriveIndia) + renders  →  Real Indian dashcam video test
+  Cameras ×4 · LiDAR · radar ×3 · ultrasonic · GNSS/IMU  →  Hearing: siren / horn
+  YOLOX + road mask, Indian datasets (IDD, DriveIndia) + renders  →  Hand-signal reading (caution only)
+  Run recorder · replay · report · matched-run video · reactive traffic  →  Failure mining → regression → frozen holdout
+  Cameras ×4 · LiDAR · radar ×3 · ultrasonic · GNSS/IMU  →  Sensor-degradation curves (rain/fog/night)
+  One Simulink ego stack, 13 parts, fixed message contract  →  14DOF pothole ride tests
+  Independent safety checker + 10 Hz gate + stale-plan brake  →  Compiled planner (MEX) — path to car hardware
+  Exact formulas: p50/p95/p99 + deadline misses · jerk + curvature · completion  →  Baselines on same seeds + confidence intervals
+  Independent safety checker + 10 Hz gate + stale-plan brake  →  Driver screen, takeover, minimal-risk stop</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">flowchart LR
+  subgraph PSR[&quot;WHAT THE PS ASKS&quot;]
+    r1[&quot;Pipeline in MATLAB + Simulink&lt;br/&gt;perception → prediction → planning → decision → vehicle motion&quot;]
+    r2[&quot;Multi-sensor: camera · LiDAR · radar&quot;]
+    r3[&quot;Identify autos · pushcarts · pedestrians · animals&quot;]
+    r4[&quot;Predict short-term, non-lane, irregular motion&quot;]
+    r5[&quot;Safe, collision-free path, replanned in real time&quot;]
+    r6[&quot;Missing lane markings · informal merging&lt;br/&gt;sudden pedestrians · unexpected obstacles&quot;]
+    r7[&quot;≥5 Indian scenarios (village, junction, highway merge, market, cattle)&quot;]
+    r8[&quot;2 detailed RoadRunner scenes&quot;]
+    r9[&quot;Metrics: replanning latency · path smoothness · completion rate&quot;]
+    r10[&quot;Model · scenarios · results · report · video · closed-loop validation&quot;]
+  end
+  subgraph OURS[&quot;HOW WE MEET IT (part of our system)&quot;]
+    o1[&quot;One Simulink ego stack, 13 parts, fixed message contract&quot;]
+    o2[&quot;Cameras ×4 · LiDAR · radar ×3 · ultrasonic · GNSS/IMU&quot;]
+    o3[&quot;YOLOX + road mask, Indian datasets (IDD, DriveIndia) + renders&quot;]
+    o4[&quot;Top-K ego-conditioned predictor + cooperation belief&lt;br/&gt;+ conservative reachable zones&quot;]
+    o5[&quot;Independent safety checker + 10 Hz gate + stale-plan brake&quot;]
+    o6[&quot;Free-space / unknown map · group/cover merge modes&lt;br/&gt;· occlusion zones · BLOCKED state&quot;]
+    o7[&quot;5 CARLA/SUMO scenarios × 10 seeds + F1–F10 families&quot;]
+    o8[&quot;DEVIATION (disclosed): 2 detailed CARLA 0.9.15 scenes&lt;br/&gt;(no RoadRunner licence)&quot;]
+    o9[&quot;Exact formulas: p50/p95/p99 + deadline misses · jerk + curvature · completion&quot;]
+    o10[&quot;Run recorder · replay · report · matched-run video · reactive traffic&quot;]
+  end
+  subgraph BEY[&quot;BEYOND THE PS&quot;]
+    b1[&quot;Hearing: siren / horn&quot;]
+    b2[&quot;Hand-signal reading (caution only)&quot;]
+    b3[&quot;Real Indian dashcam video test&quot;]
+    b4[&quot;Failure mining → regression → frozen holdout&quot;]
+    b5[&quot;Sensor-degradation curves (rain/fog/night)&quot;]
+    b6[&quot;14DOF pothole ride tests&quot;]
+    b7[&quot;Compiled planner (MEX) — path to car hardware&quot;]
+    b8[&quot;Baselines on same seeds + confidence intervals&quot;]
+    b9[&quot;Driver screen, takeover, minimal-risk stop&quot;]
+  end
+  r1 --&gt; o1
+  r2 --&gt; o2
+  r3 --&gt; o3
+  r4 --&gt; o4
+  r5 --&gt; o5
+  r6 --&gt; o6
+  r7 --&gt; o7
+  r8 --&gt; o8
+  r9 --&gt; o9
+  r10 --&gt; o10
+  o3 --&gt; b3
+  o2 --&gt; b1
+  o3 --&gt; b2
+  o10 --&gt; b4
+  o2 --&gt; b5
+  o1 --&gt; b6
+  o5 --&gt; b7
+  o9 --&gt; b8
+  o5 --&gt; b9
+  classDef dev fill:#fff0c2,stroke:#b8860b,stroke-width:2px
+  class o8 dev</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>

@@ -1,0 +1,562 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq/research/_codex
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a0de91-707c-7fb1-866a-6652e7898403
+--------
+user
+PHASE P3 - THE PLANNER (the brain). Deep research. Read my notes and audit first (below), then research.
+Goal: know exactly how the best in the world build the decision/planning brain, and what options we
+have for a planner that handles the P1 top-25 on Indian roads, buildable by a student team in MATLAB/Simulink
+(Python allowed for training; the PS toolchain must host the running system).
+
+=== MY RAW NOTES ===
+# P3 planner — Claude's raw findings (to be merged into P3 doc)
+
+## How the leaders build the brain (sources opened)
+- **Waymo (Dec 2025 blog, primary):** ONE foundation model powering three things: the **Driver**, the
+  **Simulator** and the **Critic**.
+  - "Think fast" part: a sensor-fusion encoder (camera + lidar + radar → objects and embeddings).
+  - "Think slow" part: a Driving VLM (Gemini) for rare semantic cases.
+  - Both feed a **World Decoder**, which predicts behaviour, the map and trajectories.
+  - **The generative planner's trajectories are checked by "a separate and rigorous onboard
+    validation layer"**, learned plus rule-based.
+  - An outer loop flags bad behaviour → improves it → tests in the sim with the Critic → deploys.
+  https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/
+- **Tesla FSD v12→v14:** one end-to-end network from camera pixels to control; an RL stage in
+  training; a video world model generates futures. (Secondary sources only: thinkautonomous,
+  eeworld. Tesla publishes no architecture papers.)
+- **NVIDIA Alpamayo (CES, Jan 2026, primary):**
+  - Alpamayo 1: a 10B-parameter VLA with **open weights on Hugging Face**, chain-of-thought
+    reasoning plus trajectories; meant as a **teacher to fine-tune and distil**, not to deploy.
+  - **AlpaSim:** an open-source closed-loop sim on GitHub.
+  - **Physical AI open dataset:** 1,700+ hours.
+  - The licence is non-commercial for now ("options for commercial usage" in future models).
+  https://nvidianews.nvidia.com/news/alpamayo-autonomous-vehicle-development
+- **Swaayatt Robots (Bhopal, 2015):** deep-RL-based motion planning and decision-making for
+  unstructured traffic, map-free, bidirectional negotiation; says 70% of its R&D goes to
+  decision-making and planning. No public papers found. (inc42, autofutures)
+- **Minus Zero (Bengaluru):** camera-only "Nature-Inspired AI" end-to-end, no HD maps; zPod
+  concept limited to campuses. (autocarindia, businesstoday)
+- Others: **Ati Motors** (autonomous cargo in factories), **Flux Auto** (truck retrofit ADAS),
+  **RoshAI** (Kochi; industrial autonomous vehicles and truck retrofits), **TiHAN IIT Hyderabad**
+  (₹130 cr national autonomous-navigation testbed; DriveIndia dataset).
+
+## Academic state of the art
+- NAVSIM leaderboard (2026): diffusion / flow-based planners on top (DRIFT 89.6 PDMS; FlowDrive
+  86.3 EPDMS). PDM-Closed is the rule-based hybrid baseline.
+- **NOVELTY HIT 1:** "Active Interaction-Aware MPPI via Ego-Conditioned Generative Predictions"
+  (Mustafa, …, Alonso-Mora), arXiv 2608.21400, 6 Aug 2026. The car **actively probes** to reduce
+  ambiguity about whether others will cooperate, in unprotected turns. **This is our
+  probe-and-commit idea, already published.**
+- **NOVELTY HIT 2:** "CoPlanner" (Zhong et al.), arXiv 2509.17080, Sep 2025. Diffusion planner with
+  a **validated shared short-term segment plus contingency branches**. **This is our "trunk",
+  published, on nuPlan.**
+- Also: MARC (risk-aware contingency, 2308.12021), Contingency Games (2304.05483), GameOpt+
+  (heterogeneous intersections, V2I assumption).
+- **So novelty cannot rest on the planner mechanism.** It has to come from: India-specific
+  behaviour models (mass-priority, per-agent negotiability, animals), the Indian scenario and
+  evaluation suite, integrating everything in the PS toolchain (MATLAB), and the safety-validated
+  learned + rule hybrid tested on Indian data.
+
+## Architectural pattern everyone converges on
+**learned proposer (generative / end-to-end) + independent safety validator (rule and physics)
++ simulator + critic + data flywheel.** Our current system is the validator-heavy half; it is
+missing the learned proposer and the flywheel.
+
+## NOVELTY HIT 3 (found in P1): the "Indian test suite" angle is occupied
+- WMG (University of Warwick) **Safety Pool Studio**: crowdsourced **Indian** traffic scenarios for ADAS
+  testing (SAE paper 2026-26-0046). They feed the Safety Pool Scenario Database, which has **250,000+
+  scenarios and 500+ member organisations**.
+  https://saemobilus.sae.org/papers/crowdsourcing-indian-traffic-scenarios-adas-development-testing-2026-26-0046
+  https://www.safetypool.ai/
+- ARAI already sells India-specific data digitisation plus scenario creation plus SIL/MIL/HIL V&V.
+- **So "the first Indian ADAS test suite" is NOT a safe claim.** A narrower angle is still possible:
+  a closed-loop **planner** benchmark for unstructured traffic, in the PS toolchain, with reactive
+  Indian agents. This must be re-checked against Safety Pool's own libraries.
+
+=== OUR CURRENT PLANNER (audit row) ===
+| 1 | **Planner — the brain** | `+sih/+planner` (18 functions): velocity-obstacle barrier `h=λ−β`; COLREGs-style roles adapted to Indian law (keep left, RRR 1989 reg.2/9); **contingency planner**: a fan of 35 paths × 2 futures per agent (yield/assert), commit only the trunk that is safe under both, plus a brake-to-stop terminal check (trunk mode B); pure-pursuit follower; turn classification; escape memory; point of no return. Plus the `+sc/planSeat` layer: D9 ladder (creep → WAIT → go-around), track hysteresis, sanity reject | S1 completes 610 m, 0 plan failures, min clearance **0.618 m** sparse / **0.135 m** dense; 8 randomised runs: mean 0.143, 95% CI [0.093, 0.193], **worst −0.001 m (contact)**. S3 sparse completes, 0.293 m | **Partial** | **Permanent stall** in circulating/dense traffic (S2 at s≈116–121 m, dense S3 at 81.4 m). Root cause found by Codex (the clearance gate drops the longitudinal station; WAIT commits on one frame; the timeout re-arms). Not fixed. Tie-break prefers standing still or small offsets. Hand-tuned, not learned |
+
+=== TASKS ===
+1. For EACH of: Tesla, Waymo, Mobileye (RSS + its planning stack), Wayve, NVIDIA (Alpamayo + Hydra/DRIVE
+   planner), Baidu Apollo (open source), Autoware (open source), comma.ai openpilot, Swaayatt, Minus Zero:
+   how is the planner built (end-to-end vs modular vs hybrid), what the planner outputs, how safety is
+   enforced on top of it, how it handles interaction/negotiation, and what is public (papers/code/patents).
+   One compact table + key sources. Mark marketing claims vs technical evidence.
+2. Academic state of the art for INTERACTIVE planning in dense, heterogeneous traffic (2023-2026):
+   contingency/branch MPC, game-theoretic (incl. GameOpt+, B-GAP, Chandra's work), MPPI with generative
+   prediction (2608.21400), diffusion/flow planners (CoPlanner, DiffusionDrive, DRIFT), RL planners,
+   hybrid learned-proposer + rule-validator (PDM-Hybrid, Hydra-MDP, Waymo's validation layer).
+   For each: core idea, handles non-lane traffic? , compute cost, code available?, benchmark numbers.
+3. Deadlock/"frozen robot" in dense crowds specifically (our known failure): best published fixes.
+4. Patents: key planning/safety patents (Mobileye RSS, Waymo/Tesla planning, animal avoidance
+   US9481367B1/US9481366B1) - what each claims in plain words and how to design around.
+5. RECOMMENDATION: 2-3 candidate planner architectures for us (with the learned part + safety validator +
+   fallback), each rated on: handles top-25, real-time feasibility (our step now 736 ms vs 100 ms budget;
+   88% spent in MathWorks dynamicCapsuleList), MATLAB/Simulink deployability, data needs, novelty on top
+   of the 3 NOVELTY HITS in my notes. Be honest; attack my notes where wrong.
+Tables, concise, every fact sourced, UNVERIFIED where needed.
+
+codex
+I’ll audit the planner code and the claims in your notes first, then check the published architectures, deadlock remedies, patents, and MATLAB deployment constraints against primary sources. I’ll separate documented implementation from company descriptions and leave unsupported details marked UNVERIFIED.
+web search: 
+exec
+/bin/zsh -lc pwd in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+/Users/aditya/dev/sih2026-hq/research/_codex
+
+exec
+/bin/zsh -lc "rg --files -g 'AGENTS.md' -g '*.m' -g '*.md' -g '*.slx' -g '*.mat' | head -100" in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+P1-codex-r1.md
+P3-brief.md
+P0-codex-r1.md
+P1-r2.md
+P1-codex-r2.md
+P0-brief.md
+P1-brief.md
+
+web search: site:waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/ world decoder validation ...
+exec
+/bin/zsh -lc 'cat P3-brief.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+PHASE P3 - THE PLANNER (the brain). Deep research. Read my notes and audit first (below), then research.
+Goal: know exactly how the best in the world build the decision/planning brain, and what options we
+have for a planner that handles the P1 top-25 on Indian roads, buildable by a student team in MATLAB/Simulink
+(Python allowed for training; the PS toolchain must host the running system).
+
+=== MY RAW NOTES ===
+# P3 planner — Claude's raw findings (to be merged into P3 doc)
+
+## How the leaders build the brain (sources opened)
+- **Waymo (Dec 2025 blog, primary):** ONE foundation model powering three things: the **Driver**, the
+  **Simulator** and the **Critic**.
+  - "Think fast" part: a sensor-fusion encoder (camera + lidar + radar → objects and embeddings).
+  - "Think slow" part: a Driving VLM (Gemini) for rare semantic cases.
+  - Both feed a **World Decoder**, which predicts behaviour, the map and trajectories.
+  - **The generative planner's trajectories are checked by "a separate and rigorous onboard
+    validation layer"**, learned plus rule-based.
+  - An outer loop flags bad behaviour → improves it → tests in the sim with the Critic → deploys.
+  https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/
+- **Tesla FSD v12→v14:** one end-to-end network from camera pixels to control; an RL stage in
+  training; a video world model generates futures. (Secondary sources only: thinkautonomous,
+  eeworld. Tesla publishes no architecture papers.)
+- **NVIDIA Alpamayo (CES, Jan 2026, primary):**
+  - Alpamayo 1: a 10B-parameter VLA with **open weights on Hugging Face**, chain-of-thought
+    reasoning plus trajectories; meant as a **teacher to fine-tune and distil**, not to deploy.
+  - **AlpaSim:** an open-source closed-loop sim on GitHub.
+  - **Physical AI open dataset:** 1,700+ hours.
+  - The licence is non-commercial for now ("options for commercial usage" in future models).
+  https://nvidianews.nvidia.com/news/alpamayo-autonomous-vehicle-development
+- **Swaayatt Robots (Bhopal, 2015):** deep-RL-based motion planning and decision-making for
+  unstructured traffic, map-free, bidirectional negotiation; says 70% of its R&D goes to
+  decision-making and planning. No public papers found. (inc42, autofutures)
+- **Minus Zero (Bengaluru):** camera-only "Nature-Inspired AI" end-to-end, no HD maps; zPod
+  concept limited to campuses. (autocarindia, businesstoday)
+- Others: **Ati Motors** (autonomous cargo in factories), **Flux Auto** (truck retrofit ADAS),
+  **RoshAI** (Kochi; industrial autonomous vehicles and truck retrofits), **TiHAN IIT Hyderabad**
+  (₹130 cr national autonomous-navigation testbed; DriveIndia dataset).
+
+## Academic state of the art
+- NAVSIM leaderboard (2026): diffusion / flow-based planners on top (DRIFT 89.6 PDMS; FlowDrive
+  86.3 EPDMS). PDM-Closed is the rule-based hybrid baseline.
+- **NOVELTY HIT 1:** "Active Interaction-Aware MPPI via Ego-Conditioned Generative Predictions"
+  (Mustafa, …, Alonso-Mora), arXiv 2608.21400, 6 Aug 2026. The car **actively probes** to reduce
+  ambiguity about whether others will cooperate, in unprotected turns. **This is our
+  probe-and-commit idea, already published.**
+- **NOVELTY HIT 2:** "CoPlanner" (Zhong et al.), arXiv 2509.17080, Sep 2025. Diffusion planner with
+  a **validated shared short-term segment plus contingency branches**. **This is our "trunk",
+  published, on nuPlan.**
+- Also: MARC (risk-aware contingency, 2308.12021), Contingency Games (2304.05483), GameOpt+
+  (heterogeneous intersections, V2I assumption).
+- **So novelty cannot rest on the planner mechanism.** It has to come from: India-specific
+  behaviour models (mass-priority, per-agent negotiability, animals), the Indian scenario and
+  evaluation suite, integrating everything in the PS toolchain (MATLAB), and the safety-validated
+  learned + rule hybrid tested on Indian data.
+
+## Architectural pattern everyone converges on
+**learned proposer (generative / end-to-end) + independent safety validator (rule and physics)
++ simulator + critic + data flywheel.** Our current system is the validator-heavy half; it is
+missing the learned proposer and the flywheel.
+
+## NOVELTY HIT 3 (found in P1): the "Indian test suite" angle is occupied
+- WMG (University of Warwick) **Safety Pool Studio**: crowdsourced **Indian** traffic scenarios for ADAS
+  testing (SAE paper 2026-26-0046). They feed the Safety Pool Scenario Database, which has **250,000+
+  scenarios and 500+ member organisations**.
+  https://saemobilus.sae.org/papers/crowdsourcing-indian-traffic-scenarios-adas-development-testing-2026-26-0046
+  https://www.safetypool.ai/
+- ARAI already sells India-specific data digitisation plus scenario creation plus SIL/MIL/HIL V&V.
+- **So "the first Indian ADAS test suite" is NOT a safe claim.** A narrower angle is still possible:
+  a closed-loop **planner** benchmark for unstructured traffic, in the PS toolchain, with reactive
+  Indian agents. This must be re-checked against Safety Pool's own libraries.
+
+=== OUR CURRENT PLANNER (audit row) ===
+| 1 | **Planner — the brain** | `+sih/+planner` (18 functions): velocity-obstacle barrier `h=λ−β`; COLREGs-style roles adapted to Indian law (keep left, RRR 1989 reg.2/9); **contingency planner**: a fan of 35 paths × 2 futures per agent (yield/assert), commit only the trunk that is safe under both, plus a brake-to-stop terminal check (trunk mode B); pure-pursuit follower; turn classification; escape memory; point of no return. Plus the `+sc/planSeat` layer: D9 ladder (creep → WAIT → go-around), track hysteresis, sanity reject | S1 completes 610 m, 0 plan failures, min clearance **0.618 m** sparse / **0.135 m** dense; 8 randomised runs: mean 0.143, 95% CI [0.093, 0.193], **worst −0.001 m (contact)**. S3 sparse completes, 0.293 m | **Partial** | **Permanent stall** in circulating/dense traffic (S2 at s≈116–121 m, dense S3 at 81.4 m). Root cause found by Codex (the clearance gate drops the longitudinal station; WAIT commits on one frame; the timeout re-arms). Not fixed. Tie-break prefers standing still or small offsets. Hand-tuned, not learned |
+
+=== TASKS ===
+1. For EACH of: Tesla, Waymo, Mobileye (RSS + its planning stack), Wayve, NVIDIA (Alpamayo + Hydra/DRIVE
+   planner), Baidu Apollo (open source), Autoware (open source), comma.ai openpilot, Swaayatt, Minus Zero:
+   how is the planner built (end-to-end vs modular vs hybrid), what the planner outputs, how safety is
+   enforced on top of it, how it handles interaction/negotiation, and what is public (papers/code/patents).
+   One compact table + key sources. Mark marketing claims vs technical evidence.
+2. Academic state of the art for INTERACTIVE planning in dense, heterogeneous traffic (2023-2026):
+   contingency/branch MPC, game-theoretic (incl. GameOpt+, B-GAP, Chandra's work), MPPI with generative
+   prediction (2608.21400), diffusion/flow planners (CoPlanner, DiffusionDrive, DRIFT), RL planners,
+   hybrid learned-proposer + rule-validator (PDM-Hybrid, Hydra-MDP, Waymo's validation layer).
+   For each: core idea, handles non-lane traffic? , compute cost, code available?, benchmark numbers.
+3. Deadlock/"frozen robot" in dense crowds specifically (our known failure): best published fixes.
+4. Patents: key planning/safety patents (Mobileye RSS, Waymo/Tesla planning, animal avoidance
+   US9481367B1/US9481366B1) - what each claims in plain words and how to design around.
+5. RECOMMENDATION: 2-3 candidate planner architectures for us (with the learned part + safety validator +
+   fallback), each rated on: handles top-25, real-time feasibility (our step now 736 ms vs 100 ms budget;
+   88% spent in MathWorks dynamicCapsuleList), MATLAB/Simulink deployability, data needs, novelty on top
+   of the 3 NOVELTY HITS in my notes. Be honest; attack my notes where wrong.
+Tables, concise, every fact sourced, UNVERIFIED where needed.
+
+exec
+/bin/zsh -lc "rg --files /Users/aditya/dev/sih2026-hq | rg '(\\+planner|\\+sc|AGENTS\\.md|P3-brief)' | head -100" in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+/Users/aditya/dev/sih2026-hq/03-HOW-TO-DRIVE-THE-AGENTS.md
+/Users/aditya/dev/sih2026-hq/research/_codex/P3-brief.md
+
+exec
+/bin/zsh -lc 'find /Users/aditya/dev/sih2026-hq -maxdepth 3 -type d | head -80' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+/Users/aditya/dev/sih2026-hq
+/Users/aditya/dev/sih2026-hq/research
+/Users/aditya/dev/sih2026-hq/research/_codex
+/Users/aditya/dev/sih2026-hq/tools
+/Users/aditya/dev/sih2026-hq/05-ASSETS
+/Users/aditya/dev/sih2026-hq/05-ASSETS/render-check
+/Users/aditya/dev/sih2026-hq/04-JOBS
+/Users/aditya/dev/sih2026-hq/REPORTS
+
+web search: 
+web search: arxiv 2608.21400 Active Interaction-Aware MPPI Ego-Conditioned Generative Predictions ...
+web search: 
+web search: site:tesla.com/AI FSD neural networks planning controls end to end ...
+web search: 
+web search: Wayve AV2.0 safety guardian end to end planner paper ...
+web search: 
+web search: site:apollo.baidu.com Apollo planning architecture EM planner open source trajectory decision rules GitHub ...
+web search: 
+web search: site:github.com/commaai/openpilot README model path planning controls panda safety ...
+codex
+The first audit found two important limits: the MATLAB planner source is not present in this workspace, so I can assess the reported timings and failures but cannot independently confirm the stated root cause. Also, the public sources support a narrower picture than “everyone converges”: some systems are learned proposals with separate checks, while Apollo and Autoware remain explicitly modular.
+web search: 
+web search: Hydra-MDP NVIDIA planning paper arxiv trajectory candidates rule based 2024 ...
+web search: 
+web search: GameOpt+ interactive planning heterogeneous traffic intersections autonomous vehicles paper code ...
+web search: 
+web search: autonomous driving deadlock frozen robot problem planner progress constraint dense traffic paper ...
+web search: 
+web search: site:arxiv.org/abs/2304.05483 Contingency Games autonomous driving ...
+web search: 
+web search: DRIFT 89.6 PDMS NAVSIM diffusion 2026 driving planner ...
+web search: 
+web search: FlowDrive autonomous flow planning 86.3 EPDMS arxiv ...
+web search: 
+web search: Swaayatt Robots official deep reinforcement learning autonomous driving planning India site:swaayatt-robots.com ...
+web search: 
+web search: Minus Zero official AI autonomous driving zPod camera nature inspired safety ...
+web search: 
+web search: Mobileye RSS patents safe distance autonomous driving patent ...
+web search: 
+web search: 'What is claimed is:'
+web search: 
+web search: 
+web search: 
+web search: site:patents.google.com/patent/US Tesla "planning" "trajectory" "autonomous" "Tesla" ...
+web search: 
+web search: site:patents.google.com/patent/ "Tesla Inc" "trajectory" "collision" autonomous ...
+web search: 
+web search: 'What is claimed is:'
+web search: 
+web search: https://patents.google.com/patent/US11840258B2/en
+web search: 
+web search: '## Claims'
+web search: 
+web search: site:mathworks.com/help/deeplearning importNetworkFromONNX Simulink Predict block code generation ...
+web search: 
+web search: "Active Interaction-Aware Model Predictive" code github runtime ...
+web search: 
+web search: KIT-MRT Mosaic composing rule based learned motion planners arxiv 2026 ...
+web search: 
+web search: https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/
+web search: 
+web search: site:mobileye.com "driving policy" "trajectory" RSS 2024 ...
+web search: 
+web search: site:safetypool.ai "500" "member" organizations ...
+web search: 
+web search: GIGAFLOW reinforcement learning autonomous driving planning 2025 nuPlan code score ...
+web search: 
+web search: https://arxiv.org/pdf/2608.21400
+web search: 
+web search: 'runtime'
+web search: 
+web search: 'PDM-Hybrid'
+web search: 
+web search: 
+web search: 
+web search: site:huggingface.co/nvidia/Alpamayo-R1-10B license non-commercial ...
+web search: 
+web search: 
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+context compacted
+codex
+The source audit has surfaced three pitch-critical corrections: public NAVSIM scores do not establish dense Indian traffic performance, FlowDrive names two different papers, and the animal patents cover specific sensing and response steps rather than animal avoidance in general. I’m checking the remaining patent and MATLAB details before I rank architectures.
+web search: 
+web search: https://patents.google.com/patent/US11840258B2/en
+web search: 
+web search: 'What is claimed is:'
+web search: 
+web search: site:arxiv.org/abs/2509.14303 FlowDrive energy flow field 86.3 EPDMS ...
+web search: 
+web search: https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html
+web search: 
+web search: PDM-Hybrid learned planner nuPlan original paper arxiv PDM Closed ...
+web search: 
+web search: https://arxiv.org/abs/2308.12021
+web search: 
+web search: 'V2I' in https://arxiv.org/pdf/2405.16430
+web search: 
+web search: https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/
+web search: 
+web search: https://www.mobileye.com/blog/autonomous-vehicle-day-the-self-driving-stack/
+web search: 
+web search: 'end-to-end'
+web search: 
+web search: https://patents.google.com/patent/US20260098740A1/en
+codex
+A key feasibility result from your timing numbers: if the rest of the planner stays at 88.3 ms, the reported collision-check hotspot must fall from about 648 ms to at most 11.7 ms to meet 100 ms. That is roughly a 55× reduction. I’m treating all architecture latency claims as targets until the actual MATLAB code can be profiled and rerun.
+web search: 
+web search: https://github.com/ApolloAuto/apollo/blob/master/docs/07_Prediction/Class_Architecture_Planning.md
+web search: 
+web search: https://las.inf.ethz.ch/files/trautman10unfreezing.pdf
+web search: 
+web search: site:swaayattrobots.com sparse maps reinforcement learning motion planning autonomous ...
+web search: 
+web search: https://www.swaayattrobots.com/media/Research/752-010.pdf
+web search: 
+web search: '93.13'
+web search: 
+web search: 
+web search: 
+web search: 'commercial'
+web search: 
+web search: 'reinforcement learning' in https://ir.tesla.com/_flysystem/s3/sec/000162828026026551/tsla-20260422-gen.pdf
+web search: 
+web search: 
+web search: 
+web search: '93.9' in https://arxiv.org/pdf/2502.19908
+web search: 
+web search: site:wayve.ai "safety" "model" "trajectory" validation ...
+codex
+# P3 — planner research and audit
+
+**Recommendation:** build a small learned candidate scorer around your existing geometric planner, with a separate short-horizon safety check and a persistent deadlock recovery state. The first work is to fix the reported stall and timing failure. Adding learning to the current 736 ms loop would make neither result better.
+
+## 1. Audit of your notes
+
+| Note | Audit |
+|---|---|
+| **Waymo: foundation model → Driver, Simulator, Critic** | **Verified, with a nuance.** Waymo adapts a shared foundation model into task-specific teachers, then distils smaller runtime students. Its World Decoder produces trajectories and validation signals; a **separate onboard layer verifies generated trajectories**. The public post does not disclose that validator’s exact algorithm. [Waymo technical post](https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/) |
+| **Tesla: one pixels-to-control network; RL; video world model** | Tesla calls V14.2 an end-to-end driving model and confirms an RL training stage. Its public material also describes world representations and trajectory planning. The exact deployed network output, independent onboard validator, and role of the video-generation model in the driving policy are **UNVERIFIED**. FSD *Supervised* remains an L2 system relying on an attentive driver. [Tesla CVPR page](https://www.tesla.com/event/tesla-x-cvpr-2026), [Tesla Q1 2026 update](https://ir.tesla.com/_flysystem/s3/sec/000162828026026551/tsla-20260422-gen.pdf), [Tesla AI page](https://www.tesla.com/en_gb/AI), [Tesla L2 description](https://www.tesla.com/fsd-evidence-dashboard) |
+| **Alpamayo 1 licence is non-commercial** | **Needs correction as of this check.** NVIDIA’s January announcement anticipated future commercial-use options, but the model’s *current posted* OpenMDW-1.1 licence grants use without a non-commercial restriction, subject to its terms. Recheck the exact model licence before reuse. Alpamayo 1 is a **10B teacher**, intended for distillation rather than direct vehicle deployment. [Announcement](https://nvidianews.nvidia.com/news/alpamayo-autonomous-vehicle-development), [current model licence](https://huggingface.co/nvidia/Alpamayo-R1-10B/blob/main/LICENSE) |
+| **Swaayatt map-free; Minus Zero campus-limited** | Swaayatt itself advertises **sparse maps**, so “map-free” is too strong. Minus Zero describes a supervised public-road Bengaluru demonstration in 2025, with a safety driver and speeds up to 25 km/h; “campus-limited” is outdated. Both firms’ detailed runtime safety logic is **UNVERIFIED**. [Swaayatt](https://www.swaayattrobots.com/), [Minus Zero technical account](https://minuszero.ai/blog/how-did-foundational-model-learn-to-navigate-the-busy-streets-of-bengaluru) |
+| **Novelty: probe-and-commit, shared trunk, hybrid validator, Indian test suite** | The first two have direct prior art in [ego-conditioned MPPI](https://arxiv.org/abs/2608.21400) and [CoPlanner](https://arxiv.org/abs/2509.17080). A **rule/learned planner with separate verification and arbitration** is also published as [Mosaic](https://arxiv.org/abs/2604.13853). Indian scenario collection exists in [Safety Pool’s 2026 paper](https://saemobilus.sae.org/papers/crowdsourcing-indian-traffic-scenarios-adas-development-testing-2026-26-0046). Your defensible contribution is a *measured implementation and evaluation* for reactive, heterogeneous Indian traffic in the required toolchain, if your results establish it. |
+| **Current planner audit row** | I found research notes in the accessible workspace, but no planner `.m` or `.slx` files to inspect. Therefore the stated root cause, 736 ms profile, and scenario outcomes are **team-reported, not independently verified here**. The reported worst clearance of **−0.001 m is contact**; the confidence interval for *mean* clearance does not establish collision safety. |
+
+## 2. What the named systems actually disclose
+
+“Interaction” below means evidence of how the planner accounts for another road user’s response, not a claim that it solves Indian-road negotiation.
+
+| System | Planner type and output | Safety, interaction, and public evidence |
+|---|---|---|
+| **Waymo** | Hybrid learned world model; World Decoder generates ego trajectories and predicts other users. | Separate onboard trajectory validation; simulation and Critic feed improvement. Exact interaction policy and validator internals are proprietary. **Company technical disclosure, not code.** [Waymo](https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/) |
+| **Tesla** | End-to-end driving model is publicly claimed; vehicle supplies lateral and longitudinal control. Exact neural-network output interface is **UNVERIFIED**. | For FSD *Supervised*, active driver oversight, monitoring, warnings and controlled slowdown form the disclosed safety arrangement. Separate trajectory shield and negotiation algorithm: **UNVERIFIED**. No production planner code. [CVPR page](https://www.tesla.com/event/tesla-x-cvpr-2026), [L2 evidence filing](https://www.tesla.com/fsd-evidence-dashboard) |
+| **Mobileye** | “Compound AI”: learned components plus purpose-built planning for motion, behavior and collision avoidance; full output schema is **UNVERIFIED**. | RSS supplies explicit safe-distance and proper-response rules as part of the driving policy; it is **not itself the whole planner**. Public model and descriptions, production code proprietary. [Compound AI](https://www.mobileye.com/blog/compound-ai-the-framework-powering-scalable-autonomy/), [stack](https://www.mobileye.com/blog/autonomous-vehicle-day-the-self-driving-stack/), [RSS](https://www.mobileye.com/technology/responsibility-sensitive-safety/) |
+| **Wayve** | End-to-end network from six camera streams plus supporting sensor/navigation data to a **motion plan** actuated by a controller. | Learns behavior from driving data; precise onboard safety check and negotiation logic are **UNVERIFIED**. Public research and demonstrations, not production planner code. [Wayve technical explanation](https://wayve.ai/thinking/emerging-behaviour-of-our-driving-intelligence-with-end-to-end-deep-learning/) |
+| **NVIDIA** | **Alpamayo 1:** video → reasoning traces and trajectories, as a teacher. **Hydra-MDP:** research model distilling human and rule-based teachers into trajectory heads. Neither establishes the proprietary DRIVE production planner architecture. | AlpaSim provides open closed-loop testing. A rule-based *training teacher* in Hydra-MDP is not evidence of an independent **runtime** shield. Public [Alpamayo announcement](https://nvidianews.nvidia.com/news/alpamayo-autonomous-vehicle-development), [AlpaSim code](https://github.com/NVlabs/alpasim), [Hydra-MDP paper](https://arxiv.org/abs/2406.06978); production safety/negotiation **UNVERIFIED**. |
+| **Baidu Apollo** | Modular prediction → scenario/decider/path/speed planning → timed trajectory (position, speed, acceleration) for control. | Predicted obstacle trajectories and explicit decisions/Estop are public; interaction is handled through prediction and scenario rules, with no demonstrated general negotiation guarantee. **Code available.** [Planner overview](https://github.com/ApolloAuto/apollo/blob/master/collection/planning/README.md), [output and inputs](https://github.com/ApolloAuto/apollo/blob/master/docs/07_Prediction/Class_Architecture_Planning.md) |
+| **Autoware** | Modular behavior path and velocity planners; outputs a path with velocity/stop decisions. | Collision checks and behavior modules are public, but a general non-lane negotiation planner is **UNVERIFIED**. **Code and documentation available.** [Behavior path](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_path_planner/autoware_behavior_path_planner/), [velocity planner](https://autowarefoundation.github.io/autoware_core/pr-292/planning/motion_velocity_planner/autoware_motion_velocity_planner/) |
+| **comma.ai openpilot** | Learned driving model combined with conventional longitudinal MPC and lateral control; produces driver-assistance steering/speed commands. | Driver-supervised L2 and actuator safety limits; no public evidence of autonomous unsignalled-junction negotiation. **Code available.** [Longitudinal planner](https://github.com/commaai/openpilot/blob/master/openpilot/selfdrive/controls/lib/longitudinal_planner.py), [safety document](https://github.com/commaai/openpilot/blob/master/docs/SAFETY.md) |
+| **Swaayatt** | Company describes RL/agentic decision making, sparse-map navigation and learned control. Planner’s precise output is **UNVERIFIED**. | Bidirectional negotiation and safety method lack inspectable production evidence in the material found. Treat performance claims as **company claims**. [Swaayatt site](https://www.swaayattrobots.com/) |
+| **Minus Zero** | Company describes camera → foundation model → planned trajectory → controller; no HD-map dependency claimed. | It reports simulation, public-road tests with a safety driver, and onboard “safety mechanisms”; the mechanism is **UNVERIFIED**. **Company technical account, no production code found.** [Training and road-test account](https://minuszero.ai/blog/how-did-foundational-model-learn-to-navigate-the-busy-streets-of-bengaluru), [technology page](https://minuszero.ai/technology) |
+
+**Synthesis:** there is no verified single architecture “everyone converges on.” Waymo and Mobileye disclose layered safety around learning; Apollo and Autoware are modular; Tesla and Wayve disclose end-to-end policies with fewer public runtime details. These are materially different evidence levels. [Waymo](https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/), [Mobileye](https://www.mobileye.com/blog/compound-ai-the-framework-powering-scalable-autonomy/), [Apollo](https://github.com/ApolloAuto/apollo/blob/master/collection/planning/README.md), [Wayve](https://wayve.ai/thinking/emerging-behaviour-of-our-driving-intelligence-with-end-to-end-deep-learning/)
+
+## 3. Interactive-planning research
+
+**Reading the scores:** NAVSIM’s original PDMS uses a **four-second non-reactive** rollout; nuPlan’s reactive score uses simulated reacting agents. Neither is a test of unstructured Indian roads. PDMS, EPDMS and nuPlan CLS must not be ranked against each other as one leaderboard. “Non-lane” means *demonstrated* planning without dependable lanes, not possible adaptation. [NAVSIM paper](https://proceedings.neurips.cc/paper_files/paper/2024/hash/32768f7faf1995026ef9821c696f3404-Abstract-Datasets_and_Benchmarks_Track.html), [nuPlan paper](https://arxiv.org/abs/2403.04133)
+
+| Work | Core idea; non-lane evidence | Compute, code, reported result |
+|---|---|---|
+| [MARC, 2023](https://arxiv.org/abs/2308.12021) | Ego policy-conditioned futures, risk-aware contingency tree. **Non-lane: no.** | Bi-level optimization; runtime, code and directly comparable score **UNVERIFIED**. |
+| [Contingency Games, 2023](https://arxiv.org/abs/2304.05483) | Strategic branches until other agents’ intent becomes clearer. **Non-lane: no.** | Multi-agent game optimization; runtime/standard benchmark number **UNVERIFIED**. [Author’s code/project page](https://lasse-peters.net/pub/contingency-games/). |
+| [GameOpt+, 2024](https://arxiv.org/abs/2405.16430) | Auction orders vehicles; optimizer sets speeds at an unsignalled intersection. **Heterogeneous but lane-defined and centrally coordinated.** | Authors report **<10 ms** and ≥25% throughput gain in SUMO. Their model assumes **ideal, zero-delay V2I with connected controllable vehicles**, so it cannot be transplanted to unconnected Indian traffic. Code **UNVERIFIED**. [Model assumptions](https://arxiv.org/pdf/2405.16430) |
+| [B-GAP, 2020–22](https://arxiv.org/abs/2011.03748) | Historical precursor: behavior-rich traffic simulation trains an RL policy for high-level controls. **Heterogeneous driver styles, not demonstrated lane-free.** | [Code available](https://github.com/angmavrogiannis/B-GAP-Behavior-Guided-Action-Prediction-and-Navigation-for-Autonomous-Driving); directly comparable 2023–26 benchmark score **not applicable**. This is Chandra coauthored work **outside** your requested date window. |
+| [Ego-conditioned MPPI, Aug 2026](https://arxiv.org/abs/2608.21400) | Samples ego actions and conditional reactions; can probe before commitment. **Non-lane: no demonstrated Indian-road test.** | Nested sampling is compute intensive; runtime/code **UNVERIFIED**. Paper reports **75% adjacent-merge rate** and **0% on-ramp collisions** in its small simulation experiments. Its table says “20 runs” yet lists rates such as 37.5% and 56.25%; that denominator inconsistency needs author clarification. [Results table](https://arxiv.org/pdf/2608.21400) |
+| [CoPlanner, 2025](https://arxiv.org/abs/2509.17080) | Diffusion generates a common near-term segment plus contingency branches, then scores them. **Non-lane: no.** | nuPlan **Val14 reactive 93.13** with refinement; **Test14-hard reactive 78.59**, below Diffusion Planner with refinement at **82.00**. Runtime **UNVERIFIED**; paper promises code upon acceptance, release **UNVERIFIED**. [Result table](https://arxiv.org/pdf/2509.17080) |
+| [PDM-Closed / PDM-Hybrid, 2023](https://arxiv.org/abs/2306.07962) | Closed: rule-based candidate selection; Hybrid: learned long-term forecast alongside rule-based short-term planning. **Lane/reference-line dependent.** | nuPlan Val14 reactive **92.12 / 92.11** in CoPlanner’s comparison; compute figure **UNVERIFIED**. [PDM explanation](https://openreview.net/pdf?id=o82EXEK5hu6), [comparison table](https://arxiv.org/pdf/2509.17080) |
+| [Hydra-MDP, 2024](https://arxiv.org/abs/2406.06978) | Distil human and rule teachers into multimodal trajectory heads. **Non-lane: no.** | NAVSIM challenge result reported, but a runtime safety validator and reproducible end-to-end runtime **UNVERIFIED**. [Public repository](https://github.com/NVlabs/Hydra-MDP); completeness requires inspection. |
+| [DiffusionDrive, 2024–25](https://arxiv.org/abs/2411.15139) | Anchored, two-step truncated diffusion proposes trajectories. **Non-lane: no.** | **88.1 PDMS**, **45 FPS on RTX 4090** as reported by authors; [code/model](https://github.com/hustvl/DiffusionDrive). GPU figure does not imply MATLAB CPU timing. |
+| [FlowDrive: Energy Flow Field, 2025](https://arxiv.org/abs/2509.14303) | Risk and lane-attraction fields guide an intent-gated **diffusion** planner. **Lane prior; non-lane unshown.** | **86.3 EPDMS**; runtime and code **UNVERIFIED**. This is **not** the distinct [FlowDrive flow-matching paper](https://arxiv.org/abs/2509.21961). |
+| [DRIFT, 2026](https://arxiv.org/abs/2607.14507) | One-step latent drift creates 48 proposals, then aggregates them. **Non-lane: no.** | **89.6 PDMS / 90.4 EPDMS**; full inference **66.43 ms on RTX 4090**; code **UNVERIFIED**. |
+| [CarPlanner, 2025](https://arxiv.org/abs/2502.19908) | RL trains an autoregressive, multimodal trajectory proposer. **Non-lane: no.** | **nuPlan Test14-Random CLS-NR 94.07, CLS-R 91.10**; paper trained with two RTX 3090s. Inference runtime and code **UNVERIFIED**. [Methods/results](https://arxiv.org/pdf/2502.19908) |
+| [Mosaic, 2026](https://arxiv.org/abs/2604.13853) | Rule and learned planners propose; separate verification, scoring and arbitration select a trajectory. **Non-lane: no.** | **nuPlan Val14 reactive 93.98; interPlan reactive 54.30**; [code available](https://github.com/KIT-MRT/mosaic). Runtime on your hardware **UNVERIFIED**. |
+
+## 4. The frozen-robot failure
+
+The important published insight is that better *independent* predictions of each pedestrian can still leave every path apparently blocked. Trautman and Krause showed that **joint adaptation** matters. More recent work addresses contingent interaction and density generalization, but a safe system must still stop when there truly is no usable space. [Unfreezing the Robot](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf), [2026 dense-crowd study](https://arxiv.org/abs/2603.06729)
+
+| Fix to test, in order | Why it addresses your stall |
+|---|---|
+| **Repair the reported implementation faults first:** retain longitudinal station in the clearance gate; require a sustained WAIT decision; prevent timeout re-arming; break equal-cost ties toward verified progress. | These are team-reported causes, **UNVERIFIED without code**. A learned model would mask rather than establish whether they are fixed. |
+| **Persist one blocked-state record:** reason, candidate corridor, elapsed time, observed actor response and recovery attempt. | Stops one-frame mode changes from resetting the decision. Treat timeout as a trigger to *re-evaluate*, never as permission to cross. This is an engineering recommendation; related published “stuck condition” detection exists. [Waymo patent](https://patents.google.com/patent/US8996224B1/en) |
+| **Predict conditional responses for only the decisive actors.** Compare “holds course” and “yields” under a small ego creep, then update beliefs from observed motion. | Captures the joint adaptation behind frozen-robot research without evaluating a full behavior tree for every road user. An optimistic yield prediction must never be the only safe branch. [Trautman–Krause](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf), [ego-conditioned MPPI](https://arxiv.org/abs/2608.21400) |
+| **Execute only a common, stoppable near-term segment.** Keep longer alternatives contingent on what actors actually do. | This is the part of contingency planning worth retaining; it is established prior art, not the novelty claim. [CoPlanner](https://arxiv.org/abs/2509.17080), [MARC](https://arxiv.org/abs/2308.12021) |
+| **Declare “blocked” when no certified move exists.** | A system cannot guarantee progress and no contact in an arbitrarily adversarial dense crowd. Record whether a feasible gap later appeared; count only failure to take such a gap as a planner deadlock. [Frozen-robot analysis](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf) |
+
+## 5. Patent map: claims and engineering choices
+
+These are **US claim-reading observations, not an infringement or freedom-to-operate opinion**. A different implementation choice does not itself establish clearance; Indian families and current official register status are **UNVERIFIED**.
+
+| Document | What an independent claim covers, in plain words | Relevant design choice |
+|---|---|---|
+| [Mobileye US11840258B2](https://patents.google.com/patent/US11840258B2/en) | Continue a planned action when predicted separation exceeds a specified longitudinal safe distance calculated from ego response/acceleration/braking and the target’s stopping distance. | Use a directly specified **reachable-occupancy and swept-geometry** safety check, documented from your own assumptions, instead of copying that particular distance/decision formula. |
+| [Waymo US12280797B2](https://patents.google.com/patent/US12280797B2/en) | Feed part of a first planner’s trajectory into a **second planning system**; use its generated second trajectory to decide whether to validate the first. | A non-planning verifier that checks physical and occupancy constraints directly is a distinct architecture to examine. |
+| [Tesla US20260098740A1](https://patents.google.com/patent/US20260098740A1/en) | **Pending application:** camera image → voxel occupancy/3D model → localization via image feature without a location-tracking sensor → path. | Your tracked-object/drivable-area planner with ordinary localization does not need that specific combined pipeline. Status and final claim scope can change. |
+| [IBM US9481367B1](https://patents.google.com/patent/US9481367B1/en) | Species identification plus environment-conditioned animal motion prediction, encounter threshold, and—when blockage is forecast long enough—stop and turn off the engine. | Treat an animal as an uncertain occupied region and plan a stoppable path; avoid claiming invention of generic animal avoidance. Google lists this US patent as **fee-expired**, which needs official confirmation. |
+| [IBM US9481366B1](https://patents.google.com/patent/US9481366B1/en) | Uses signals from **animal-worn transceivers**, including a second nearby animal, to estimate encounter risk and respond. | A camera/lidar-only cattle detector uses a materially different sensing premise. Google likewise lists this US patent as fee-expired, subject to confirmation. |
+
+## 6. Student-team architecture decision
+
+Using **your reported** 736 ms timing and 88% hotspot share: the hotspot is about **648 ms**, all other work about **88 ms**. At a 100 ms total budget, the hotspot allowance is **12 ms**, requiring roughly **55×** reduction if the rest stays constant. Even a 10× hotspot improvement gives about **153 ms** total. [MathWorks documents C/C++ generation for `dynamicCapsuleList`](https://www.mathworks.com/help/nav/ref/dynamiccapsulelist.html), but gives **no speed guarantee**.
+
+| Candidate | Learned part → runtime output; verifier and fallback | Top-25 fit; feasibility; data; novelty judgment |
+|---|---|---|
+| **A. Small learned scorer over a bounded maneuver library — recommended** | A small model scores 8–16 precomputed, drivable-area-valid short trajectories using local actor history, occupancy, route and surface state. A **separate** swept-footprint/uncertainty/stop-distance check accepts one; fallback brakes within a certified corridor, then reports blocked. | **Best first build.** Handles the planning share of cut-ins, two-wheelers, wrong-way users, pedestrians, animals, narrow passages and unsignalled merges *if upstream detection and tracking work*. Smallest training need: labelled or counterfactual outcomes from your reactive Indian simulation. MATLAB deployment plausible through [ONNX import](https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html) and a [Simulink Predict block](https://www.mathworks.com/help/deeplearning/ref/predict.html). **100 ms: UNVERIFIED until hotspot replacement is profiled.** The hybrid mechanism is prior art; India-specific calibration and measured results are the contribution. [Mosaic](https://arxiv.org/abs/2604.13853) |
+| **B. Small conditional predictor + limited contingency search** | Predict 2–3 response modes for each of 1–3 decisive actors, conditioned on a few ego actions. Search a shared stoppable trunk and longer branches; verify the trunk against non-yielding/uncertain occupancy; brake on failure. | **Strongest interaction model**, especially S2/S3 deadlock, but the branching and repeated collision checks threaten 100 ms. Requires richer reactive training data and calibration of yielding by actor type. Prototype *after A*; a full MPPI/generative version is unlikely to meet your budget without substantial optimisation. Planner mechanism already published. [MPPI](https://arxiv.org/abs/2608.21400), [CoPlanner](https://arxiv.org/abs/2509.17080) |
+| **C. RL chooses a maneuver from the same safe library** | A policy picks yield/creep/follow/go-around/gap. The **same independent verifier** checks the resulting trajectory; failed choices fall back to a stop and enter recovery state. | Could learn progress in dense traffic, but has the largest simulation coverage and distribution-shift risk. A bounded discrete policy is deployable through the [Simulink Policy block](https://www.mathworks.com/help/reinforcement-learning/ref/policy.html); its choice still needs validation. Useful as an ablation/stretch result, not the first national-PPT promise. [B-GAP](https://arxiv.org/abs/2011.03748), [CarPlanner](https://arxiv.org/abs/2502.19908) |
+
+**Concrete build gate:** profile the actual planner; fix the reported S2/S3 stall; replace repeated expensive checks with a conservative broad phase, then exact-check only survivors; cap candidates and interaction actors; measure full Simulink step time. Compare A against your corrected rule-only baseline on the **same** reactive Indian scenario seeds. Report collision/contact, minimum clearance after uncertainty margins, feasible-gap progress, false deadlock, comfort and **p95/p99 latency**, including S2 and dense S3. MATLAB’s ONNX importer may create custom layers, so the *specific trained network* must be imported and code-generation tested rather than assuming generic compatibility. [MathWorks ONNX documentation](https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html)
+
+**PPT-safe claim:** “A safety-checked learned maneuver scorer and reactive Indian-road evaluation, implemented in MATLAB/Simulink.” Claim improvements only after the paired runs. Planner performance cannot cover the top 25 when perception misses an occluded child, animal, pothole or road edge.
+
+### UNVERIFIED / still needed
+
+- Actual `+sih/+planner` and `+sc/planSeat` source, profiler trace, S1–S3 logs, and the reported root-cause fix.
+- Tesla’s deployed network output interface and any independent onboard trajectory validator; Wayve’s, Swaayatt’s and Minus Zero’s detailed onboard validators.
+- A public, complete production NVIDIA DRIVE/Hydra planner implementation; code releases and comparable runtimes for MARC, CoPlanner, ego-conditioned MPPI and DRIFT where marked above.
+- Indian-road, lane-free closed-loop results for the cited academic planners.
+- Official US register confirmation of the two IBM patents’ fee status and any corresponding Indian patent families.
+- Whether the proposed architecture can meet **100 ms** on your actual hardware and MATLAB/Simulink model.
+tokens used
+6,67,508
+# P3 — planner research and audit
+
+**Recommendation:** build a small learned candidate scorer around your existing geometric planner, with a separate short-horizon safety check and a persistent deadlock recovery state. The first work is to fix the reported stall and timing failure. Adding learning to the current 736 ms loop would make neither result better.
+
+## 1. Audit of your notes
+
+| Note | Audit |
+|---|---|
+| **Waymo: foundation model → Driver, Simulator, Critic** | **Verified, with a nuance.** Waymo adapts a shared foundation model into task-specific teachers, then distils smaller runtime students. Its World Decoder produces trajectories and validation signals; a **separate onboard layer verifies generated trajectories**. The public post does not disclose that validator’s exact algorithm. [Waymo technical post](https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/) |
+| **Tesla: one pixels-to-control network; RL; video world model** | Tesla calls V14.2 an end-to-end driving model and confirms an RL training stage. Its public material also describes world representations and trajectory planning. The exact deployed network output, independent onboard validator, and role of the video-generation model in the driving policy are **UNVERIFIED**. FSD *Supervised* remains an L2 system relying on an attentive driver. [Tesla CVPR page](https://www.tesla.com/event/tesla-x-cvpr-2026), [Tesla Q1 2026 update](https://ir.tesla.com/_flysystem/s3/sec/000162828026026551/tsla-20260422-gen.pdf), [Tesla AI page](https://www.tesla.com/en_gb/AI), [Tesla L2 description](https://www.tesla.com/fsd-evidence-dashboard) |
+| **Alpamayo 1 licence is non-commercial** | **Needs correction as of this check.** NVIDIA’s January announcement anticipated future commercial-use options, but the model’s *current posted* OpenMDW-1.1 licence grants use without a non-commercial restriction, subject to its terms. Recheck the exact model licence before reuse. Alpamayo 1 is a **10B teacher**, intended for distillation rather than direct vehicle deployment. [Announcement](https://nvidianews.nvidia.com/news/alpamayo-autonomous-vehicle-development), [current model licence](https://huggingface.co/nvidia/Alpamayo-R1-10B/blob/main/LICENSE) |
+| **Swaayatt map-free; Minus Zero campus-limited** | Swaayatt itself advertises **sparse maps**, so “map-free” is too strong. Minus Zero describes a supervised public-road Bengaluru demonstration in 2025, with a safety driver and speeds up to 25 km/h; “campus-limited” is outdated. Both firms’ detailed runtime safety logic is **UNVERIFIED**. [Swaayatt](https://www.swaayattrobots.com/), [Minus Zero technical account](https://minuszero.ai/blog/how-did-foundational-model-learn-to-navigate-the-busy-streets-of-bengaluru) |
+| **Novelty: probe-and-commit, shared trunk, hybrid validator, Indian test suite** | The first two have direct prior art in [ego-conditioned MPPI](https://arxiv.org/abs/2608.21400) and [CoPlanner](https://arxiv.org/abs/2509.17080). A **rule/learned planner with separate verification and arbitration** is also published as [Mosaic](https://arxiv.org/abs/2604.13853). Indian scenario collection exists in [Safety Pool’s 2026 paper](https://saemobilus.sae.org/papers/crowdsourcing-indian-traffic-scenarios-adas-development-testing-2026-26-0046). Your defensible contribution is a *measured implementation and evaluation* for reactive, heterogeneous Indian traffic in the required toolchain, if your results establish it. |
+| **Current planner audit row** | I found research notes in the accessible workspace, but no planner `.m` or `.slx` files to inspect. Therefore the stated root cause, 736 ms profile, and scenario outcomes are **team-reported, not independently verified here**. The reported worst clearance of **−0.001 m is contact**; the confidence interval for *mean* clearance does not establish collision safety. |
+
+## 2. What the named systems actually disclose
+
+“Interaction” below means evidence of how the planner accounts for another road user’s response, not a claim that it solves Indian-road negotiation.
+
+| System | Planner type and output | Safety, interaction, and public evidence |
+|---|---|---|
+| **Waymo** | Hybrid learned world model; World Decoder generates ego trajectories and predicts other users. | Separate onboard trajectory validation; simulation and Critic feed improvement. Exact interaction policy and validator internals are proprietary. **Company technical disclosure, not code.** [Waymo](https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/) |
+| **Tesla** | End-to-end driving model is publicly claimed; vehicle supplies lateral and longitudinal control. Exact neural-network output interface is **UNVERIFIED**. | For FSD *Supervised*, active driver oversight, monitoring, warnings and controlled slowdown form the disclosed safety arrangement. Separate trajectory shield and negotiation algorithm: **UNVERIFIED**. No production planner code. [CVPR page](https://www.tesla.com/event/tesla-x-cvpr-2026), [L2 evidence filing](https://www.tesla.com/fsd-evidence-dashboard) |
+| **Mobileye** | “Compound AI”: learned components plus purpose-built planning for motion, behavior and collision avoidance; full output schema is **UNVERIFIED**. | RSS supplies explicit safe-distance and proper-response rules as part of the driving policy; it is **not itself the whole planner**. Public model and descriptions, production code proprietary. [Compound AI](https://www.mobileye.com/blog/compound-ai-the-framework-powering-scalable-autonomy/), [stack](https://www.mobileye.com/blog/autonomous-vehicle-day-the-self-driving-stack/), [RSS](https://www.mobileye.com/technology/responsibility-sensitive-safety/) |
+| **Wayve** | End-to-end network from six camera streams plus supporting sensor/navigation data to a **motion plan** actuated by a controller. | Learns behavior from driving data; precise onboard safety check and negotiation logic are **UNVERIFIED**. Public research and demonstrations, not production planner code. [Wayve technical explanation](https://wayve.ai/thinking/emerging-behaviour-of-our-driving-intelligence-with-end-to-end-deep-learning/) |
+| **NVIDIA** | **Alpamayo 1:** video → reasoning traces and trajectories, as a teacher. **Hydra-MDP:** research model distilling human and rule-based teachers into trajectory heads. Neither establishes the proprietary DRIVE production planner architecture. | AlpaSim provides open closed-loop testing. A rule-based *training teacher* in Hydra-MDP is not evidence of an independent **runtime** shield. Public [Alpamayo announcement](https://nvidianews.nvidia.com/news/alpamayo-autonomous-vehicle-development), [AlpaSim code](https://github.com/NVlabs/alpasim), [Hydra-MDP paper](https://arxiv.org/abs/2406.06978); production safety/negotiation **UNVERIFIED**. |
+| **Baidu Apollo** | Modular prediction → scenario/decider/path/speed planning → timed trajectory (position, speed, acceleration) for control. | Predicted obstacle trajectories and explicit decisions/Estop are public; interaction is handled through prediction and scenario rules, with no demonstrated general negotiation guarantee. **Code available.** [Planner overview](https://github.com/ApolloAuto/apollo/blob/master/collection/planning/README.md), [output and inputs](https://github.com/ApolloAuto/apollo/blob/master/docs/07_Prediction/Class_Architecture_Planning.md) |
+| **Autoware** | Modular behavior path and velocity planners; outputs a path with velocity/stop decisions. | Collision checks and behavior modules are public, but a general non-lane negotiation planner is **UNVERIFIED**. **Code and documentation available.** [Behavior path](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_path_planner/autoware_behavior_path_planner/), [velocity planner](https://autowarefoundation.github.io/autoware_core/pr-292/planning/motion_velocity_planner/autoware_motion_velocity_planner/) |
+| **comma.ai openpilot** | Learned driving model combined with conventional longitudinal MPC and lateral control; produces driver-assistance steering/speed commands. | Driver-supervised L2 and actuator safety limits; no public evidence of autonomous unsignalled-junction negotiation. **Code available.** [Longitudinal planner](https://github.com/commaai/openpilot/blob/master/openpilot/selfdrive/controls/lib/longitudinal_planner.py), [safety document](https://github.com/commaai/openpilot/blob/master/docs/SAFETY.md) |
+| **Swaayatt** | Company describes RL/agentic decision making, sparse-map navigation and learned control. Planner’s precise output is **UNVERIFIED**. | Bidirectional negotiation and safety method lack inspectable production evidence in the material found. Treat performance claims as **company claims**. [Swaayatt site](https://www.swaayattrobots.com/) |
+| **Minus Zero** | Company describes camera → foundation model → planned trajectory → controller; no HD-map dependency claimed. | It reports simulation, public-road tests with a safety driver, and onboard “safety mechanisms”; the mechanism is **UNVERIFIED**. **Company technical account, no production code found.** [Training and road-test account](https://minuszero.ai/blog/how-did-foundational-model-learn-to-navigate-the-busy-streets-of-bengaluru), [technology page](https://minuszero.ai/technology) |
+
+**Synthesis:** there is no verified single architecture “everyone converges on.” Waymo and Mobileye disclose layered safety around learning; Apollo and Autoware are modular; Tesla and Wayve disclose end-to-end policies with fewer public runtime details. These are materially different evidence levels. [Waymo](https://waymo.com/blog/2025/12/demonstrably-safe-ai-for-autonomous-driving/), [Mobileye](https://www.mobileye.com/blog/compound-ai-the-framework-powering-scalable-autonomy/), [Apollo](https://github.com/ApolloAuto/apollo/blob/master/collection/planning/README.md), [Wayve](https://wayve.ai/thinking/emerging-behaviour-of-our-driving-intelligence-with-end-to-end-deep-learning/)
+
+## 3. Interactive-planning research
+
+**Reading the scores:** NAVSIM’s original PDMS uses a **four-second non-reactive** rollout; nuPlan’s reactive score uses simulated reacting agents. Neither is a test of unstructured Indian roads. PDMS, EPDMS and nuPlan CLS must not be ranked against each other as one leaderboard. “Non-lane” means *demonstrated* planning without dependable lanes, not possible adaptation. [NAVSIM paper](https://proceedings.neurips.cc/paper_files/paper/2024/hash/32768f7faf1995026ef9821c696f3404-Abstract-Datasets_and_Benchmarks_Track.html), [nuPlan paper](https://arxiv.org/abs/2403.04133)
+
+| Work | Core idea; non-lane evidence | Compute, code, reported result |
+|---|---|---|
+| [MARC, 2023](https://arxiv.org/abs/2308.12021) | Ego policy-conditioned futures, risk-aware contingency tree. **Non-lane: no.** | Bi-level optimization; runtime, code and directly comparable score **UNVERIFIED**. |
+| [Contingency Games, 2023](https://arxiv.org/abs/2304.05483) | Strategic branches until other agents’ intent becomes clearer. **Non-lane: no.** | Multi-agent game optimization; runtime/standard benchmark number **UNVERIFIED**. [Author’s code/project page](https://lasse-peters.net/pub/contingency-games/). |
+| [GameOpt+, 2024](https://arxiv.org/abs/2405.16430) | Auction orders vehicles; optimizer sets speeds at an unsignalled intersection. **Heterogeneous but lane-defined and centrally coordinated.** | Authors report **<10 ms** and ≥25% throughput gain in SUMO. Their model assumes **ideal, zero-delay V2I with connected controllable vehicles**, so it cannot be transplanted to unconnected Indian traffic. Code **UNVERIFIED**. [Model assumptions](https://arxiv.org/pdf/2405.16430) |
+| [B-GAP, 2020–22](https://arxiv.org/abs/2011.03748) | Historical precursor: behavior-rich traffic simulation trains an RL policy for high-level controls. **Heterogeneous driver styles, not demonstrated lane-free.** | [Code available](https://github.com/angmavrogiannis/B-GAP-Behavior-Guided-Action-Prediction-and-Navigation-for-Autonomous-Driving); directly comparable 2023–26 benchmark score **not applicable**. This is Chandra coauthored work **outside** your requested date window. |
+| [Ego-conditioned MPPI, Aug 2026](https://arxiv.org/abs/2608.21400) | Samples ego actions and conditional reactions; can probe before commitment. **Non-lane: no demonstrated Indian-road test.** | Nested sampling is compute intensive; runtime/code **UNVERIFIED**. Paper reports **75% adjacent-merge rate** and **0% on-ramp collisions** in its small simulation experiments. Its table says “20 runs” yet lists rates such as 37.5% and 56.25%; that denominator inconsistency needs author clarification. [Results table](https://arxiv.org/pdf/2608.21400) |
+| [CoPlanner, 2025](https://arxiv.org/abs/2509.17080) | Diffusion generates a common near-term segment plus contingency branches, then scores them. **Non-lane: no.** | nuPlan **Val14 reactive 93.13** with refinement; **Test14-hard reactive 78.59**, below Diffusion Planner with refinement at **82.00**. Runtime **UNVERIFIED**; paper promises code upon acceptance, release **UNVERIFIED**. [Result table](https://arxiv.org/pdf/2509.17080) |
+| [PDM-Closed / PDM-Hybrid, 2023](https://arxiv.org/abs/2306.07962) | Closed: rule-based candidate selection; Hybrid: learned long-term forecast alongside rule-based short-term planning. **Lane/reference-line dependent.** | nuPlan Val14 reactive **92.12 / 92.11** in CoPlanner’s comparison; compute figure **UNVERIFIED**. [PDM explanation](https://openreview.net/pdf?id=o82EXEK5hu6), [comparison table](https://arxiv.org/pdf/2509.17080) |
+| [Hydra-MDP, 2024](https://arxiv.org/abs/2406.06978) | Distil human and rule teachers into multimodal trajectory heads. **Non-lane: no.** | NAVSIM challenge result reported, but a runtime safety validator and reproducible end-to-end runtime **UNVERIFIED**. [Public repository](https://github.com/NVlabs/Hydra-MDP); completeness requires inspection. |
+| [DiffusionDrive, 2024–25](https://arxiv.org/abs/2411.15139) | Anchored, two-step truncated diffusion proposes trajectories. **Non-lane: no.** | **88.1 PDMS**, **45 FPS on RTX 4090** as reported by authors; [code/model](https://github.com/hustvl/DiffusionDrive). GPU figure does not imply MATLAB CPU timing. |
+| [FlowDrive: Energy Flow Field, 2025](https://arxiv.org/abs/2509.14303) | Risk and lane-attraction fields guide an intent-gated **diffusion** planner. **Lane prior; non-lane unshown.** | **86.3 EPDMS**; runtime and code **UNVERIFIED**. This is **not** the distinct [FlowDrive flow-matching paper](https://arxiv.org/abs/2509.21961). |
+| [DRIFT, 2026](https://arxiv.org/abs/2607.14507) | One-step latent drift creates 48 proposals, then aggregates them. **Non-lane: no.** | **89.6 PDMS / 90.4 EPDMS**; full inference **66.43 ms on RTX 4090**; code **UNVERIFIED**. |
+| [CarPlanner, 2025](https://arxiv.org/abs/2502.19908) | RL trains an autoregressive, multimodal trajectory proposer. **Non-lane: no.** | **nuPlan Test14-Random CLS-NR 94.07, CLS-R 91.10**; paper trained with two RTX 3090s. Inference runtime and code **UNVERIFIED**. [Methods/results](https://arxiv.org/pdf/2502.19908) |
+| [Mosaic, 2026](https://arxiv.org/abs/2604.13853) | Rule and learned planners propose; separate verification, scoring and arbitration select a trajectory. **Non-lane: no.** | **nuPlan Val14 reactive 93.98; interPlan reactive 54.30**; [code available](https://github.com/KIT-MRT/mosaic). Runtime on your hardware **UNVERIFIED**. |
+
+## 4. The frozen-robot failure
+
+The important published insight is that better *independent* predictions of each pedestrian can still leave every path apparently blocked. Trautman and Krause showed that **joint adaptation** matters. More recent work addresses contingent interaction and density generalization, but a safe system must still stop when there truly is no usable space. [Unfreezing the Robot](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf), [2026 dense-crowd study](https://arxiv.org/abs/2603.06729)
+
+| Fix to test, in order | Why it addresses your stall |
+|---|---|
+| **Repair the reported implementation faults first:** retain longitudinal station in the clearance gate; require a sustained WAIT decision; prevent timeout re-arming; break equal-cost ties toward verified progress. | These are team-reported causes, **UNVERIFIED without code**. A learned model would mask rather than establish whether they are fixed. |
+| **Persist one blocked-state record:** reason, candidate corridor, elapsed time, observed actor response and recovery attempt. | Stops one-frame mode changes from resetting the decision. Treat timeout as a trigger to *re-evaluate*, never as permission to cross. This is an engineering recommendation; related published “stuck condition” detection exists. [Waymo patent](https://patents.google.com/patent/US8996224B1/en) |
+| **Predict conditional responses for only the decisive actors.** Compare “holds course” and “yields” under a small ego creep, then update beliefs from observed motion. | Captures the joint adaptation behind frozen-robot research without evaluating a full behavior tree for every road user. An optimistic yield prediction must never be the only safe branch. [Trautman–Krause](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf), [ego-conditioned MPPI](https://arxiv.org/abs/2608.21400) |
+| **Execute only a common, stoppable near-term segment.** Keep longer alternatives contingent on what actors actually do. | This is the part of contingency planning worth retaining; it is established prior art, not the novelty claim. [CoPlanner](https://arxiv.org/abs/2509.17080), [MARC](https://arxiv.org/abs/2308.12021) |
+| **Declare “blocked” when no certified move exists.** | A system cannot guarantee progress and no contact in an arbitrarily adversarial dense crowd. Record whether a feasible gap later appeared; count only failure to take such a gap as a planner deadlock. [Frozen-robot analysis](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf) |
+
+## 5. Patent map: claims and engineering choices
+
+These are **US claim-reading observations, not an infringement or freedom-to-operate opinion**. A different implementation choice does not itself establish clearance; Indian families and current official register status are **UNVERIFIED**.
+
+| Document | What an independent claim covers, in plain words | Relevant design choice |
+|---|---|---|
+| [Mobileye US11840258B2](https://patents.google.com/patent/US11840258B2/en) | Continue a planned action when predicted separation exceeds a specified longitudinal safe distance calculated from ego response/acceleration/braking and the target’s stopping distance. | Use a directly specified **reachable-occupancy and swept-geometry** safety check, documented from your own assumptions, instead of copying that particular distance/decision formula. |
+| [Waymo US12280797B2](https://patents.google.com/patent/US12280797B2/en) | Feed part of a first planner’s trajectory into a **second planning system**; use its generated second trajectory to decide whether to validate the first. | A non-planning verifier that checks physical and occupancy constraints directly is a distinct architecture to examine. |
+| [Tesla US20260098740A1](https://patents.google.com/patent/US20260098740A1/en) | **Pending application:** camera image → voxel occupancy/3D model → localization via image feature without a location-tracking sensor → path. | Your tracked-object/drivable-area planner with ordinary localization does not need that specific combined pipeline. Status and final claim scope can change. |
+| [IBM US9481367B1](https://patents.google.com/patent/US9481367B1/en) | Species identification plus environment-conditioned animal motion prediction, encounter threshold, and—when blockage is forecast long enough—stop and turn off the engine. | Treat an animal as an uncertain occupied region and plan a stoppable path; avoid claiming invention of generic animal avoidance. Google lists this US patent as **fee-expired**, which needs official confirmation. |
+| [IBM US9481366B1](https://patents.google.com/patent/US9481366B1/en) | Uses signals from **animal-worn transceivers**, including a second nearby animal, to estimate encounter risk and respond. | A camera/lidar-only cattle detector uses a materially different sensing premise. Google likewise lists this US patent as fee-expired, subject to confirmation. |
+
+## 6. Student-team architecture decision
+
+Using **your reported** 736 ms timing and 88% hotspot share: the hotspot is about **648 ms**, all other work about **88 ms**. At a 100 ms total budget, the hotspot allowance is **12 ms**, requiring roughly **55×** reduction if the rest stays constant. Even a 10× hotspot improvement gives about **153 ms** total. [MathWorks documents C/C++ generation for `dynamicCapsuleList`](https://www.mathworks.com/help/nav/ref/dynamiccapsulelist.html), but gives **no speed guarantee**.
+
+| Candidate | Learned part → runtime output; verifier and fallback | Top-25 fit; feasibility; data; novelty judgment |
+|---|---|---|
+| **A. Small learned scorer over a bounded maneuver library — recommended** | A small model scores 8–16 precomputed, drivable-area-valid short trajectories using local actor history, occupancy, route and surface state. A **separate** swept-footprint/uncertainty/stop-distance check accepts one; fallback brakes within a certified corridor, then reports blocked. | **Best first build.** Handles the planning share of cut-ins, two-wheelers, wrong-way users, pedestrians, animals, narrow passages and unsignalled merges *if upstream detection and tracking work*. Smallest training need: labelled or counterfactual outcomes from your reactive Indian simulation. MATLAB deployment plausible through [ONNX import](https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html) and a [Simulink Predict block](https://www.mathworks.com/help/deeplearning/ref/predict.html). **100 ms: UNVERIFIED until hotspot replacement is profiled.** The hybrid mechanism is prior art; India-specific calibration and measured results are the contribution. [Mosaic](https://arxiv.org/abs/2604.13853) |
+| **B. Small conditional predictor + limited contingency search** | Predict 2–3 response modes for each of 1–3 decisive actors, conditioned on a few ego actions. Search a shared stoppable trunk and longer branches; verify the trunk against non-yielding/uncertain occupancy; brake on failure. | **Strongest interaction model**, especially S2/S3 deadlock, but the branching and repeated collision checks threaten 100 ms. Requires richer reactive training data and calibration of yielding by actor type. Prototype *after A*; a full MPPI/generative version is unlikely to meet your budget without substantial optimisation. Planner mechanism already published. [MPPI](https://arxiv.org/abs/2608.21400), [CoPlanner](https://arxiv.org/abs/2509.17080) |
+| **C. RL chooses a maneuver from the same safe library** | A policy picks yield/creep/follow/go-around/gap. The **same independent verifier** checks the resulting trajectory; failed choices fall back to a stop and enter recovery state. | Could learn progress in dense traffic, but has the largest simulation coverage and distribution-shift risk. A bounded discrete policy is deployable through the [Simulink Policy block](https://www.mathworks.com/help/reinforcement-learning/ref/policy.html); its choice still needs validation. Useful as an ablation/stretch result, not the first national-PPT promise. [B-GAP](https://arxiv.org/abs/2011.03748), [CarPlanner](https://arxiv.org/abs/2502.19908) |
+
+**Concrete build gate:** profile the actual planner; fix the reported S2/S3 stall; replace repeated expensive checks with a conservative broad phase, then exact-check only survivors; cap candidates and interaction actors; measure full Simulink step time. Compare A against your corrected rule-only baseline on the **same** reactive Indian scenario seeds. Report collision/contact, minimum clearance after uncertainty margins, feasible-gap progress, false deadlock, comfort and **p95/p99 latency**, including S2 and dense S3. MATLAB’s ONNX importer may create custom layers, so the *specific trained network* must be imported and code-generation tested rather than assuming generic compatibility. [MathWorks ONNX documentation](https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html)
+
+**PPT-safe claim:** “A safety-checked learned maneuver scorer and reactive Indian-road evaluation, implemented in MATLAB/Simulink.” Claim improvements only after the paired runs. Planner performance cannot cover the top 25 when perception misses an occluded child, animal, pothole or road edge.
+
+### UNVERIFIED / still needed
+
+- Actual `+sih/+planner` and `+sc/planSeat` source, profiler trace, S1–S3 logs, and the reported root-cause fix.
+- Tesla’s deployed network output interface and any independent onboard trajectory validator; Wayve’s, Swaayatt’s and Minus Zero’s detailed onboard validators.
+- A public, complete production NVIDIA DRIVE/Hydra planner implementation; code releases and comparable runtimes for MARC, CoPlanner, ego-conditioned MPPI and DRIFT where marked above.
+- Indian-road, lane-free closed-loop results for the cited academic planners.
+- Official US register confirmation of the two IBM patents’ fee status and any corresponding Indian patent families.
+- Whether the proposed architecture can meet **100 ms** on your actual hardware and MATLAB/Simulink model.

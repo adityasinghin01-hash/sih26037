@@ -1,0 +1,9 @@
+import diagrams as D, render as R
+fc=D.flowchart
+R.build("D1-FULL-SYSTEM","D1 · Full system — end to end","1 idea → 5 layers (SENSE · UNDERSTAND · DECIDE · ACT · PROVE) → 13 parts → components. Red = safety (only the checker can say 'go'). Dashed = test / comparison paths.",fc("TB",D.D1_groups,D.D1_edges,dashed=D.D1_dashed,classes=D.D1_classes),D.spec(D.D1_groups,D.D1_edges))
+R.build("D2-ONE-DECISION","D2 · One decision, step by step (every 100 ms)","Green = the car moves. Red = safety check / safe stop. Brackets = target time budget (today: 736 ms per step).",fc("TB",D.D2_groups,D.D2_edges,classes=D.D2_classes),D.spec(D.D2_groups,D.D2_edges))
+R.build("D3-AI-STACK","D3 · The 14-model AI stack (two tiers)","Gold = 5-model prototype core. White = full system (+9). Every model is advice only — the physics safety checker gives the only 'go'.",fc("LR",D.D3_groups,D.D3_edges,core=D.D3_core,classes=D.D3_classes),D.spec(D.D3_groups,D.D3_edges))
+R.build("D4-FIVE-SCENARIOS","D4 · The 5 required Indian scenarios","Who is on the road → which Indian difficulties (P1 IDs) → test family → what the car must show.",fc("LR",D.D4_groups,D.D4_edges),D.spec(D.D4_groups,D.D4_edges))
+R.build("D5-BUILD-PLAN","D5 · 10-week build plan with pass/fail gates","Two builders in parallel, merged into ONE Simulink model every week.",D.D5_code,D.D5_spec,elk=False)
+R.build("D6-PS-COVERAGE","D6 · PS asks → how we meet it → beyond the PS","Gold = the one disclosed deviation (RoadRunner → CARLA). Status today: 1 meets · 22 partial · 15 not yet · 2 deviation (P14).",fc("LR",D.D6_groups,D.D6_edges,classes=D.D6_classes),D.spec(D.D6_groups,D.D6_edges))
+R.build("D7-COMPETITORS-AND-COST","D7 · Competitor comparison + cost","Pie = planned effort split (a plan, not a measurement). Tables on the next page.",D.D7_code,D.D7_spec,elk=False)

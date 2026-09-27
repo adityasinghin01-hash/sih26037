@@ -1,0 +1,63 @@
+<!doctype html><html><head><meta charset=utf-8><title>DOC 4 · Judge Q&A</title><style>@page{size:A4;margin:14mm} body{font-family:Helvetica,Arial,sans-serif;font-size:11.5px;line-height:1.42;color:#111} h1{font-size:22px} h2{font-size:16px;border-bottom:1.5px solid #333;margin-top:18px} table{border-collapse:collapse;width:100%;margin:6px 0} td,th{border:1px solid #999;padding:3px 6px;vertical-align:top} th{background:#eee} a{color:#0645ad;word-break:break-all} code{background:#f2f2f2}</style></head><body><p style='font-size:10.5px;color:#444'>SIH26037 · PPT document pack · 27 Sep 2026 · Diagrams D1–D7 are separate PDFs in the same folder. Local <code>/Users/aditya/...</code> links point to the team's research files.</p><h1>Fifteen hard questions and honest answers</h1>
+<ol>
+<li>
+<p><strong>The PS explicitly says RoadRunner. Where are those scenes?</strong><br />
+   We lack that licence. We propose two detailed <strong>CARLA 0.9.15</strong> village and junction scenes connected to the Simulink ego stack. This is a disclosed <strong>literal deviation</strong>, not a waiver. <a href="/Users/aditya/dev/sih2026-hq/research/P14-PS-COMPLIANCE.md">P14</a></p>
+</li>
+<li>
+<p><strong>Is the complete Simulink system working today?</strong><br />
+   No. The MATLAB 2D planner and some sensor tracking run; the Simulink bicycle model is a side model, and camera inference is outside the driving loop. <a href="/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md">P2</a></p>
+</li>
+<li>
+<p><strong>Why claim real-time replanning when you measured 735.8 ms?</strong><br />
+   We do <strong>not</strong> claim it today. The build gate replaces the collision-check hotspot, compiles planner and verifier kernels, and reports full-loop p50/p95/p99 plus 100 ms deadline misses. <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a></p>
+</li>
+<li>
+<p><strong>Can your camera currently identify an auto or a cow in CARLA?</strong><br />
+   Not reliably: YOLOX produced zero render boxes at the audited default threshold. Offline auto and cow AP are 38.2% and 16.3%; labelled in-loop recall is a required gate. <a href="/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md">P2</a></p>
+</li>
+<li>
+<p><strong>Does your yield model give the car permission to cross?</strong><br />
+   No. Its dangerous-error rate is 2.089% against its ≤1% gate, so its output is disabled. The planned model predicts occupied regions; only the separate geometric/braking checker may permit movement. <a href="/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md">P2</a>, <a href="/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md">P13</a></p>
+</li>
+<li>
+<p><strong>What prevents the independent checker from freezing the car forever?</strong><br />
+   Nothing can guarantee progress in a truly blocked road. We fix today’s S2/S3 stall bugs, record <strong>false</strong> stalls when a feasible gap existed, and permit only a freshly checked, stoppable creep. <a href="/Users/aditya/dev/sih2026-hq/research/P3-PLANNER.md">P3</a></p>
+</li>
+<li>
+<p><strong>What is new if learned proposals and separate verification already exist?</strong><br />
+   Those mechanisms are prior art, including Mosaic. The proposed contribution is an <strong>India-calibrated, measured</strong> closed loop with responsive traffic, false-stall accounting and held-out baselines; its benefit is not proved yet. R20–R23.</p>
+</li>
+<li>
+<p><strong>Fourteen AI models with two builders in ten weeks?</strong><br />
+   Fourteen is the <strong>design inventory</strong>. Five form the target core; only YOLOX and DeepLab exist offline today. Nine are later extensions, and the RL policy is a comparison, not the driving authority. <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a></p>
+</li>
+<li>
+<p><strong>How will you obtain authentic autos and cattle in CARLA?</strong><br />
+   A custom driveable vehicle needs a Windows UE4 source build; W2 must spawn one vehicle and one prop. If it fails, we disclose blueprint/prop surrogates and withdraw claims of realistic auto pixels or physics. R31.</p>
+</li>
+<li>
+<p><strong>Will SUMO and CARLA both control the same actor?</strong><br />
+    No. SUMO owns reactive traffic state; the bridge mirrors it into CARLA, while Simulink controls ego. Timestamp, actor-ID and pose assertions must pass before a run counts. <a href="/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md">P13</a></p>
+</li>
+<li>
+<p><strong>How do hand gestures and horns affect right of way?</strong><br />
+    They raise caution or change an intent hypothesis. A police “proceed” gesture, horn, or siren cannot itself open the verifier; a siren triggers only a checked yield or stop. <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a></p>
+</li>
+<li>
+<p><strong>Does a real dashcam replay prove the car can drive on a real road?</strong><br />
+    No. It is open-loop evidence for perception and tracking transfer. We report per-class recall on held-out real versus rendered frames; road-driving safety still needs much more evidence. <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a></p>
+</li>
+<li>
+<p><strong>How do you predict a cow’s sudden motion without a cattle-trajectory dataset?</strong><br />
+    We do not claim a learned cattle-intent model. Cattle remain detected obstacles with conservative reachable regions, tested against sudden-onset scenarios. <a href="/Users/aditya/dev/sih2026-hq/research/P4-P5-ML-PREDICTION-PERCEPTION.md">P4–P5</a></p>
+</li>
+<li>
+<p><strong>What do the large crash numbers prove about your expected impact?</strong><br />
+    They establish the <strong>problem’s scale</strong>, not lives saved by our system. MoRTH totals are national 2023 counts; the cattle-crash count is Haryana-only over five years. We give no projected reduction. R03–R05.</p>
+</li>
+<li>
+<p><strong>What will you hand over if the finale gates fail or data access is denied?</strong><br />
+    The same model, scenario manifests, raw logs, failure reasons, measured PS metrics and a plainly marked partial result. Dataset access is checked before use; missing classes and the RoadRunner deviation remain visible. <a href="/Users/aditya/dev/sih2026-hq/research/P14-PS-COMPLIANCE.md">P14</a>, <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a></p>
+</li>
+</ol></body></html>

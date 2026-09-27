@@ -1,0 +1,110 @@
+You are continuing SIH26037 - a self-driving path planner for unstructured Indian
+roads, MATLAB + Simulink, Smart India Hackathon 2026. I am Aditya, the sole builder.
+
+=============================================================================
+READ THESE FIRST, IN THIS ORDER. Do not skip them.
+=============================================================================
+  ~/Desktop/SIH26037-HANDOFF-FOR-CODEX.md   <- the full state, traps, commands
+  ~/dev/sih2026/AGENTS.md  section 3        <- the FROZEN CONTRACT. Never change it
+  ~/dev/sih2026/plan/CLAIM-LEDGER.md        <- what we may and may not say out loud
+  ~/dev/sih2026-hq/07-PHASE1-FINDING.md     <- the 5 defects found integrating S1
+  ~/dev/sih2026-hq/08-PROFILING-RESULT.md   <- where the time actually goes
+
+Repo: ~/dev/sih2026     Branch: integration/dense-planner
+Last good commits: 205595e (merge), 16d136f (Phase 1), f21cc22 (Phases 5/6/8)
+
+=============================================================================
+THE ONE THING I WANT: THE DEMO, COMPLETE.
+=============================================================================
+"The demo" means matlab/demo_play.m - the real planner, real numbers, the thing I
+open in front of judges. NOT a new tool beside it. Everything goes INTO that file.
+
+demo_play('demo1')            S1, the cattle crossing - WORKS
+demo_play('demo3')            S3, the galli          - WORKS
+demo_play('demo1','Dense',true)      density world   - WORKS (26,389 gate decisions)
+demo_play('demo1','Reactive',true)   reactive agents - WIRED, NOT YET PROVEN
+
+=============================================================================
+YOUR HARD LIMITS - these are measured, not guesses
+=============================================================================
+1. YOU CANNOT RUN MATLAB. It dies in your sandbox instantly:
+      "Incompatible processor. This Qt build requires the following features: neon"
+      exit 137, in 1.6 s. Confirmed 3 times.
+   => YOU WRITE THE CODE. I RUN IT AND PASTE YOU THE OUTPUT.
+2. You cannot write to .git ("cannot open '.git/FETCH_HEAD'"). I do all git.
+3. You cannot write outside ~/dev/sih2026. Put reports in ~/dev/sih2026/REPORTS/.
+4. When I run demo_play you MUST tell me to use Recompute=true. Without it the demo
+   replays a CACHED planner result, your new code never executes, and it still
+   prints a pass. This has already produced one false "verified" today.
+
+=============================================================================
+WHAT IS LEFT, IN PRIORITY ORDER
+=============================================================================
+[1] PROVE PHASE 8 FIRES.  sc.reactStep is wired but has never produced a single
+    reaction. Root cause was found: opts.Reactive was dropped at the top-level
+    loadRoute call, so builders defaulted to false. The chain is now complete
+    (demo_play:185 -> loadRoute -> normaliseRoute -> builtinRoute/S3 ->
+    builtinTracks/S3). A reaction counter was added to both track builders.
+    NEEDED: I run demo_play('demo1','Recompute',true,'Reactive',true) and we must
+    see a NON-ZERO "PHASE 8 reactive: N agent reactions". If it is still 0, find
+    which guard in +sc/reactStep.m rejects the actors and show the arithmetic -
+    e.g. "motorcycle at t=27 s: ahead=18 m, reach=22.5 m, lateral=1.9 m".
+
+[2] FINISH PHASE 6.  benchRuns('s1', 8) runs the scenario 8 times from perturbed
+    starts and reports each metric with a 95% CI. 6 of 8 runs were done when this
+    was written; M6 ranged 0.1349 to 0.1753 m. Re-run it and record the interval.
+    NOTE: tinv() is Statistics Toolbox and this licence DOES NOT HAVE IT. Use
+    sc.tCrit95. One test forbids the string "tinv(" from returning.
+
+[3] S3 STALLS AND THAT IS A REAL FINDING, NOT A BUG TO HIDE.
+    densityPlannerRunS3 stops dead at s=81.4 m of a 382.2 m route and never moves
+    again - 150 s at the identical station, cycling ABORT/COMMIT. This is the SAME
+    permanent-stall mechanism already disclosed for S2 in the claim ledger.
+    DO NOT "fix" it by raising the step budget, loosening the corridor, or deleting
+    actors until it moves. First identify WHAT binds at s=81.4 m, the way
+    matlab/whoDidWeHit.m identified the trolley on S1.
+
+[4] demo_play still declares opts.Dense/opts.Reactive - both now work. Confirm.
+
+=============================================================================
+THE RULES. These are why this project is different. Do not soften them.
+=============================================================================
+* NEVER INVENT A NUMBER. If you did not run it, write TODO(unverified).
+* NEVER SUMMARISE AN ERROR. Whole message, first line to last.
+* DISCLOSE BUGS BEFORE A JUDGE FINDS THEM. That is our actual edge.
+* NEVER EDIT matlab/baseline/ - MathWorks' shipped planner, kept unmodified. Tune
+  it to survive and a judge calls it a strawman and the comparison dies.
+* NEVER CHANGE AGENTS.md section 3 - everything is built against it.
+* NEVER SHIP A HALF-FIX. If it is not clean by its cutoff it reverts.
+* WHEN SOMETHING SUCCEEDS, SAY WHAT YOU VERIFIED, NOT THAT IT WORKED. Almost
+  nothing here crashes - it produces a number, and the number is wrong.
+* A reactive agent must NEVER react to planner state or to whether a collision is
+  imminent. An agent that dodges exactly when our planner would have hit it is a
+  home-field advantage and it is forbidden.
+
+=============================================================================
+NUMBERS THE REPO STILL GETS WRONG - fix before anything is presented
+=============================================================================
+  tests                 348/348 pass, 0 fail, 0 incomplete   (NOT 344/335/9)
+  S1 clearance          0.618 m sparse, 0.135 m dense        (NOT 0.965 m - that
+                        is GEOMETRY, (3.830-1.900)/2, and the claim ledger's own
+                        scope note calls using it as a planner claim "forbidden")
+  ML dangerous-error    2.089%, 95% CI [1.315%, 2.854%]      (NOT 20.18%)
+  S2                    does NOT finish under either sensing condition; collides
+                        then stalls at s=116-121 m of 244 m
+  Frame 1.png flowchart says COLREGs. WRONG - give-way is Indian RRR 1989 reg. 2.
+                        COLREGs says the opposite and would steer into oncoming
+                        traffic. Do not present that diagram as-is.
+
+=============================================================================
+THE HEADLINE RESULT - this is what makes the project worth presenting
+=============================================================================
+Putting the planner in a REALISTIC version of a road it had already solved -
+51 more objects, real speed limits, real traffic - cut its safety margin by ~80%,
+from 0.618 m to 0.135 m, while it never once failed to plan. And the tightest
+moment is NOT the cow (1.015 m) - it is the tractor's trolley at 0.119 m.
+A scenario's famous obstacle is not its hardest moment. That is a benchmark
+finding, and it is stronger than "our planner works".
+
+START BY: reading the handoff file, then telling me the current state of items
+[1] and [2] in your own words, then waiting for me to say "start".

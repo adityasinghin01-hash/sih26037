@@ -1,0 +1,569 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq/research/_codex
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0dea5-73da-7452-bcbe-73d4b4549987
+--------
+user
+P6-P8 accepted (verified: SUMO Client block R2026a, Instant NuRec input/scope, student-form unavailable).
+NEXT: PHASES P9 (CONTROL + VEHICLE DYNAMICS), P10 (DATA ENGINE / LEARNING LOOP), P11 (EVALUATION, METRICS,
+BENCHMARKS, SAFETY CASE), P12 (REAL-TIME + COMPUTE + DEPLOYMENT). My raw notes (verify/extend/attack):
+# P9–P12 — Claude's raw findings
+
+## Safety standards a real system is judged against (P11)
+- **ISO 26262**: functional safety (malfunctions).
+- **ISO 21448 SOTIF**: insufficiencies of the intended function, i.e. unknown hazardous scenarios.
+- **ISO 34502:2022**: a scenario-based safety evaluation framework (scenario generation →
+  evaluation). https://www.iso.org/standard/78951.html
+- **ISO 34503:2023**: the ODD taxonomy (from P1).
+- **UL 4600**: an overarching safety case. It prescribes no specific technology and no pass/fail
+  threshold, only the topics the argument must cover.
+- Common integration: 26262 for faults · 21448 for insufficiencies · 34502 for scenario evaluation
+  · UL 4600 for the safety case.
+  (ScienceDirect S259019822500510X; prostep fact sheet.)
+- **For us:** structuring the evaluation around ISO 34502 + ISO 34503, with a UL 4600-style safety
+  case, is a real industry-grade move beyond the PS. Just use the vocabulary honestly, and **never
+  claim "compliance"**.
+
+## Data engine (P10)
+- **Tesla shadow mode:**
+  - FSD runs silently while a human drives and compares its decision with the human's.
+  - Triggers fire on disagreements and anomalies (detection flicker, tunnel lighting, cut-in /
+    cut-out mismatches).
+  - Matched samples are retrieved from the fleet, auto-labelled, and used to retrain.
+  (Secondary sources; notateslaapp; arXiv 2401.12888 survey.)
+- **Open equivalents:**
+  - AIDE (automatic data engine, LLM auto-labelling)
+  - OpenAnnotate3D (open-vocabulary 2D/3D auto-labels)
+  - AV2 2026 Scenario Mining Challenge (AutoMine, 2606.11874)
+  - DeepScenario (30K executable scenarios)
+- **For us:** a "simulation shadow mode". Run the learned model in shadow beside the
+  rule/validator in every sim run, log disagreements, mine them into new scenarios and training
+  data. A cheap, real flywheel; no fleet needed.
+
+## Real-time and compute (P12)
+- **MATLAB → NVIDIA:**
+  - GPU Coder + the "MATLAB Coder Support Package for NVIDIA Jetson and NVIDIA DRIVE" generate
+    CUDA from MATLAB/Simulink and deploy to **Jetson AGX Thor, AGX Orin, Orin Nano, and DRIVE**.
+    https://www.mathworks.com/help/coder/nvidia.html
+  - A July 2026 MathWorks blog shows PyTorch → Simulink → Jetson code generation (YOLO26
+    segmentation).
+  - **Licence:** GPU Coder is on KIET licence 41087767 (per the licence memory) but **not
+    installed**.
+- **Indian-market chips:**
+  - Qualcomm Snapdragon Ride Flex is pitched at cost-sensitive Indian L2 (autocarpro).
+  - Mobileye EyeQ6 is 34 TOPS; the NXP+EyeQ6 Lite reference design has a BOM **< $95** for
+    emerging-market L2+.
+  - NVIDIA Orin is 254 TOPS; Thor is 2,000 TOPS.
+  - **So an Indian ADAS target realistically = a ~30–250 TOPS budget, not a robotaxi GPU.**
+- **Our planner** runs at 736 ms/step on a Mac M1 in interpreted MATLAB. Codegen to C/CUDA plus a
+  smaller candidate grid is the realistic route to 10 Hz. **UNVERIFIED until measured.**
+
+P9: controllers used by leaders/open stacks (MPC, pure pursuit, Stanley, LQR; Apollo/Autoware/openpilot);
+    vehicle models (kinematic vs dynamic bicycle, MATLAB Vehicle Dynamics Blockset 3DOF/14DOF, tyre models,
+    actuator delay); low-speed manoeuvres (3-point turn, reverse in galli, creeping at 1-2 km/h); pothole/
+    speed-breaker ride and control; what MATLAB offers (MPC Toolbox, Lateral/Longitudinal controller blocks).
+P10: data engine design for a student team without a fleet: simulation shadow mode, disagreement mining,
+    scenario mining from dashcam video (Scenario Builder support package; AV2 scenario-mining challenge),
+    auto-labelling (open-vocab + tracking), active learning; how Waymo/Tesla/Wayve close the loop; what can be
+    shown in a demo.
+P11: what "passing" means: CARLA leaderboard driving score, nuPlan CLS, NAVSIM PDMS/EPDMS, WOSAC, interPlan;
+    safety metrics (TTC, PET, post-encroachment, RSS violations, minimum clearance with uncertainty, collision
+    severity), progress/deadlock metrics, comfort (jerk); statistical validity (how many runs; rare-event
+    estimation, importance sampling); ISO 34502 / 34503 / 21448 / UL 4600 / IEEE 2846 - what a student project
+    can honestly adopt; the PS's 3 metrics (replanning latency, path smoothness, completion rate) exact
+    definitions to use; baselines to compare (MathWorks example, PDM-Closed-like rule baseline, always-yield,
+    ORCA).
+P12: real-time: profiling/optimising MATLAB (codegen MEX, GPU Coder, parfor), reaching 10 Hz; deployment
+    targets (Jetson Orin/Thor via MATLAB Coder support package), Indian ADAS compute budgets (Qualcomm
+    Snapdragon Ride Flex, Mobileye EyeQ6 L, NXP+EyeQ6L <$95 BOM claim - verify), latency budgets per layer
+    used in industry; functional-safety split (safety controller on separate ECU).
+Each: leaders' practice (sourced), options good/better/best, effort, risk. Tables.
+
+codex
+I’ll verify the standards, benchmark definitions, hardware claims and MathWorks deployment path against primary sources. Then I’ll turn P9–P12 into a buildable plan, separating what the team can demonstrate in simulation from what would require vehicle evidence.
+web search: 
+web search: site:mathworks.com/help/driving lateral controller pure pursuit Stanley MPC longitudinal controller Simulink ...
+web search: 
+web search: site:mathworks.com/help/driving/ref "Pure Pursuit" "Lateral Controller" ...
+web search: 
+web search: site:iso.org/standard/ 34502 2022 scenario based safety evaluation framework automated driving ...
+codex
+A major correction from the standards pages: ISO 34502 is explicitly scoped to **limited-access highways**. Its scenario-based process is useful inspiration, but the team should not present it as an Indian urban-road validation standard. I’m also checking benchmark scores before proposing a pass rule, because their headline numbers measure different things.
+web search: 
+web search: site:iso.org/standard/ "ISO 34503:2023" operational design domain taxonomy ...
+web search: 
+web search: site:leaderboard.carla.org driving score route completion infraction penalty definition ...
+web search: 
+web search: "SIH26037" MathWorks ...
+web search: 
+web search: site:tesla.com "shadow mode" fleet learning neural network ...
+web search: 
+web search: 'shadow mode'
+web search: 
+web search: site:github.com "OpenAnnotate3D" ...
+web search: 
+web search: site:mathworks.com/help/coder/nvidia Jetson Thor Orin DRIVE support GPU coder ...
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+context compacted
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/SKILL.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, ignore this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action** — including clarifying questions, exploring the codebase, or checking files. If it turns out wrong for the situation, you don't have to use it.
+
+**Before entering plan mode:** if you haven't already brainstormed, invoke the brainstorming skill first.
+
+Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
+
+## Skill Priority
+
+When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Superpowers' most common process skills, but the rule holds for any of them.
+
+- "Let's build X" → superpowers:brainstorming first, then implementation skills.
+- "Fix this bug" → superpowers:systematic-debugging first, then domain skills.
+
+## Red Flags
+
+These thoughts mean STOP—you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
+| "Let me gather information first" | Skills tell you HOW to gather information. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "This doesn't count as a task" | Action = task. Check for skills. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
+| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+
+## Platform Adaptation
+
+If your harness appears here, read its reference file for special instructions:
+
+- Codex: `references/codex-tools.md`
+- Pi: `references/pi-tools.md`
+- Antigravity: `references/antigravity-tools.md`
+
+## User Instructions
+
+User instructions (CLAUDE.md, AGENTS.md, GEMINI.md, etc, direct requests) take precedence over skills, which in turn override default behavior. Only skip skill workflows or instructions when your human partner has explicitly told you to.
+
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/brainstorming/SKILL.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+---
+name: brainstorming
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+---
+
+# Brainstorming Ideas Into Designs
+
+Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+
+<HARD-GATE>
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+</HARD-GATE>
+
+## Anti-Pattern: "This Is Too Simple To Need A Design"
+
+Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Explore project context** — check files, docs, recent commits
+2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
+3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
+9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+
+## Process Flow
+
+```dot
+digraph brainstorming {
+    "Explore project context" [shape=box];
+    "Ask clarifying questions" [shape=box];
+    "Propose 2-3 approaches" [shape=box];
+    "Present design sections" [shape=box];
+    "User approves design?" [shape=diamond];
+    "Write design doc" [shape=box];
+    "Spec self-review\n(fix inline)" [shape=box];
+    "User reviews spec?" [shape=diamond];
+    "Invoke writing-plans skill" [shape=doublecircle];
+
+    "Explore project context" -> "Ask clarifying questions";
+    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Propose 2-3 approaches" -> "Present design sections";
+    "Present design sections" -> "User approves design?";
+    "User approves design?" -> "Present design sections" [label="no, revise"];
+    "User approves design?" -> "Write design doc" [label="yes"];
+    "Write design doc" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "User reviews spec?";
+    "User reviews spec?" -> "Write design doc" [label="changes requested"];
+    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+}
+```
+
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+
+## The Process
+
+**Understanding the idea:**
+
+- Check out the current project state first (files, docs, recent commits)
+- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
+- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- Prefer multiple choice questions when possible, but open-ended is fine too
+- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Focus on understanding: purpose, constraints, success criteria
+
+**Exploring approaches:**
+
+- Propose 2-3 different approaches with trade-offs
+- Present options conversationally with your recommendation and reasoning
+- Lead with your recommended option and explain why
+- YAGNI ruthlessly - remove unnecessary features from every approach and design
+
+**Presenting the design:**
+
+- Once you believe you understand what you're building, present the design
+- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- Ask after each section whether it looks right so far
+- Cover: architecture, components, data flow, error handling, testing
+- Be ready to go back and clarify if something doesn't make sense
+
+**Design for isolation and clarity:**
+
+- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
+- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
+- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
+- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+
+**Working in existing codebases:**
+
+- Explore the current structure before proposing changes. Follow existing patterns.
+- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
+- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## After the Design
+
+**Documentation:**
+
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+  - (User preferences for spec location override this default)
+- Use elements-of-style:writing-clearly-and-concisely skill if available
+- Commit the design document to git
+
+**Spec Self-Review:**
+After writing the spec document, look at it with fresh eyes:
+
+1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
+2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
+3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
+4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+
+Fix any issues inline. No need to re-review — just fix and move on.
+
+**User Review Gate:**
+After the spec review loop passes, ask the user to review the written spec before proceeding:
+
+> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+
+Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+
+**Implementation:**
+
+- Invoke the writing-plans skill to create a detailed implementation plan
+- Do NOT invoke any other skill. writing-plans is the next step.
+
+## Visual Companion
+
+A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+
+**Offering the companion (just-in-time):** Do NOT offer it upfront. Wait until a question would genuinely be clearer shown than told — a real mockup / layout / diagram question, not merely a UI *topic*. The first time that happens, offer it then, as its own message:
+> "This next part might be easier if I show you — I can put together mockups, diagrams, and comparisons in a browser tab as we go. It's still new and can be token-intensive. Want me to? I'll open it for you."
+
+**This offer MUST be its own message.** Only the offer — no clarifying question, summary, or other content. Wait for the user's response. If they accept, start the server with `--open` so their browser opens to the first screen automatically. If they decline, continue text-only and don't offer again unless they raise it.
+
+**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+
+- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
+- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
+
+A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
+
+If they agree to the companion, read the detailed guide before proceeding:
+`skills/brainstorming/visual-companion.md`
+
+codex
+I’m checking the deployment claims against vendor documentation now, especially the chip TOPS figures and what the MATLAB support package actually deploys. The P9–P12 recommendations will separate measured results from proposed targets.
+web search: 
+web search: site:mathworks.com/help/gpucoder Jetson AGX Thor support R2026a GPU Coder MATLAB Coder Support Package NVIDIA ...
+web search: 
+web search: site:mobileye.com EyeQ6L 5 TOPS EyeQ6H 34 TOPS ...
+web search: 
+web search: "EyeQ6 Lite" "$95" NXP ...
+web search: 
+web search: site:github.com autonomousvision navsim EPDMS PDMS metrics collisions drivable area progress comfort v2 ...
+web search: 
+web search: site:leaderboard.carla.org "linear" "penalty" 2.1 ...
+web search: 
+web search: site:leaderboard.carla.org leaderboard 2.1 evaluation driving score linear penalty ...
+web search: 
+web search: site:iso.org/standard/78951 ISO 34502 limited-access highways ...
+codex
+The hardware check found two material corrections: 34 TOPS refers to Mobileye EyeQ6 **High**, and NVIDIA’s DRIVE AGX Thor figure is 1,000 INT8 TOPS or 2,000 FP4 TFLOPS. Those figures cannot be compared as one common “TOPS budget.” I’m using measured end-to-end latency as the deployment criterion.
+web search: 
+web search: site:ir.tesla.com 2019 second quarter shadow mode stop sign traffic light instances ...
+web search: 
+web search: Tesla Q2 2019 shareholder update shadow mode traffic light stop sign decision pdf ...
+web search: 
+web search: autonomous vehicle rare event simulation importance sampling failure probability original research paper ...
+web search: 
+web search: "Mobileye" "NXP" "95" "BOM" ...
+web search: 
+web search: https://leaderboard.carla.org/evaluation/
+web search: 
+web search: 'shadow'
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: site:autowarefoundation.github.io/autoware_universe/main/control/autoware_mpc_lateral_controller MPC controller ...
+web search: 
+web search: '30K'
+codex
+# P9–P12: what the driving system must prove
+
+**Recommendation:** keep the running vehicle, controllers, safety gate, and evaluation harness in Simulink. Use the DGX for training and batch scenario search. First prove that the ego follows feasible paths, then that it handles interactive traffic without collisions or indefinite stopping, and finally that the measured loop meets its deadline. This is a proposed project sequence, not a claim of road safety. [MathWorks’ integrated path-following example](https://www.mathworks.com/help/mpc/ref/pathfollowingcontrolsystem.html), [Waymo’s account of closed-loop evaluation](https://waymo.com/blog/2026/08/10ailessons/)
+
+**Evidence key:** *Verified* means the linked primary source supports the statement. *UNVERIFIED* means I could not substantiate the raw-note claim. Effort below is my planning estimate, assuming an existing Simulink driving loop.
+
+## P9 — Control and vehicle dynamics
+
+| Finding | Consequence for SIH26037 |
+|---|---|
+| Autoware exposes both **MPC and pure pursuit** lateral-following modes; its MPC models steering response and delay. Openpilot’s control process runs at **100 Hz** and selects vehicle-specific angle, curvature, PID, or torque control. There is no single controller shared by the open stacks. [Autoware follower](https://autowarefoundation.github.io/autoware_universe/main/control/autoware_trajectory_follower_node/), [Autoware MPC](https://autowarefoundation.github.io/autoware_universe/latest/control/autoware_mpc_lateral_controller/), [openpilot source](https://github.com/commaai/openpilot/blob/master/openpilot/selfdrive/controls/controlsd.py) | Compare controllers **on the same reference trajectory and plant**, including steering delay and saturation. |
+| MathWorks provides a lateral Stanley block with kinematic/dynamic bicycle choices and reverse support; its longitudinal “Stanley” block is a **discrete PI speed controller**. MPC Toolbox supplies constrained path-following and nonlinear MPC blocks. [Lateral Stanley](https://www.mathworks.com/help/driving/ref/lateralcontrollerstanley.html), [longitudinal block](https://www.mathworks.com/help/driving/ref/longitudinalcontrollerstanley.html), [MPC blocks](https://www.mathworks.com/help/mpc/automated-driving-applications.html) | A Stanley + PI baseline is quick to integrate; MPC earns its cost only if it improves tracking or constraint handling in measured tests. |
+| Vehicle Dynamics Blockset’s **3DOF** model covers planar motion; its **14DOF** model adds vertical motion, pitch, roll, and wheel motion. A planar bicycle model cannot measure pothole or speed-breaker ride response. [MathWorks vehicle-model comparison](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) | Use 3DOF for broad traffic sweeps and 14DOF for a smaller rough-road validation set. Feed those tests an actual road-height profile. |
+| MATLAB’s `plannerHybridAStar` permits forward/reverse Reeds–Shepp paths. It supplies geometry, not the gear-change, stop, clearance-check, and creep logic needed for a three-point turn. [MathWorks documentation](https://www.mathworks.com/help/nav/ref/plannerhybridastar.html) | Implement reverse and narrow-galli maneuvers as explicit states, with low-speed tracking and an obstacle check before each direction change. |
+
+**Control test I would build:** command trajectory → steering/acceleration controller → actuator delay and limits → vehicle plant → pose feedback. Sweep speed, wheelbase, steering lag, braking effectiveness, grade, and road friction; record lateral error, heading error, stopping distance, overshoot, command saturation, and collision. For potholes, additionally record vertical acceleration and pitch on the 14DOF plant. Autoware explicitly identifies mistaken steering delay as a source of late curve response; MathWorks documents the model split. [Autoware tuning guidance](https://autowarefoundation.github.io/autoware_universe/main/control/autoware_mpc_lateral_controller/), [MathWorks vehicle models](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Stanley lateral + PI longitudinal; 3DOF plant; add actuator limits and delay. [Blocks](https://www.mathworks.com/help/driving/planning-and-control.html) | 1–2 weeks | Poor tracking at very low speed or sharp curvature. |
+| **Better — recommended** | Compare Stanley with constrained MPC; forward/reverse state machine; test rough-road cases on 14DOF. [MPC](https://www.mathworks.com/help/mpc/automated-driving-applications.html), [14DOF](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) | 3–5 weeks | MPC tuning and solver time. |
+| **Best** | Speed-dependent controller, identified actuator dynamics, friction-aware limits, and measured ride/control trade-off. [Autoware delay treatment](https://autowarefoundation.github.io/autoware_universe/latest/control/autoware_mpc_lateral_controller/), [MathWorks nonlinear MPC example](https://www.mathworks.com/help/mpc/ug/lane-following-using-nonlinear-model-predictive-control.html) | 6–10 weeks | Parameter identification without a physical test vehicle. |
+
+## P10 — Data engine and learning loop
+
+| Raw-note claim checked | Verdict and useful lesson |
+|---|---|
+| **Tesla shadow mode** | **Verified narrowly:** Tesla’s 2019 filing says its *stop-sign/traffic-light feature* ran in fleet shadow mode and compared algorithm decisions with driver behavior. The proposed list of tunnel, flicker, and cut-in triggers as Tesla’s documented process is **UNVERIFIED**. [Tesla’s Q2 2019 filing](https://ir.tesla.com/_flysystem/s3/sec/000156459019025855/tsla-8k_20190724-gen_0.pdf) |
+| **Waymo and Wayve close the loop** | Waymo describes an AI critic, issue extraction, auto-labeling, retraining, simulation, and a separate trajectory validation layer. Wayve describes fleet collection, training, simulated worlds, and evaluation. These are company descriptions, not evidence that our student loop will attain equivalent safety. [Waymo](https://waymo.com/blog/2026/08/10ailessons/), [Wayve](https://wayve.ai/technology/fleet-learning-technology/) |
+| **Open tools** | AIDE proposes iterative issue identification, curation, auto-labeling, and scenario-based verification. OpenAnnotate3D describes open-vocabulary 2D/3D labels; AutoMine mines scenarios from AV2 logs. DeepScenario contains **33,530 executable scenarios**, but its published toolset targets SVL Simulator/Apollo, so it is not a ready Simulink scenario library. [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html), [OpenAnnotate3D](https://arxiv.org/abs/2310.13398), [AutoMine](https://arxiv.org/abs/2606.11874), [DeepScenario](https://github.com/Simula-COMPLEX/DeepScenario) |
+| **Scenario Builder from dashcam** | MathWorks supports recorded GPS, IMU, camera, lidar, and actor tracks, with preprocessing and scene/actor extraction steps. “Upload one dashcam video and obtain a reliable executable Indian scene” is **UNVERIFIED**. [Scenario Builder workflow](https://www.mathworks.com/help/driving/ug/overview-of-scenario-generation-from-recorded-sensor-data.html) |
+
+**Proposed student loop:** during every simulation, run the candidate predictor/planner in shadow alongside the active controller. Log both proposals, the gate decision, simulator truth, sensor inputs, scenario parameters, seed, software/model versions, and outcome. Rank clips by safety-rule violation, near miss, uncertainty, and disagreement; cluster duplicates; review selected clips; then create regression scenarios or training labels. **Disagreement is a mining trigger, not a ground-truth error label.** Keep a frozen test set and rerun it after each update; Waymo likewise describes a critic separate from the driver. [Waymo](https://waymo.com/blog/2026/08/10ailessons/), [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html)
+
+A convincing demo would show one failure being discovered, replayed with its original seed, turned into a regression case, and retested after a change. **A reduction on that same mined case alone is insufficient:** report the frozen set and other scenario families as well. [nuPlan’s scenario-level evaluation approach](https://arxiv.org/abs/2403.04133), [Waymo’s critic and validation description](https://waymo.com/blog/2026/08/10ailessons/)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Deterministic run logs, replay, and a manually reviewed failure queue. | 1–2 weeks | Reviewing too many similar events. |
+| **Better — recommended** | Shadow proposals, automatic event triggers, deduplication, parameterized regression scenarios, frozen holdout. [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html) | 3–5 weeks | Label leakage and mistaking baseline disagreement for error. |
+| **Best** | Add dashcam/track mining and human-checked open-vocabulary labels; train on DGX, evaluate in the Simulink loop. [Scenario Builder](https://www.mathworks.com/help/driving/ug/overview-of-scenario-generation-from-recorded-sensor-data.html), [OpenAnnotate3D](https://arxiv.org/abs/2310.13398) | 6–10 weeks | Noisy tracks and costly data review. |
+
+## P11 — Evaluation, benchmarks, and safety case
+
+### Correct the standards and benchmark framing
+
+| Reference | What it supports—and its limit here |
+|---|---|
+| [ISO 26262](https://www.iso.org/publication/PUB200262.html) and [ISO 21448:2022](https://www.iso.org/standard/77490.html) | Functional safety of E/E faults and safety of the intended functionality, respectively. Use their hazard vocabulary and traceability ideas; **do not claim compliance**. |
+| [ISO 34502:2022](https://www.iso.org/standard/78951.html) | **Important correction:** its scenario-based evaluation framework explicitly applies to **limited-access highways**. Indian village and market roads are outside that stated scope. Borrow its process as an adaptation, identified as such. |
+| [ISO 34503:2023](https://www.iso.org/standard/78952.html) and [IEEE 2846-2022](https://standards.ieee.org/ieee/2846/10831/) | Specify the ODD and document reasonable assumptions about other road users. For this project, assumptions must explicitly include foreseeable wrong-way movement, seepage, crossings, and animals; that list is our proposed Indian-road application of the standards. |
+| [UL 4600](https://www.ul.com/news/ul-4600-edition-3-updates-incorporate-autonomous-trucking) | Structure claims, evidence, and residual gaps. UL describes it as technology-agnostic and says no fixed road-mile count suffices by itself. A student simulation dossier can use this *style* without claiming certification. |
+| [CARLA Leaderboard 2.1](https://leaderboard.carla.org/evaluation_v2_1/) | Current driving score combines per-route completion and infraction penalty; version **2.1 changed the penalty formula** from 2.0, so scores across versions are not directly comparable. Its blocked-agent and minimum-speed penalties help expose “always yield.” |
+| [nuPlan](https://arxiv.org/abs/2403.04133), [interPlan](https://github.com/mh0797/interPlan), [NAVSIM metrics](https://github.com/autonomousvision/navsim/blob/main/docs/metrics.md), [WOSAC](https://waymo.com/open/challenges/2025/sim-agents/) | nuPlan is closed-loop planning; interPlan adds difficult interactive cases; NAVSIM’s PDMS/EPDMS uses short pseudo-simulation (v2 approximates later effects with staged scenes); WOSAC judges **simulated agents’ realism**, not ego driving success. Their scores are different quantities and their source roads do not establish Indian-road performance. |
+
+The accessible [SIH26037 problem-statement mirror](https://sihone.pages.dev/ps/26037) names **replanning latency, path smoothness, and scenario completion rate**, plus five scenarios and two detailed RoadRunner scenes. It gives **no exact metric formulas or pass thresholds**; I could not verify an official PS page, so treat those counts as **provisionally sourced from a mirror**. Define and publish your formulas before comparing runs. [Mirror](https://sihone.pages.dev/ps/26037)
+
+| Proposed metric for your harness | Operational definition |
+|---|---|
+| **Replanning latency** | Wall-clock time from a time-stamped world-state snapshot to a validated replacement trajectory; report median, p95, p99, maximum, and deadline misses. Include transfer/serialization when used. This is our definition; MathWorks distinguishes function timing from profiler overhead and notes `coder.timeit` excludes MATLAB-to-generated-code transfer. [MathWorks timing](https://www.mathworks.com/help/matlab/matlab_prog/measure-performance-of-your-program.html), [`coder.timeit`](https://www.mathworks.com/help/coder/ref/coder.timeit.html) |
+| **Path smoothness** | Report curvature discontinuity and commanded/realized acceleration and jerk separately. A single “smoothness” number can conceal a sharp brake or oscillatory steering; NAVSIM likewise separates comfort from progress and collision terms. [NAVSIM metrics](https://github.com/autonomousvision/navsim/blob/main/docs/metrics.md) |
+| **Scenario completion** | Destination reached within a declared simulation-time limit **and** without disqualifying contact or leaving the declared drivable region; also report raw progress and reason for failure. This is our proposed definition, informed by CARLA’s separate completion, infraction, and blocked-agent accounting. [CARLA 2.1](https://leaderboard.carla.org/evaluation_v2_1/) |
+
+For **safety**, retain each contact by object class and impact speed; report minimum geometric clearance with uncertainty margins, TTC and PET where applicable, and violations of your explicit braking/right-of-way assumptions. TTC and PET are conflict surrogates, not substitutes for observed collisions. For **mobility**, report route progress, time to complete, and deadlock/timeout rate. For **comfort**, report longitudinal/lateral acceleration and jerk. Stratify every result by scenario family, weather, and sensing mode, including runs in which the perception model misses an object. [FHWA definitions of TTC/PET](https://www.fhwa.dot.gov/publications/research/safety/08051/02.cfm), [CARLA 2.1 scoring](https://leaderboard.carla.org/evaluation_v2_1/), [NAVSIM metrics](https://github.com/autonomousvision/navsim/blob/main/docs/metrics.md)
+
+**Statistics:** if independent runs yield zero failures, the exact one-sided 95% binomial upper bound is \(1-0.05^{1/n}\). It takes **299 zero-failure runs to put that bound below 1% for one specified test distribution**; about 2,995 for 0.1%. Reusing correlated seeds weakens that interpretation. Report intervals *per family* and treat adversarially sampled failure frequency as a stress-test result, not a road-event rate; rare-event probability estimation needs a defined base distribution and appropriate sampling weights. [NIST’s rule-of-three discussion](https://pages.nist.gov/frvt/reports/demographics/nistir_8429.pdf), [rare-event AV testing paper](https://arxiv.org/abs/1811.00145)
+
+**Baselines:** test the same scenario seeds with your current planner, a documented MathWorks controller/planner example, an always-yield policy to expose deadlock, and a simple rule-based gap/stop planner inspired by PDM-Closed. Label the last one “PDM-like” unless you actually port its implementation and inputs; interPlan publishes the real PDM-Closed baseline. ORCA is useful as a **geometric reciprocal-avoidance comparison**, but its standard velocity-space formulation alone does not solve car steering, braking, and right-of-way. [MathWorks path control](https://www.mathworks.com/help/mpc/ref/pathfollowingcontrolsystem.html), [interPlan baselines](https://github.com/mh0797/interPlan), [ORCA authors’ project](https://gamma.cs.unc.edu/ORCA/)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Five named showcase scenarios, fixed seeds, all three PS metrics plus contacts and timeouts. [PS mirror](https://sihone.pages.dev/ps/26037) | 1–2 weeks | Showcase success says little about robustness. |
+| **Better — recommended** | Parameter sweeps and held-out seeds by family; baselines; confidence intervals; a claims/evidence/gaps sheet. [nuPlan](https://arxiv.org/abs/2403.04133), [UL 4600](https://www.ul.com/news/ul-4600-edition-3-updates-incorporate-autonomous-trucking) | 3–5 weeks | Simulator or actor behavior can dominate the result. |
+| **Best** | Add independent simulator/sensor variants, rare-event search with explicit sampling assumptions, and reviewed regression evidence. [Rare-event testing](https://arxiv.org/abs/1811.00145), [Waymo on closed-loop simulation](https://waymo.com/blog/2026/08/10ailessons/) | 8–12 weeks | Large run count still cannot establish real-road safety. |
+
+## P12 — Real-time compute and deployment
+
+| Raw-note claim checked | Verdict |
+|---|---|
+| **MATLAB → Jetson/DRIVE** | **Verified, with prerequisites:** MATLAB Coder’s NVIDIA support package lists Jetson AGX Thor, AGX Orin, Orin Nano and DRIVE kits; **GPU Coder is additionally needed for CUDA**, and Simulink code generation needs the relevant coder products/support packages. Hardware and release compatibility must be checked for the installed release. [MathWorks NVIDIA support](https://www.mathworks.com/help/coder/nvidia.html), [GPU Coder prerequisites](https://www.mathworks.com/help/gpucoder/gs/install-prerequisites.html) |
+| **PyTorch → Simulink → Jetson example** | Verified: MathWorks’ July 2026 YOLOv26 segmentation example uses a PyTorch ExportedProgram block and deploys to **Jetson AGX Orin**. It is an example pipeline, not proof that your complete stack is code-generation compatible. [MathWorks blog](https://blogs.mathworks.com/deep-learning/2026/07/06/from-pytorch-to-jetson-via-simulink-deploying-yolov26-instance-segmentation-with-code-generation/) |
+| **GPU Coder on KIET licence / installed state** | **UNVERIFIED externally.** The licence number and “not installed” status come from the project notes; confirm in the institution’s MathWorks licence portal and local `ver` output. [MathWorks prerequisite/product check](https://www.mathworks.com/help/gpucoder/gs/install-prerequisites.html) |
+| **Chip figures** | EyeQ6 **High** is 34 INT8 TOPS; do not assign 34 TOPS to EyeQ6 Lite. DRIVE AGX Orin is **up to 254 TOPS**; Jetson AGX Orin is **up to 275 INT8 TOPS with sparsity**; DRIVE AGX Thor is **over 1,000 INT8 TOPS / 2,000 FP4 TFLOPS**. These are differing products and arithmetic formats, so a blanket “30–250 TOPS Indian ADAS budget” is **unsupported**. [Mobileye](https://www.mobileye.com/technology/eyeq-chip/), [NVIDIA DRIVE](https://www.nvidia.com/en-us/solutions/autonomous-vehicles/in-vehicle-computing/), [NVIDIA Jetson guide](https://developer.nvidia.com/sites/default/files/akamai/Jetson_AGX_Orin_Developer_Kit_RG_0.pdf) |
+| **NXP + EyeQ6 Lite BOM below $95** | **UNVERIFIED.** I found no primary NXP/Mobileye source establishing that BOM; exclude it from the pitch. Qualcomm does position Ride Flex as a consolidated cockpit/ADAS platform for mass-market tiers, but that supplies no universal Indian hardware budget. [Qualcomm white paper](https://www.qualcomm.com/content/dam/qcomm-martech/dm-assets/documents/Snapdragon-Ride-GLOBAL-whitepaper.pdf) |
+| **Separate safety ECU** | Too prescriptive. Waymo describes an independent onboard validation layer; Qualcomm describes mixed-criticality functions and a safety island on an SoC. For this simulation, prove **logical independence, bounded response, and stale-output handling**; a separate physical ECU is a later hardware decision. [Waymo](https://waymo.com/blog/2026/08/10ailessons/), [Qualcomm](https://www.qualcomm.com/automotive/solutions/snapdragon-ride) |
+
+The reported **736 ms/step on M1** is a *project measurement supplied in your notes*, not independently verified here. “Codegen plus a smaller grid reaches 10 Hz” remains **UNVERIFIED**. Profile the actual call graph first; generate MEX for codegen-compatible hot paths, compare outputs with interpreted MATLAB, and measure whole-loop wall time under dense traffic. MATLAB provides `timeit`, Profiler, generated-MEX profiling, and `coder.timeit`; note that the last excludes MATLAB↔generated-code transfer. [MathWorks timing guide](https://www.mathworks.com/help/matlab/matlab_prog/measure-performance-of-your-program.html), [MEX profiling](https://www.mathworks.com/help/coder/ug/profile-generated-mex-functions-using-matlab-profiler.html), [`coder.timeit`](https://www.mathworks.com/help/coder/ref/coder.timeit.html)
+
+**Proposed 10 Hz gate:** set a 100 ms planner-cycle deadline, then measure sensor-to-actuation age separately. Report p50/p95/p99/max for perception, tracking, prediction, planning, validation, control, and transfers; count missed deadlines. If the new plan is late or stale, the safety controller must use a previously validated bounded action or a tested stop response. **These are project design targets, not published industry latency limits.** The distinction matters because an open stack may run low-level control faster than planning; openpilot’s control loop, for example, is 100 Hz. [openpilot source](https://github.com/commaai/openpilot/blob/master/openpilot/selfdrive/controls/controlsd.py), [MathWorks timing guide](https://www.mathworks.com/help/matlab/matlab_prog/measure-performance-of-your-program.html)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Profile interpreted MATLAB and Simulink; reduce candidate count only after identifying the bottleneck; publish latency distributions and deadline misses. [MATLAB Profiler](https://www.mathworks.com/help/matlab/matlab_prog/profiling-for-improving-performance.html), [Simulink Profiler](https://www.mathworks.com/help/simulink/slref/simulinkprofiler.html) | 1–2 weeks | Optimizing the wrong stage. |
+| **Better — recommended** | MEX/codegen the planner and gate, use fixed-size interfaces, test numerical equivalence, and demonstrate the full loop at the declared rate on the available Windows lab PC. [MathWorks MEX profiling](https://www.mathworks.com/help/coder/ug/profile-generated-mex-functions-using-matlab-profiler.html) | 3–5 weeks | Unsupported MATLAB functions or changed numerical behavior. |
+| **Best** | Deploy supported perception and planning components to a borrowed Jetson/DRIVE target; measure on-device timing, power, memory, and missed deadlines with the safety gate active. [MathWorks support package](https://www.mathworks.com/help/coder/nvidia.html) | 6–10 weeks **after hardware/licence access** | Target availability, codegen support, and data-transfer cost. |
+
+**Overall choice:** P9 **Better**, P10 **Better**, P11 **Better**, and P12 **Good → Better** form one defensible student system: a controller whose limits are measured, a reproducible learning loop, stratified closed-loop results, and a demonstrated timing budget. The strongest honest claim at that point is **“validated in our declared simulated ODD and scenario distribution”**; the cited standards and Waymo’s own discussion of simulation do not turn that into demonstrated public-road safety. [ISO 34503](https://www.iso.org/standard/78952.html), [UL 4600](https://www.ul.com/news/ul-4600-edition-3-updates-incorporate-autonomous-trucking), [Waymo](https://waymo.com/blog/2026/08/10ailessons/)
+tokens used
+6,24,164
+# P9–P12: what the driving system must prove
+
+**Recommendation:** keep the running vehicle, controllers, safety gate, and evaluation harness in Simulink. Use the DGX for training and batch scenario search. First prove that the ego follows feasible paths, then that it handles interactive traffic without collisions or indefinite stopping, and finally that the measured loop meets its deadline. This is a proposed project sequence, not a claim of road safety. [MathWorks’ integrated path-following example](https://www.mathworks.com/help/mpc/ref/pathfollowingcontrolsystem.html), [Waymo’s account of closed-loop evaluation](https://waymo.com/blog/2026/08/10ailessons/)
+
+**Evidence key:** *Verified* means the linked primary source supports the statement. *UNVERIFIED* means I could not substantiate the raw-note claim. Effort below is my planning estimate, assuming an existing Simulink driving loop.
+
+## P9 — Control and vehicle dynamics
+
+| Finding | Consequence for SIH26037 |
+|---|---|
+| Autoware exposes both **MPC and pure pursuit** lateral-following modes; its MPC models steering response and delay. Openpilot’s control process runs at **100 Hz** and selects vehicle-specific angle, curvature, PID, or torque control. There is no single controller shared by the open stacks. [Autoware follower](https://autowarefoundation.github.io/autoware_universe/main/control/autoware_trajectory_follower_node/), [Autoware MPC](https://autowarefoundation.github.io/autoware_universe/latest/control/autoware_mpc_lateral_controller/), [openpilot source](https://github.com/commaai/openpilot/blob/master/openpilot/selfdrive/controls/controlsd.py) | Compare controllers **on the same reference trajectory and plant**, including steering delay and saturation. |
+| MathWorks provides a lateral Stanley block with kinematic/dynamic bicycle choices and reverse support; its longitudinal “Stanley” block is a **discrete PI speed controller**. MPC Toolbox supplies constrained path-following and nonlinear MPC blocks. [Lateral Stanley](https://www.mathworks.com/help/driving/ref/lateralcontrollerstanley.html), [longitudinal block](https://www.mathworks.com/help/driving/ref/longitudinalcontrollerstanley.html), [MPC blocks](https://www.mathworks.com/help/mpc/automated-driving-applications.html) | A Stanley + PI baseline is quick to integrate; MPC earns its cost only if it improves tracking or constraint handling in measured tests. |
+| Vehicle Dynamics Blockset’s **3DOF** model covers planar motion; its **14DOF** model adds vertical motion, pitch, roll, and wheel motion. A planar bicycle model cannot measure pothole or speed-breaker ride response. [MathWorks vehicle-model comparison](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) | Use 3DOF for broad traffic sweeps and 14DOF for a smaller rough-road validation set. Feed those tests an actual road-height profile. |
+| MATLAB’s `plannerHybridAStar` permits forward/reverse Reeds–Shepp paths. It supplies geometry, not the gear-change, stop, clearance-check, and creep logic needed for a three-point turn. [MathWorks documentation](https://www.mathworks.com/help/nav/ref/plannerhybridastar.html) | Implement reverse and narrow-galli maneuvers as explicit states, with low-speed tracking and an obstacle check before each direction change. |
+
+**Control test I would build:** command trajectory → steering/acceleration controller → actuator delay and limits → vehicle plant → pose feedback. Sweep speed, wheelbase, steering lag, braking effectiveness, grade, and road friction; record lateral error, heading error, stopping distance, overshoot, command saturation, and collision. For potholes, additionally record vertical acceleration and pitch on the 14DOF plant. Autoware explicitly identifies mistaken steering delay as a source of late curve response; MathWorks documents the model split. [Autoware tuning guidance](https://autowarefoundation.github.io/autoware_universe/main/control/autoware_mpc_lateral_controller/), [MathWorks vehicle models](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Stanley lateral + PI longitudinal; 3DOF plant; add actuator limits and delay. [Blocks](https://www.mathworks.com/help/driving/planning-and-control.html) | 1–2 weeks | Poor tracking at very low speed or sharp curvature. |
+| **Better — recommended** | Compare Stanley with constrained MPC; forward/reverse state machine; test rough-road cases on 14DOF. [MPC](https://www.mathworks.com/help/mpc/automated-driving-applications.html), [14DOF](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) | 3–5 weeks | MPC tuning and solver time. |
+| **Best** | Speed-dependent controller, identified actuator dynamics, friction-aware limits, and measured ride/control trade-off. [Autoware delay treatment](https://autowarefoundation.github.io/autoware_universe/latest/control/autoware_mpc_lateral_controller/), [MathWorks nonlinear MPC example](https://www.mathworks.com/help/mpc/ug/lane-following-using-nonlinear-model-predictive-control.html) | 6–10 weeks | Parameter identification without a physical test vehicle. |
+
+## P10 — Data engine and learning loop
+
+| Raw-note claim checked | Verdict and useful lesson |
+|---|---|
+| **Tesla shadow mode** | **Verified narrowly:** Tesla’s 2019 filing says its *stop-sign/traffic-light feature* ran in fleet shadow mode and compared algorithm decisions with driver behavior. The proposed list of tunnel, flicker, and cut-in triggers as Tesla’s documented process is **UNVERIFIED**. [Tesla’s Q2 2019 filing](https://ir.tesla.com/_flysystem/s3/sec/000156459019025855/tsla-8k_20190724-gen_0.pdf) |
+| **Waymo and Wayve close the loop** | Waymo describes an AI critic, issue extraction, auto-labeling, retraining, simulation, and a separate trajectory validation layer. Wayve describes fleet collection, training, simulated worlds, and evaluation. These are company descriptions, not evidence that our student loop will attain equivalent safety. [Waymo](https://waymo.com/blog/2026/08/10ailessons/), [Wayve](https://wayve.ai/technology/fleet-learning-technology/) |
+| **Open tools** | AIDE proposes iterative issue identification, curation, auto-labeling, and scenario-based verification. OpenAnnotate3D describes open-vocabulary 2D/3D labels; AutoMine mines scenarios from AV2 logs. DeepScenario contains **33,530 executable scenarios**, but its published toolset targets SVL Simulator/Apollo, so it is not a ready Simulink scenario library. [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html), [OpenAnnotate3D](https://arxiv.org/abs/2310.13398), [AutoMine](https://arxiv.org/abs/2606.11874), [DeepScenario](https://github.com/Simula-COMPLEX/DeepScenario) |
+| **Scenario Builder from dashcam** | MathWorks supports recorded GPS, IMU, camera, lidar, and actor tracks, with preprocessing and scene/actor extraction steps. “Upload one dashcam video and obtain a reliable executable Indian scene” is **UNVERIFIED**. [Scenario Builder workflow](https://www.mathworks.com/help/driving/ug/overview-of-scenario-generation-from-recorded-sensor-data.html) |
+
+**Proposed student loop:** during every simulation, run the candidate predictor/planner in shadow alongside the active controller. Log both proposals, the gate decision, simulator truth, sensor inputs, scenario parameters, seed, software/model versions, and outcome. Rank clips by safety-rule violation, near miss, uncertainty, and disagreement; cluster duplicates; review selected clips; then create regression scenarios or training labels. **Disagreement is a mining trigger, not a ground-truth error label.** Keep a frozen test set and rerun it after each update; Waymo likewise describes a critic separate from the driver. [Waymo](https://waymo.com/blog/2026/08/10ailessons/), [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html)
+
+A convincing demo would show one failure being discovered, replayed with its original seed, turned into a regression case, and retested after a change. **A reduction on that same mined case alone is insufficient:** report the frozen set and other scenario families as well. [nuPlan’s scenario-level evaluation approach](https://arxiv.org/abs/2403.04133), [Waymo’s critic and validation description](https://waymo.com/blog/2026/08/10ailessons/)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Deterministic run logs, replay, and a manually reviewed failure queue. | 1–2 weeks | Reviewing too many similar events. |
+| **Better — recommended** | Shadow proposals, automatic event triggers, deduplication, parameterized regression scenarios, frozen holdout. [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html) | 3–5 weeks | Label leakage and mistaking baseline disagreement for error. |
+| **Best** | Add dashcam/track mining and human-checked open-vocabulary labels; train on DGX, evaluate in the Simulink loop. [Scenario Builder](https://www.mathworks.com/help/driving/ug/overview-of-scenario-generation-from-recorded-sensor-data.html), [OpenAnnotate3D](https://arxiv.org/abs/2310.13398) | 6–10 weeks | Noisy tracks and costly data review. |
+
+## P11 — Evaluation, benchmarks, and safety case
+
+### Correct the standards and benchmark framing
+
+| Reference | What it supports—and its limit here |
+|---|---|
+| [ISO 26262](https://www.iso.org/publication/PUB200262.html) and [ISO 21448:2022](https://www.iso.org/standard/77490.html) | Functional safety of E/E faults and safety of the intended functionality, respectively. Use their hazard vocabulary and traceability ideas; **do not claim compliance**. |
+| [ISO 34502:2022](https://www.iso.org/standard/78951.html) | **Important correction:** its scenario-based evaluation framework explicitly applies to **limited-access highways**. Indian village and market roads are outside that stated scope. Borrow its process as an adaptation, identified as such. |
+| [ISO 34503:2023](https://www.iso.org/standard/78952.html) and [IEEE 2846-2022](https://standards.ieee.org/ieee/2846/10831/) | Specify the ODD and document reasonable assumptions about other road users. For this project, assumptions must explicitly include foreseeable wrong-way movement, seepage, crossings, and animals; that list is our proposed Indian-road application of the standards. |
+| [UL 4600](https://www.ul.com/news/ul-4600-edition-3-updates-incorporate-autonomous-trucking) | Structure claims, evidence, and residual gaps. UL describes it as technology-agnostic and says no fixed road-mile count suffices by itself. A student simulation dossier can use this *style* without claiming certification. |
+| [CARLA Leaderboard 2.1](https://leaderboard.carla.org/evaluation_v2_1/) | Current driving score combines per-route completion and infraction penalty; version **2.1 changed the penalty formula** from 2.0, so scores across versions are not directly comparable. Its blocked-agent and minimum-speed penalties help expose “always yield.” |
+| [nuPlan](https://arxiv.org/abs/2403.04133), [interPlan](https://github.com/mh0797/interPlan), [NAVSIM metrics](https://github.com/autonomousvision/navsim/blob/main/docs/metrics.md), [WOSAC](https://waymo.com/open/challenges/2025/sim-agents/) | nuPlan is closed-loop planning; interPlan adds difficult interactive cases; NAVSIM’s PDMS/EPDMS uses short pseudo-simulation (v2 approximates later effects with staged scenes); WOSAC judges **simulated agents’ realism**, not ego driving success. Their scores are different quantities and their source roads do not establish Indian-road performance. |
+
+The accessible [SIH26037 problem-statement mirror](https://sihone.pages.dev/ps/26037) names **replanning latency, path smoothness, and scenario completion rate**, plus five scenarios and two detailed RoadRunner scenes. It gives **no exact metric formulas or pass thresholds**; I could not verify an official PS page, so treat those counts as **provisionally sourced from a mirror**. Define and publish your formulas before comparing runs. [Mirror](https://sihone.pages.dev/ps/26037)
+
+| Proposed metric for your harness | Operational definition |
+|---|---|
+| **Replanning latency** | Wall-clock time from a time-stamped world-state snapshot to a validated replacement trajectory; report median, p95, p99, maximum, and deadline misses. Include transfer/serialization when used. This is our definition; MathWorks distinguishes function timing from profiler overhead and notes `coder.timeit` excludes MATLAB-to-generated-code transfer. [MathWorks timing](https://www.mathworks.com/help/matlab/matlab_prog/measure-performance-of-your-program.html), [`coder.timeit`](https://www.mathworks.com/help/coder/ref/coder.timeit.html) |
+| **Path smoothness** | Report curvature discontinuity and commanded/realized acceleration and jerk separately. A single “smoothness” number can conceal a sharp brake or oscillatory steering; NAVSIM likewise separates comfort from progress and collision terms. [NAVSIM metrics](https://github.com/autonomousvision/navsim/blob/main/docs/metrics.md) |
+| **Scenario completion** | Destination reached within a declared simulation-time limit **and** without disqualifying contact or leaving the declared drivable region; also report raw progress and reason for failure. This is our proposed definition, informed by CARLA’s separate completion, infraction, and blocked-agent accounting. [CARLA 2.1](https://leaderboard.carla.org/evaluation_v2_1/) |
+
+For **safety**, retain each contact by object class and impact speed; report minimum geometric clearance with uncertainty margins, TTC and PET where applicable, and violations of your explicit braking/right-of-way assumptions. TTC and PET are conflict surrogates, not substitutes for observed collisions. For **mobility**, report route progress, time to complete, and deadlock/timeout rate. For **comfort**, report longitudinal/lateral acceleration and jerk. Stratify every result by scenario family, weather, and sensing mode, including runs in which the perception model misses an object. [FHWA definitions of TTC/PET](https://www.fhwa.dot.gov/publications/research/safety/08051/02.cfm), [CARLA 2.1 scoring](https://leaderboard.carla.org/evaluation_v2_1/), [NAVSIM metrics](https://github.com/autonomousvision/navsim/blob/main/docs/metrics.md)
+
+**Statistics:** if independent runs yield zero failures, the exact one-sided 95% binomial upper bound is \(1-0.05^{1/n}\). It takes **299 zero-failure runs to put that bound below 1% for one specified test distribution**; about 2,995 for 0.1%. Reusing correlated seeds weakens that interpretation. Report intervals *per family* and treat adversarially sampled failure frequency as a stress-test result, not a road-event rate; rare-event probability estimation needs a defined base distribution and appropriate sampling weights. [NIST’s rule-of-three discussion](https://pages.nist.gov/frvt/reports/demographics/nistir_8429.pdf), [rare-event AV testing paper](https://arxiv.org/abs/1811.00145)
+
+**Baselines:** test the same scenario seeds with your current planner, a documented MathWorks controller/planner example, an always-yield policy to expose deadlock, and a simple rule-based gap/stop planner inspired by PDM-Closed. Label the last one “PDM-like” unless you actually port its implementation and inputs; interPlan publishes the real PDM-Closed baseline. ORCA is useful as a **geometric reciprocal-avoidance comparison**, but its standard velocity-space formulation alone does not solve car steering, braking, and right-of-way. [MathWorks path control](https://www.mathworks.com/help/mpc/ref/pathfollowingcontrolsystem.html), [interPlan baselines](https://github.com/mh0797/interPlan), [ORCA authors’ project](https://gamma.cs.unc.edu/ORCA/)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Five named showcase scenarios, fixed seeds, all three PS metrics plus contacts and timeouts. [PS mirror](https://sihone.pages.dev/ps/26037) | 1–2 weeks | Showcase success says little about robustness. |
+| **Better — recommended** | Parameter sweeps and held-out seeds by family; baselines; confidence intervals; a claims/evidence/gaps sheet. [nuPlan](https://arxiv.org/abs/2403.04133), [UL 4600](https://www.ul.com/news/ul-4600-edition-3-updates-incorporate-autonomous-trucking) | 3–5 weeks | Simulator or actor behavior can dominate the result. |
+| **Best** | Add independent simulator/sensor variants, rare-event search with explicit sampling assumptions, and reviewed regression evidence. [Rare-event testing](https://arxiv.org/abs/1811.00145), [Waymo on closed-loop simulation](https://waymo.com/blog/2026/08/10ailessons/) | 8–12 weeks | Large run count still cannot establish real-road safety. |
+
+## P12 — Real-time compute and deployment
+
+| Raw-note claim checked | Verdict |
+|---|---|
+| **MATLAB → Jetson/DRIVE** | **Verified, with prerequisites:** MATLAB Coder’s NVIDIA support package lists Jetson AGX Thor, AGX Orin, Orin Nano and DRIVE kits; **GPU Coder is additionally needed for CUDA**, and Simulink code generation needs the relevant coder products/support packages. Hardware and release compatibility must be checked for the installed release. [MathWorks NVIDIA support](https://www.mathworks.com/help/coder/nvidia.html), [GPU Coder prerequisites](https://www.mathworks.com/help/gpucoder/gs/install-prerequisites.html) |
+| **PyTorch → Simulink → Jetson example** | Verified: MathWorks’ July 2026 YOLOv26 segmentation example uses a PyTorch ExportedProgram block and deploys to **Jetson AGX Orin**. It is an example pipeline, not proof that your complete stack is code-generation compatible. [MathWorks blog](https://blogs.mathworks.com/deep-learning/2026/07/06/from-pytorch-to-jetson-via-simulink-deploying-yolov26-instance-segmentation-with-code-generation/) |
+| **GPU Coder on KIET licence / installed state** | **UNVERIFIED externally.** The licence number and “not installed” status come from the project notes; confirm in the institution’s MathWorks licence portal and local `ver` output. [MathWorks prerequisite/product check](https://www.mathworks.com/help/gpucoder/gs/install-prerequisites.html) |
+| **Chip figures** | EyeQ6 **High** is 34 INT8 TOPS; do not assign 34 TOPS to EyeQ6 Lite. DRIVE AGX Orin is **up to 254 TOPS**; Jetson AGX Orin is **up to 275 INT8 TOPS with sparsity**; DRIVE AGX Thor is **over 1,000 INT8 TOPS / 2,000 FP4 TFLOPS**. These are differing products and arithmetic formats, so a blanket “30–250 TOPS Indian ADAS budget” is **unsupported**. [Mobileye](https://www.mobileye.com/technology/eyeq-chip/), [NVIDIA DRIVE](https://www.nvidia.com/en-us/solutions/autonomous-vehicles/in-vehicle-computing/), [NVIDIA Jetson guide](https://developer.nvidia.com/sites/default/files/akamai/Jetson_AGX_Orin_Developer_Kit_RG_0.pdf) |
+| **NXP + EyeQ6 Lite BOM below $95** | **UNVERIFIED.** I found no primary NXP/Mobileye source establishing that BOM; exclude it from the pitch. Qualcomm does position Ride Flex as a consolidated cockpit/ADAS platform for mass-market tiers, but that supplies no universal Indian hardware budget. [Qualcomm white paper](https://www.qualcomm.com/content/dam/qcomm-martech/dm-assets/documents/Snapdragon-Ride-GLOBAL-whitepaper.pdf) |
+| **Separate safety ECU** | Too prescriptive. Waymo describes an independent onboard validation layer; Qualcomm describes mixed-criticality functions and a safety island on an SoC. For this simulation, prove **logical independence, bounded response, and stale-output handling**; a separate physical ECU is a later hardware decision. [Waymo](https://waymo.com/blog/2026/08/10ailessons/), [Qualcomm](https://www.qualcomm.com/automotive/solutions/snapdragon-ride) |
+
+The reported **736 ms/step on M1** is a *project measurement supplied in your notes*, not independently verified here. “Codegen plus a smaller grid reaches 10 Hz” remains **UNVERIFIED**. Profile the actual call graph first; generate MEX for codegen-compatible hot paths, compare outputs with interpreted MATLAB, and measure whole-loop wall time under dense traffic. MATLAB provides `timeit`, Profiler, generated-MEX profiling, and `coder.timeit`; note that the last excludes MATLAB↔generated-code transfer. [MathWorks timing guide](https://www.mathworks.com/help/matlab/matlab_prog/measure-performance-of-your-program.html), [MEX profiling](https://www.mathworks.com/help/coder/ug/profile-generated-mex-functions-using-matlab-profiler.html), [`coder.timeit`](https://www.mathworks.com/help/coder/ref/coder.timeit.html)
+
+**Proposed 10 Hz gate:** set a 100 ms planner-cycle deadline, then measure sensor-to-actuation age separately. Report p50/p95/p99/max for perception, tracking, prediction, planning, validation, control, and transfers; count missed deadlines. If the new plan is late or stale, the safety controller must use a previously validated bounded action or a tested stop response. **These are project design targets, not published industry latency limits.** The distinction matters because an open stack may run low-level control faster than planning; openpilot’s control loop, for example, is 100 Hz. [openpilot source](https://github.com/commaai/openpilot/blob/master/openpilot/selfdrive/controls/controlsd.py), [MathWorks timing guide](https://www.mathworks.com/help/matlab/matlab_prog/measure-performance-of-your-program.html)
+
+| Option | Build | Effort estimate | Main risk |
+|---|---|---:|---|
+| **Good** | Profile interpreted MATLAB and Simulink; reduce candidate count only after identifying the bottleneck; publish latency distributions and deadline misses. [MATLAB Profiler](https://www.mathworks.com/help/matlab/matlab_prog/profiling-for-improving-performance.html), [Simulink Profiler](https://www.mathworks.com/help/simulink/slref/simulinkprofiler.html) | 1–2 weeks | Optimizing the wrong stage. |
+| **Better — recommended** | MEX/codegen the planner and gate, use fixed-size interfaces, test numerical equivalence, and demonstrate the full loop at the declared rate on the available Windows lab PC. [MathWorks MEX profiling](https://www.mathworks.com/help/coder/ug/profile-generated-mex-functions-using-matlab-profiler.html) | 3–5 weeks | Unsupported MATLAB functions or changed numerical behavior. |
+| **Best** | Deploy supported perception and planning components to a borrowed Jetson/DRIVE target; measure on-device timing, power, memory, and missed deadlines with the safety gate active. [MathWorks support package](https://www.mathworks.com/help/coder/nvidia.html) | 6–10 weeks **after hardware/licence access** | Target availability, codegen support, and data-transfer cost. |
+
+**Overall choice:** P9 **Better**, P10 **Better**, P11 **Better**, and P12 **Good → Better** form one defensible student system: a controller whose limits are measured, a reproducible learning loop, stratified closed-loop results, and a demonstrated timing budget. The strongest honest claim at that point is **“validated in our declared simulated ODD and scenario distribution”**; the cited standards and Waymo’s own discussion of simulation do not turn that into demonstrated public-road safety. [ISO 34503](https://www.iso.org/standard/78952.html), [UL 4600](https://www.ul.com/news/ul-4600-edition-3-updates-incorporate-autonomous-trucking), [Waymo](https://waymo.com/blog/2026/08/10ailessons/)

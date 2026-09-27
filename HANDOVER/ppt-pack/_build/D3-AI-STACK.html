@@ -1,0 +1,220 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D3 · The 14-model AI stack (two tiers)</title>
+<style>
+@page { size: A2 landscape; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D3 · The 14-model AI stack (two tiers)</h1><div class="sub">Gold = 5-model prototype core (finale). White = full system (+9). Every model is advice only — the physics safety checker gives the only &#x27;go&#x27;.</div>
+<pre class="mermaid">flowchart LR
+  subgraph DATA[&quot;TRAINING DATA (Indian + simulator)&quot;]
+    d_idd[&quot;IDD · IDD-117K · FGVD · DriveIndia&quot;]
+    d_seg[&quot;IDD segmentation · IDD-AW · IDD-X&quot;]
+    d_3d[&quot;IDD-3D · TIAND&quot;]
+    d_ped[&quot;IDD-PeD&quot;]
+    d_traj[&quot;SPT Chennai · METEOR · IDD-X tracks&quot;]
+    d_text[&quot;RoadText (English / Hindi / Telugu)&quot;]
+    d_gap[&quot;GAPS: siren audio · driver monitoring&lt;br/&gt;· Indian police gestures (to collect)&quot;]
+    d_sim[&quot;Our simulator runs&lt;br/&gt;(CARLA + SUMO, labelled automatically)&quot;]
+  end
+  subgraph TRAIN[&quot;TRAIN on KIET DGX A100 (+ cloud A100 backup ~$0.43–1.09/GPU-h) → export ONNX → MATLAB Deep Learning Toolbox&quot;]
+    subgraph SEE[&quot;SEE (6)&quot;]
+      m1[&quot;1 · Object detector (YOLOX)&quot;]
+      m2[&quot;2 · Road / edge / pothole mask (DeepLab v3+)&quot;]
+      m3[&quot;3 · LiDAR 3D detector&quot;]
+      m4[&quot;4 · Bird&#x27;s-eye free-space map&quot;]
+      m5[&quot;5 · Hand-signal reader&lt;br/&gt;(on pretrained pose model)&quot;]
+      m6[&quot;6 · Sign &amp; Indian-text reader&quot;]
+    end
+    subgraph HEAR[&quot;HEAR &amp; CONDITIONS (3)&quot;]
+      m7[&quot;7 · Siren / horn recogniser&quot;]
+      m8[&quot;8 · Visibility estimator&quot;]
+      m9[&quot;9 · Driver watcher&quot;]
+    end
+    subgraph PRED[&quot;PREDICT (2)&quot;]
+      m10[&quot;10 · Motion predictor&lt;br/&gt;(top-K, ego-conditioned, conformal)&quot;]
+      m11[&quot;11 · Crossing-intent model&quot;]
+    end
+    subgraph DEC[&quot;DECIDE (2)&quot;]
+      m12[&quot;12 · Move scorer&quot;]
+      m13[&quot;13 · RL policy (comparison only)&quot;]
+    end
+    subgraph WORLD[&quot;TEST WORLD (1)&quot;]
+      m14[&quot;14 · Learned traffic agents&quot;]
+    end
+  end
+  subgraph GATE[&quot;THE RULE&quot;]
+    gate[&quot;SAFETY CHECKER — physics, NO ML&lt;br/&gt;no model can move the car on its own;&lt;br/&gt;only the checker gives &#x27;go&#x27;&quot;]
+  end
+  d_idd --&gt; m1
+  d_sim --&gt;|&quot;renders&quot;| m1
+  d_seg --&gt; m2
+  d_sim --&gt; m2
+  d_3d --&gt; m3
+  d_3d --&gt; m4
+  d_sim --&gt; m4
+  d_ped --&gt;|&quot;gestures&quot;| m5
+  d_text --&gt; m6
+  d_gap --&gt; m7
+  d_seg --&gt;|&quot;IDD-AW weather&quot;| m8
+  d_gap --&gt; m9
+  d_traj --&gt; m10
+  d_sim --&gt;|&quot;counterfactual runs&quot;| m10
+  d_ped --&gt;|&quot;intent labels&quot;| m11
+  d_sim --&gt;|&quot;outcomes of moves&quot;| m12
+  d_sim --&gt; m13
+  d_traj --&gt; m14
+  m1 --&gt;|&quot;detections&quot;| gate
+  m2 --&gt;|&quot;free space&quot;| gate
+  m4 --&gt; gate
+  m10 --&gt;|&quot;occupied regions&quot;| gate
+  m12 --&gt;|&quot;ranked moves (advice only)&quot;| gate
+  m5 --&gt;|&quot;caution only&quot;| gate
+  m8 --&gt;|&quot;sight distance&quot;| gate
+  classDef core fill:#ffe9a8,stroke:#b8860b,stroke-width:2px
+  class m1,m2,m5,m10,m12 core
+  classDef safety fill:#ffd6d6,stroke:#b00000,stroke-width:3px
+  class gate safety
+  classDef gap fill:#eeeeee,stroke:#777,stroke-dasharray: 4 3
+  class d_gap gap</pre>
+
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">BOXES (grouped exactly as drawn):
+■ TRAINING DATA (Indian + simulator)
+  - [d_idd] IDD · IDD-117K · FGVD · DriveIndia
+  - [d_seg] IDD segmentation · IDD-AW · IDD-X
+  - [d_3d] IDD-3D · TIAND
+  - [d_ped] IDD-PeD
+  - [d_traj] SPT Chennai · METEOR · IDD-X tracks
+  - [d_text] RoadText (English / Hindi / Telugu)
+  - [d_gap] GAPS: siren audio · driver monitoring · Indian police gestures (to collect)
+  - [d_sim] Our simulator runs (CARLA + SUMO, labelled automatically)
+■ TRAIN on KIET DGX A100 (+ cloud A100 backup ~$0.43–1.09/GPU-h) → export ONNX → MATLAB Deep Learning Toolbox
+  ■ SEE (6)
+    - [m1] 1 · Object detector (YOLOX)
+    - [m2] 2 · Road / edge / pothole mask (DeepLab v3+)
+    - [m3] 3 · LiDAR 3D detector
+    - [m4] 4 · Bird&#x27;s-eye free-space map
+    - [m5] 5 · Hand-signal reader (on pretrained pose model)
+    - [m6] 6 · Sign &amp; Indian-text reader
+  ■ HEAR &amp; CONDITIONS (3)
+    - [m7] 7 · Siren / horn recogniser
+    - [m8] 8 · Visibility estimator
+    - [m9] 9 · Driver watcher
+  ■ PREDICT (2)
+    - [m10] 10 · Motion predictor (top-K, ego-conditioned, conformal)
+    - [m11] 11 · Crossing-intent model
+  ■ DECIDE (2)
+    - [m12] 12 · Move scorer
+    - [m13] 13 · RL policy (comparison only)
+  ■ TEST WORLD (1)
+    - [m14] 14 · Learned traffic agents
+■ THE RULE
+  - [gate] SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;
+
+CONNECTIONS (25 arrows, from → to : what flows):
+  IDD · IDD-117K · FGVD · DriveIndia  →  1 · Object detector (YOLOX)
+  Our simulator runs (CARLA + SUMO, labelled automatically)  →  1 · Object detector (YOLOX)   : renders
+  IDD segmentation · IDD-AW · IDD-X  →  2 · Road / edge / pothole mask (DeepLab v3+)
+  Our simulator runs (CARLA + SUMO, labelled automatically)  →  2 · Road / edge / pothole mask (DeepLab v3+)
+  IDD-3D · TIAND  →  3 · LiDAR 3D detector
+  IDD-3D · TIAND  →  4 · Bird&#x27;s-eye free-space map
+  Our simulator runs (CARLA + SUMO, labelled automatically)  →  4 · Bird&#x27;s-eye free-space map
+  IDD-PeD  →  5 · Hand-signal reader (on pretrained pose model)   : gestures
+  RoadText (English / Hindi / Telugu)  →  6 · Sign &amp; Indian-text reader
+  GAPS: siren audio · driver monitoring · Indian police gestures (to collect)  →  7 · Siren / horn recogniser
+  IDD segmentation · IDD-AW · IDD-X  →  8 · Visibility estimator   : IDD-AW weather
+  GAPS: siren audio · driver monitoring · Indian police gestures (to collect)  →  9 · Driver watcher
+  SPT Chennai · METEOR · IDD-X tracks  →  10 · Motion predictor (top-K, ego-conditioned, conformal)
+  Our simulator runs (CARLA + SUMO, labelled automatically)  →  10 · Motion predictor (top-K, ego-conditioned, conformal)   : counterfactual runs
+  IDD-PeD  →  11 · Crossing-intent model   : intent labels
+  Our simulator runs (CARLA + SUMO, labelled automatically)  →  12 · Move scorer   : outcomes of moves
+  Our simulator runs (CARLA + SUMO, labelled automatically)  →  13 · RL policy (comparison only)
+  SPT Chennai · METEOR · IDD-X tracks  →  14 · Learned traffic agents
+  1 · Object detector (YOLOX)  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;   : detections
+  2 · Road / edge / pothole mask (DeepLab v3+)  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;   : free space
+  4 · Bird&#x27;s-eye free-space map  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;
+  10 · Motion predictor (top-K, ego-conditioned, conformal)  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;   : occupied regions
+  12 · Move scorer  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;   : ranked moves (advice only)
+  5 · Hand-signal reader (on pretrained pose model)  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;   : caution only
+  8 · Visibility estimator  →  SAFETY CHECKER — physics, NO ML no model can move the car on its own; only the checker gives &#x27;go&#x27;   : sight distance</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">flowchart LR
+  subgraph DATA[&quot;TRAINING DATA (Indian + simulator)&quot;]
+    d_idd[&quot;IDD · IDD-117K · FGVD · DriveIndia&quot;]
+    d_seg[&quot;IDD segmentation · IDD-AW · IDD-X&quot;]
+    d_3d[&quot;IDD-3D · TIAND&quot;]
+    d_ped[&quot;IDD-PeD&quot;]
+    d_traj[&quot;SPT Chennai · METEOR · IDD-X tracks&quot;]
+    d_text[&quot;RoadText (English / Hindi / Telugu)&quot;]
+    d_gap[&quot;GAPS: siren audio · driver monitoring&lt;br/&gt;· Indian police gestures (to collect)&quot;]
+    d_sim[&quot;Our simulator runs&lt;br/&gt;(CARLA + SUMO, labelled automatically)&quot;]
+  end
+  subgraph TRAIN[&quot;TRAIN on KIET DGX A100 (+ cloud A100 backup ~$0.43–1.09/GPU-h) → export ONNX → MATLAB Deep Learning Toolbox&quot;]
+    subgraph SEE[&quot;SEE (6)&quot;]
+      m1[&quot;1 · Object detector (YOLOX)&quot;]
+      m2[&quot;2 · Road / edge / pothole mask (DeepLab v3+)&quot;]
+      m3[&quot;3 · LiDAR 3D detector&quot;]
+      m4[&quot;4 · Bird&#x27;s-eye free-space map&quot;]
+      m5[&quot;5 · Hand-signal reader&lt;br/&gt;(on pretrained pose model)&quot;]
+      m6[&quot;6 · Sign &amp; Indian-text reader&quot;]
+    end
+    subgraph HEAR[&quot;HEAR &amp; CONDITIONS (3)&quot;]
+      m7[&quot;7 · Siren / horn recogniser&quot;]
+      m8[&quot;8 · Visibility estimator&quot;]
+      m9[&quot;9 · Driver watcher&quot;]
+    end
+    subgraph PRED[&quot;PREDICT (2)&quot;]
+      m10[&quot;10 · Motion predictor&lt;br/&gt;(top-K, ego-conditioned, conformal)&quot;]
+      m11[&quot;11 · Crossing-intent model&quot;]
+    end
+    subgraph DEC[&quot;DECIDE (2)&quot;]
+      m12[&quot;12 · Move scorer&quot;]
+      m13[&quot;13 · RL policy (comparison only)&quot;]
+    end
+    subgraph WORLD[&quot;TEST WORLD (1)&quot;]
+      m14[&quot;14 · Learned traffic agents&quot;]
+    end
+  end
+  subgraph GATE[&quot;THE RULE&quot;]
+    gate[&quot;SAFETY CHECKER — physics, NO ML&lt;br/&gt;no model can move the car on its own;&lt;br/&gt;only the checker gives &#x27;go&#x27;&quot;]
+  end
+  d_idd --&gt; m1
+  d_sim --&gt;|&quot;renders&quot;| m1
+  d_seg --&gt; m2
+  d_sim --&gt; m2
+  d_3d --&gt; m3
+  d_3d --&gt; m4
+  d_sim --&gt; m4
+  d_ped --&gt;|&quot;gestures&quot;| m5
+  d_text --&gt; m6
+  d_gap --&gt; m7
+  d_seg --&gt;|&quot;IDD-AW weather&quot;| m8
+  d_gap --&gt; m9
+  d_traj --&gt; m10
+  d_sim --&gt;|&quot;counterfactual runs&quot;| m10
+  d_ped --&gt;|&quot;intent labels&quot;| m11
+  d_sim --&gt;|&quot;outcomes of moves&quot;| m12
+  d_sim --&gt; m13
+  d_traj --&gt; m14
+  m1 --&gt;|&quot;detections&quot;| gate
+  m2 --&gt;|&quot;free space&quot;| gate
+  m4 --&gt; gate
+  m10 --&gt;|&quot;occupied regions&quot;| gate
+  m12 --&gt;|&quot;ranked moves (advice only)&quot;| gate
+  m5 --&gt;|&quot;caution only&quot;| gate
+  m8 --&gt;|&quot;sight distance&quot;| gate
+  classDef core fill:#ffe9a8,stroke:#b8860b,stroke-width:2px
+  class m1,m2,m5,m10,m12 core
+  classDef safety fill:#ffd6d6,stroke:#b00000,stroke-width:3px
+  class gate safety
+  classDef gap fill:#eeeeee,stroke:#777,stroke-dasharray: 4 3
+  class d_gap gap</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>

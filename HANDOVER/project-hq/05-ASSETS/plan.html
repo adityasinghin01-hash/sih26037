@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIH26037 Round 2 ML Evaluation Plan - Kishan</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.45;
+    font-size: 10.5pt;
+    margin: 0;
+    padding: 0;
+  }
+  h1, h2, h3, h4 {
+    color: #0d233a;
+    margin-top: 1.2em;
+    margin-bottom: 0.4em;
+    font-weight: 700;
+  }
+  h1 {
+    font-size: 18pt;
+    border-bottom: 2px solid #0052cc;
+    padding-bottom: 6px;
+    margin-top: 0;
+  }
+  h2 {
+    font-size: 13pt;
+    border-bottom: 1px solid #dcdfe6;
+    padding-bottom: 4px;
+  }
+  h3 {
+    font-size: 11pt;
+    margin-top: 0.8em;
+  }
+  .header-box {
+    background-color: #f4f6f9;
+    border-left: 4px solid #0052cc;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    border-radius: 2px;
+  }
+  .header-box p {
+    margin: 3px 0;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    border-radius: 3px;
+    background-color: #e1ecf4;
+    color: #0052cc;
+    margin-right: 6px;
+  }
+  .badge-warn {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  .badge-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
+    font-size: 9pt;
+  }
+  th, td {
+    border: 1px solid #d0d7de;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background-color: #f0f4f8;
+    color: #0d233a;
+    font-weight: 600;
+  }
+  tr:nth-child(even) {
+    background-color: #fbfcfd;
+  }
+  .rule-box {
+    background-color: #fdf6ec;
+    border: 1px solid #faecd8;
+    border-left: 4px solid #e6a23c;
+    padding: 8px 12px;
+    margin: 10px 0;
+    border-radius: 2px;
+    font-size: 9.5pt;
+  }
+  .danger-box {
+    background-color: #fef0f0;
+    border: 1px solid #fde2e2;
+    border-left: 4px solid #f56c6c;
+    padding: 8px 12px;
+    margin: 10px 0;
+    border-radius: 2px;
+    font-size: 9.5pt;
+  }
+  ul, ol {
+    margin: 4px 0 10px 0;
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 3px;
+  }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 8.5pt;
+    background-color: #f0f2f5;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+</style>
+</head>
+<body>
+
+<h1>SIH26037 — Round 2 ML Evaluation &amp; Verification Plan</h1>
+
+<div class="header-box">
+  <p><strong>Role:</strong> Kishan (ML — Independent Evaluation &amp; Verification) &nbsp;|&nbsp; <strong>Stream:</strong> ML Track</p>
+  <p><strong>Context:</strong> Smart India Hackathon 2026 | MathWorks Problem Statement SIH26037</p>
+  <p>
+    <span class="badge">Timeline: 2 Days</span>
+    <span class="badge">Demo: Saturday 12:30pm</span>
+    <span class="badge">Scope: S1 &amp; S2 (No new scenarios)</span>
+    <span class="badge badge-warn">Independent Check: Never trust on word</span>
+  </p>
+</div>
+
+<h2>Core Persona &amp; Operational Directives</h2>
+<p>
+  <strong>Primary Function:</strong> You do not grade your own work, and you do not let Shourya grade his.
+  Every number reported for the final demo and presentation must be independently verified by re-running inference.
+  If a number cannot be computed, quote <code>TODO(unverified)</code> — never invent or round up.
+</p>
+<div class="danger-box">
+  <strong>Non-Negotiable Guardrails:</strong>
+  <ul>
+    <li><strong>Section 3 of AGENTS.md is frozen:</strong> Never alter the S1–S10 perception/planner contracts.</li>
+    <li><strong>Never touch matlab/baseline/:</strong> That is the control baseline. Editing it invalidates all findings.</li>
+    <li><strong>No Single-Number Summaries:</strong> Report 12-fold metrics strictly as <code>mean &plusmn; std</code>.</li>
+  </ul>
+</div>
+
+<h2>Master Task Execution Schedule</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 8%;">ID</th>
+      <th style="width: 18%;">Task Name</th>
+      <th style="width: 12%;">Schedule</th>
+      <th style="width: 22%;">Target Artifact / File</th>
+      <th style="width: 20%;">Key Metrics / Outputs</th>
+      <th style="width: 20%;">Verification &amp; Stop Rule</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Task 0</strong></td>
+      <td>Calibration Logic Sync</td>
+      <td>Day 1 Early AM</td>
+      <td><code>ml/python/model/calibrate.py</code></td>
+      <td>Fitting logic handoff from Shourya</td>
+      <td>Must obtain fitting code by midday Day 1 to embed into CV folds.</td>
+    </tr>
+    <tr>
+      <td><strong>Task 1</strong></td>
+      <td>Verify Shipping Yield Models</td>
+      <td>Day 1 Morning</td>
+      <td><code>ml/python/model/evaluate.py</code></td>
+      <td>Dangerous error rate, ECE, reliability curves</td>
+      <td><strong>STOP RULE:</strong> Discrepancy $\to$ stop and notify Shourya &amp; Aditya immediately.</td>
+    </tr>
+    <tr>
+      <td><strong>Task 3</strong></td>
+      <td>Build Comparison Baseline</td>
+      <td>Day 1 PM</td>
+      <td><code>ml/python/model/baseline.py</code></td>
+      <td>Logistic Regression AUC-ROC, Brier, ECE</td>
+      <td>Trained on compact 5-feature subset under identical 12-fold protocol.</td>
+    </tr>
+    <tr>
+      <td><strong>Task 2</strong></td>
+      <td>12-Fold LOSO Evaluation</td>
+      <td>Day 1 PM &ndash; Day 2 AM</td>
+      <td><code>ml/python/model/cross_validate.py</code></td>
+      <td><code>mean &plusmn; std</code> across 12 folds, pooled reliability curve</td>
+      <td>1 seed/fold. Call out worst-performing station by name with qualitative root cause.</td>
+    </tr>
+    <tr>
+      <td><strong>Task 4</strong></td>
+      <td>Paired Significance Test</td>
+      <td>Day 2 Morning</td>
+      <td><code>ml/python/model/cross_validate.py</code></td>
+      <td>Paired $\Delta \pm \text{std}$, Wilcoxon $p$-value</td>
+      <td>Non-parametric signed-rank test. Honest reporting of win or null result.</td>
+    </tr>
+    <tr>
+      <td><strong>Task 5</strong></td>
+      <td>Verify YOLOX Domain Gap</td>
+      <td>Day 2 Midday</td>
+      <td>MATLAB detector evaluation</td>
+      <td>Before/after dangerous error rate vs $\le 1\%$</td>
+      <td>Verify actual exported <code>.mat</code> detector on raw test frames.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Detailed Task Specifications</h2>
+
+<h3>Task 1 &mdash; Independently Verify Shourya's Shipping Models (Fast Check)</h3>
+<ul>
+  <li><strong>Input:</strong> Calibrated PyTorch checkpoints (<code>yield_lstm</code> and <code>yield_attention</code>) from Shourya.</li>
+  <li><strong>Protocol:</strong> Re-run evaluation on the frozen validation set via <code>evaluate.py</code>.</li>
+  <li><strong>Verification Check:</strong> Recompute the dangerous error rate ($FP / (TP + FP)$ at the operating threshold) and ECE.</li>
+  <li><strong>Trap to Prevent:</strong> Confirm that the reported "uncalibrated" baseline was not accidentally evaluated on already-scaled logits.</li>
+  <li><strong>Action on Discrepancy:</strong> Halt immediately and report to Shourya and Aditya. Do not silently resolve discrepancies.</li>
+</ul>
+
+<h3>Task 2 &mdash; 12-Fold Leave-One-Station-Out (LOSO) Cross-Validation</h3>
+<ul>
+  <li><strong>Why:</strong> Standard random train/test splits leak station-specific camera artifacts. Splitting across the 12 distinct geographic stations proves genuine out-of-distribution generalization.</li>
+  <li><strong>Implementation (<code>cross_validate.py</code>):</strong>
+    <ol>
+      <li>Iterate through stations $k \in \{1 \dots 12\}$.</li>
+      <li>Train model on the remaining 11 stations.</li>
+      <li>Reserve an internal sub-split of the 11 stations for validation/early stopping (never touch station $k$).</li>
+      <li>Fit calibration logic (Platt scaling / temperature scaling) within the fold.</li>
+      <li>Evaluate on station $k$: AUC-ROC, Brier score, ECE, F1 at asymmetric threshold, sample count.</li>
+    </ol>
+  </li>
+  <li><strong>Reporting:</strong> Aggregate all metrics as <code>mean &plusmn; std</code>. Generate one unified pooled reliability diagram combining all held-out predictions. Identify the worst-performing station with an environmental explanation (e.g. night illumination, dense occlusions).</li>
+</ul>
+
+<h3>Task 3 &mdash; Build the Comparison Baseline (Logistic Regression)</h3>
+<ul>
+  <li><strong>Why:</strong> In literature, high-capacity neural networks often fail to outperform a well-regularized linear baseline on unstructured trajectory data. We must prove our neural architecture earns its keep.</li>
+  <li><strong>Implementation (<code>baseline.py</code>):</strong>
+    Train a <code>LogisticRegression</code> model using a hand-picked feature subset:
+    <ul>
+      <li><code>tau</code> (Feature 10: time-to-contact $h / (dh/dt)$)</li>
+      <li>Lateral closure rate (Feature 11)</li>
+      <li>Ego vehicle speed (Feature 28)</li>
+      <li>Candidate ego action (Feature 31)</li>
+      <li>Coarse 3-way actor class (Vehicle / VRU / Animal collapsed from 16-way one-hot)</li>
+    </ul>
+  </li>
+  <li><strong>Protocol:</strong> Run across the exact same 12 folds as Task 2 for an apples-to-apples comparison.</li>
+</ul>
+
+<h3>Task 4 &mdash; Paired Statistical Significance Testing</h3>
+<ul>
+  <li><strong>Protocol:</strong> Calculate paired differences $\Delta_i = \text{Metric}_{\text{LSTM}, i} - \text{Metric}_{\text{Baseline}, i}$ across the 12 matched folds.</li>
+  <li><strong>Method:</strong> Execute <code>scipy.stats.wilcoxon(diffs)</code>. Non-parametric testing is mandatory given the 12-sample size.</li>
+  <li><strong>Outcome:</strong>
+    <ul>
+      <li><em>Significant ($p &lt; 0.05$):</em> Claim defensible statistical superiority of the recurrent architecture.</li>
+      <li><em>Not Significant ($p \ge 0.05$):</em> Report as an honest engineering finding showing current complexity boundaries.</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>Task 5 &mdash; Independently Verify Shourya's YOLOX Domain-Gap Fix</h3>
+<ul>
+  <li><strong>Objective:</strong> Verify whether fine-tuned YOLOX reduces the dangerous detection error rate from 20.18% down to the $\le 1\%$ threshold required for safety gating.</li>
+  <li><strong>Execution:</strong> Load Shourya's exported MATLAB detector artifact and test frames. Re-run inference and tabulate false negatives on vulnerable road users (cows, auto-rickshaws, pedestrians).</li>
+</ul>
+
+<h2>Team Handoff Matrix</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%;">Recipient</th>
+      <th style="width: 35%;">Deliverables</th>
+      <th style="width: 40%;">Impact on Demo / Presentation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Aditya (Lead)</strong></td>
+      <td>12-Fold Table (mean &plusmn; std), Pooled Reliability Plot, Wilcoxon $p$-value, Worst-Station Analysis</td>
+      <td>Core empirical evidence cited in the technical pitch and jury Q&amp;A.</td>
+    </tr>
+    <tr>
+      <td><strong>Aditya B. (Bridge)</strong></td>
+      <td>Verified operating metrics, calibration status, and gating conditions</td>
+      <td>Populates live Model Status HUD panel in <code>sc.plannerView</code> with verified disclosures.</td>
+    </tr>
+    <tr>
+      <td><strong>Shourya (ML Train)</strong></td>
+      <td>Immediate discrepancy reports on shipping checkpoints and YOLOX</td>
+      <td>Prevents invalid checkpoints or uncalibrated models from propagating to MATLAB.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="rule-box">
+  <strong>Standby Notice:</strong> This plan is locked and ready for execution. No source code modifications or model runs will occur until the operator explicitly issues the single-word prompt <code>start</code>.
+</div>
+
+</body>
+</html>

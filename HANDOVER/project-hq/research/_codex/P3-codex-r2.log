@@ -1,0 +1,2722 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq/research/_codex
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a0de91-707c-7fb1-866a-6652e7898403
+--------
+user
+P3 accepted - I verified Mosaic, Alpamayo OpenMDW-1.1, Minus Zero 2025, and all 4 patents (you were right: IBM,
+expired; Mobileye active 2040; Waymo active 2043). Note: our repo code is at ~/dev/sih2026 (you can read it:
+matlab/+sih/+planner/, matlab/+sc/planSeat.m) if you want to verify the audit.
+
+ROUND 2 - UPGRADE "YIELD / ASSERT". Aditya wants the binary yield/assert idea replaced or combined with the most
+advanced, most implementable, most real-world approach. My candidate findings (verify, extend, attack):
+## UPGRADE THE YIELD/ASSERT IDEA (asked by Aditya, 26 Sep): candidate replacements found
+1. **Continuous cooperativeness instead of binary yield/assert:** Social Value Orientation (SVO).
+   - Schwarting, Pierson, Alonso-Mora, Karaman, Rus. "Social behavior for autonomous vehicles",
+     PNAS 116(50), 2019.
+   - Each driver has an SVO angle (selfish ↔ altruistic), **estimated online** from behaviour.
+   - Interactions are a best-response game (Nash equilibrium).
+   - Trajectory prediction improved **18% with static SVO and 25% with estimated dynamic SVO**.
+   - https://www.pnas.org/doi/abs/10.1073/pnas.1820676116
+2. **Belief-space planning (POMDP):** keep a probability belief over each agent's hidden intent and
+   cooperativeness, and update it every step with a particle filter.
+   - Hubmann et al., "Belief State Planning for Autonomously Navigating Urban Intersections"
+     (1704.04322).
+   - POMDP unsignalised-intersection parameter study (2412.06405).
+   - MOMDP vehicle–pedestrian work, **tested on real vehicles**.
+3. **Ego-conditioned multi-future prediction:** "what will they do IF we take path A"
+   (Waymo conditional behaviour prediction; MotionLM). This is already in P4.
+4. **Probing to reduce uncertainty (active information gathering):** arXiv 2608.21400 (MPPI +
+   ego-conditioned generative prediction). This is our probe, but done properly: choose the action
+   that most reduces the belief uncertainty.
+5. **Indian traffic-engineering grounding:** class-specific critical-gap / gap-acceptance models at
+   uncontrolled Indian junctions. **TODO: source these.**
+
+**Combined idea (candidate):** per-agent **belief over a continuous cooperativeness (SVO-like)
+parameter, with a class-specific prior** (bus/truck selfish; pedestrian/two-wheeler varied; cow =
+non-reactive).
+- The belief is updated online from how the agent reacts to our probe.
+- It conditions a multi-future trajectory predictor.
+- The planner does contingency / belief-space planning with an **active-probing** term.
+- An RSS/barrier validator sits underneath.
+**This replaces binary yield/assert with something published, real-vehicle-tested, and
+India-calibratable.**
+
+## CORRECTIONS (26 Sep, after verification)
+- The Alpamayo licence is permissive (OpenMDW-1.1), not non-commercial.
+- The animal patents are IBM's (expired), not Google's.
+- Minus Zero drove on Bengaluru public roads in May 2025; "campus only" was wrong.
+- Swaayatt claims **sparse** maps, not map-free.
+- "Everyone converges on proposer + validator" is **too strong**. Waymo and Mobileye disclose
+  layering; Tesla and Wayve don't publish their runtime validators.
+
+TASKS:
+1. Survey ALL serious ways to represent another road user's willingness to give way / intent, 2019-2026:
+   SVO (Schwarting PNAS 2019) and follow-ups; latent "driver type"/aggressiveness estimation; belief-space /
+   POMDP / MOMDP planners (esp. real-vehicle tests); ego-conditioned joint prediction; game-theoretic
+   (level-k, Stackelberg, Nash) with online parameter inference; inverse-RL reward inference; active
+   information gathering (Sadigh et al. "information gathering actions"); gap-acceptance models from traffic
+   engineering. For each: what it outputs, needs what data, real-vehicle evidence?, compute, code.
+2. INDIA: find Indian studies of critical gap / gap acceptance / yielding behaviour by vehicle class at
+   uncontrolled junctions, midblock pedestrian yielding, two-wheeler assertiveness (numbers + sources).
+   These would set per-class priors.
+3. DESIGN: propose the best combined representation for us (e.g. per-agent belief over a continuous
+   cooperativeness parameter with class-specific Indian priors, updated online from response to our probe,
+   conditioning a multi-future predictor, feeding contingency planning with an information-gain term, under
+   an independent verifier). Make it concrete: state variables, update rule, how the planner uses it, how to
+   train/calibrate it from SPT Chennai drone data / METEOR / IDD-PeD, and how to test it in sim.
+4. NOVELTY CHECK: has anyone combined online cooperativeness/SVO inference + active probing + contingency
+   planning for heterogeneous/Indian or lane-free traffic? Search hard; cite the closest.
+5. Keep it within our real-time budget reasoning (see your 55x arithmetic).
+Tables, sources, UNVERIFIED where needed.
+
+codex
+I’ll verify the research claims against primary papers and inspect the planner code at `~/dev/sih2026` before proposing a replacement. I’ll treat “willingness to yield” as an uncertain, context-dependent prediction and check whether an online belief and probing loop can fit the measured planner budget.
+exec
+/bin/zsh -lc 'rg -n "yield|assert|dynamicCapsuleList|planSeat|contingen|WAIT|creep|probe|critical|gap|belief" matlab/+sih/+planner matlab/+sc/planSeat.m' in /Users/aditya/dev/sih2026
+exec
+/bin/zsh -lc 'rg --files matlab/+sih/+planner matlab/+sc | head -100' in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+matlab/+sih/+planner/planTurn.m
+matlab/+sih/+planner/roadBarrier.m
+matlab/+sih/+planner/checkTrajectorySafety.m
+matlab/+sih/+planner/checkTerminalStop.m
+matlab/+sih/+planner/assignRoles.m
+matlab/+sih/+planner/predictAgentFutures.m
+matlab/+sih/+planner/speedLimit.m
+matlab/+sih/+planner/pointOfNoReturn.m
+matlab/+sih/+planner/generateCandidates.m
+matlab/+sih/+planner/defaults.m
+matlab/+sih/+planner/arbitrate.m
+matlab/+sih/+planner/escapeMemory.m
+matlab/+sih/+planner/chooseVelocity.m
+matlab/+sih/+planner/planContingency.m
+matlab/+sih/+planner/followTrunk.m
+matlab/+sih/+planner/NegotiatingStrategy.m
+matlab/+sih/+planner/findSharedTrunk.m
+matlab/+sih/+planner/velocityObstacle.m
+matlab/+sc/treeAsset.m
+matlab/+sc/nearestOnNetwork.m
+matlab/+sc/s1geom.m
+matlab/+sc/s3world.m
+matlab/+sc/activeDensityActorsAt.m
+matlab/+sc/resolveFurnitureOverlaps.m
+matlab/+sc/aceAsset.m
+matlab/+sc/s3geom.m
+matlab/+sc/trolleyAsset.m
+matlab/+sc/s1gap.m
+matlab/+sc/s1defensive.m
+matlab/+sc/routeFrom.m
+matlab/+sc/autoColours.m
+matlab/+sc/groundTexture.m
+matlab/+sc/s1world.m
+matlab/+sc/clickToRoad.m
+matlab/+sc/s2drive.m
+matlab/+sc/busColours.m
+matlab/+sc/senseRig.m
+matlab/+sc/snapPointIntoNetwork.m
+matlab/+sc/motoAsset.m
+matlab/+sc/localRoads.m
+matlab/+sc/s2drivePlanner.m
+matlab/+sc/adapterS9.m
+matlab/+sc/s5world.m
+matlab/+sc/checkpointDemo.m
+matlab/+sc/splitPieceAt.m
+matlab/+sc/hud.m
+matlab/+sc/s9VisibleRange.m
+matlab/+sc/demo1Route.m
+matlab/+sc/s5density.m
+matlab/+sc/s4density.m
+matlab/+sc/trolleyColours.m
+matlab/+sc/drawDensityActorsStyled.m
+matlab/+sc/senseStep.m
+matlab/+sc/s1render.m
+matlab/+sc/adapterS9Real.m
+matlab/+sc/lateralStep.m
+matlab/+sc/asset.m
+matlab/+sc/routeBetween.m
+matlab/+sc/drawGyratory.m
+matlab/+sc/checkFurnitureOverlaps.m
+matlab/+sc/s3density.m
+matlab/+sc/s4world.m
+matlab/+sc/modelStatus.m
+matlab/+sc/s1actors.m
+matlab/+sc/busAsset.m
+matlab/+sc/carColours.m
+matlab/+sc/zebuWalkLegs.m
+matlab/+sc/demoStyle.m
+matlab/+sc/drawStyledRoad.m
+matlab/+sc/meshes.m
+matlab/+sc/s2render.m
+matlab/+sc/plannerView.m
+matlab/+sc/reactStep.m
+matlab/+sc/floorTexture.m
+matlab/+sc/demo2Route.m
+matlab/+sc/buildTrackList.m
+matlab/+sc/hazardCap.m
+matlab/+sc/autoAsset.m
+matlab/+sc/roadTexture.m
+matlab/+sc/tractorColours.m
+matlab/+sc/drawFurnitureStyled.m
+matlab/+sc/motoColours.m
+matlab/+sc/path.m
+matlab/+sc/refRoot.m
+matlab/+sc/carAsset.m
+matlab/+sc/tCrit95.m
+matlab/+sc/zebuColours.m
+matlab/+sc/aceColours.m
+matlab/+sc/demo3Route.m
+matlab/+sc/s1drive.m
+matlab/+sc/drawMinimap.m
+matlab/+sc/s2world.m
+matlab/+sc/s9Width.m
+matlab/+sc/partAsset.m
+matlab/+sc/drawEgoCar.m
+matlab/+sc/roundRouteCorners.m
+matlab/+sc/checkpointChain.m
+matlab/+sc/s1drivePlanner.m
+matlab/+sc/planSeat.m
+matlab/+sc/s1density.m
+
+ succeeded in 0ms:
+matlab/+sc/planSeat.m:1:function [cmd, st] = planSeat(st, ctx)
+matlab/+sc/planSeat.m:56:% needs a plan - deciding whether to creep forward is the probe. So the speed
+matlab/+sc/planSeat.m:68:% how a noisy pipeline turned the already-known frozen-but-safe structural gap
+matlab/+sc/planSeat.m:78:% short: the measured gap ran 3+ s and the collision still happened). A
+matlab/+sc/planSeat.m:109:        % difference IS the gap arithmetic (SPEC.md says so in capitals).
+matlab/+sc/planSeat.m:176:% D9 (creep -> wait -> horn -> go around -> handover) lives in Person B's chart,
+matlab/+sc/planSeat.m:178:usedTrunk = out.Trunk;  creeping = false;
+matlab/+sc/planSeat.m:180:    % RUNG 1: creep. A probe FORWARD from roughly where we are - not a lane
+matlab/+sc/planSeat.m:185:        usedTrunk = mv.trunk;  creeping = true;
+matlab/+sc/planSeat.m:190:% CONSECUTIVE steps with creeping==true and never fired, because near a real
+matlab/+sc/planSeat.m:204:% ---- D9 RUNG 1.5 (WAIT) AND THE COMMITMENT (PASS) ---------------------------
+matlab/+sc/planSeat.m:224:% So the missing piece is a COMMITMENT that outlives one tick, and a WAIT that
+matlab/+sc/planSeat.m:246:    usedTrunk = neg.Trunk;  creeping = false;  wentAround = true;  negNote = neg.Note;
+matlab/+sc/planSeat.m:250:elseif neg.Mode == "WAIT"
+matlab/+sc/planSeat.m:251:    holding = true;  creeping = false;  negNote = neg.Note;
+matlab/+sc/planSeat.m:254:    % during the cooldown after a WAIT has timed out.
+matlab/+sc/planSeat.m:270:        usedTrunk = ga.trunk;  creeping = false;
+matlab/+sc/planSeat.m:280:if creeping
+matlab/+sc/planSeat.m:281:    creepCap = getf(ctx,'CreepCap', 1.2);
+matlab/+sc/planSeat.m:283:        info.TargetSpeed_mps = max(0.5, min(info.TargetSpeed_mps, creepCap));
+matlab/+sc/planSeat.m:323:% nothing in this seat ever called either. That gap, not a missing S10 struct, was
+matlab/+sc/planSeat.m:345:if holding, cmd.e = ctx.e; end          % waiting is a HOLD, not a lateral probe
+matlab/+sc/planSeat.m:375:elseif creeping
+matlab/+sc/planSeat.m:377:    st.Note = "blocked - creeping along the safest moving path (D9 rung 1)";
+matlab/+sc/planSeat.m:388:    % it. The gate is the planner's own contingency horizon (4 s), so
+matlab/+sc/planSeat.m:414:% ESCALATION IS INSTANT, DE-ESCALATION WAITS. A more severe label displays on
+matlab/+sc/planSeat.m:446:cmd.Creeping   = creeping;
+matlab/+sc/planSeat.m:484:%   take the one that covers the MOST ground. This is a probe forward from where
+matlab/+sc/planSeat.m:513:%   ...)), a HANDLE mutated in place here; the caller (sc.planSeat) threads it
+matlab/+sc/planSeat.m:664:%   (nothing in hand), "WAIT" (holding for a NAMED track), "PASS" (committed to
+matlab/+sc/planSeat.m:690:%   to wait. A WAIT rung that could not say "there is nothing to wait for" would
+matlab/+sc/planSeat.m:724:%   THE GUARD THAT MAKES A WAIT A WAIT AND NOT A COINCIDENCE. Without it the fan
+matlab/+sc/planSeat.m:805:%INEGOTIATE  D9 rung 1.5 - the WAIT rung, and the commitment that follows it.
+matlab/+sc/planSeat.m:809:%     NONE -> WAIT   stuck, none exists, and ONE named road user is why
+matlab/+sc/planSeat.m:810:%     WAIT -> PASS   that road user is still tracked, still planned against, and
+matlab/+sc/planSeat.m:812:%     WAIT -> NONE   WaitTimeout_s elapsed, plus a cooldown, so the pre-existing
+matlab/+sc/planSeat.m:825:%   whole thesis is the frozen-robot failure, and a WAIT rung with no timeout is
+matlab/+sc/planSeat.m:860:case "WAIT"
+matlab/+sc/planSeat.m:879:    act.Mode = "WAIT";
+matlab/+sc/planSeat.m:881:        act.Note = sprintf("holding: a gap opened but track %d is no longer tracked - not committing on a dropout (%.1f/%.1f s)", ...
+matlab/+sc/planSeat.m:902:    N.Phase = "WAIT";  N.ConflictID = c.ID;  N.WaitStartT = ctx.t;
+matlab/+sc/planSeat.m:903:    act.Mode = "WAIT";
+matlab/+sc/planSeat.m:925:%   min(gapToCow, gapToEdge), is 0.10 m. The placeholder achieves 0.965 m EACH
+matlab/+sc/planSeat.m:926:%   SIDE, and it does that by passing down the middle of the free gap.
+matlab/+sc/planSeat.m:977:    % one, and when nothing acceptable exists the answer is to WAIT, which is
+matlab/+sih/+planner/checkTrajectorySafety.m:46:%   TODO(performance): a fresh dynamicCapsuleList is built per call, so a fan of
+matlab/+sih/+planner/checkTrajectorySafety.m:74:capList = dynamicCapsuleList;
+matlab/+sih/+planner/defaults.m:53:% One car. followTrunk steers it, roadBarrier fits it through gaps and planTurn turns
+matlab/+sih/+planner/defaults.m:103:% ---- the contingency planner, D6 ----------------------------------------------------
+matlab/+sih/+planner/defaults.m:104:d.contingencyHorizon_s          = 4.0;
+matlab/+sih/+planner/defaults.m:105:d.contingencyTimeResolution_s   = 0.1;
+matlab/+sih/+planner/defaults.m:106:d.contingencyLateralOffsets_m   = [-3 -1.5 0 1.5 3];
+matlab/+sih/+planner/defaults.m:107:d.contingencyTerminalSpeeds_mps = [0 2 5 8];
+matlab/+sih/+planner/defaults.m:108:d.contingencyYieldDecel_mps2    = -2.0;
+matlab/+sih/+planner/defaults.m:109:d.contingencyAssertAccel_mps2   =  0.0;
+matlab/+sih/+planner/defaults.m:110:d.contingencyAssertMaxSpeed_mps = 25.0;
+matlab/+sih/+planner/defaults.m:111:d.contingencyMovingSpeed_mps    = 0.1;
+matlab/+sih/+planner/defaults.m:112:d.contingencyMinTrunkTime_s     = 0.5;
+matlab/+sih/+planner/defaults.m:113:d.contingencyTrunkMode          = "B";   % ruled, plan/D6-TRUNK-RULING.md
+matlab/+sih/+planner/checkTerminalStop.m:167:%ISTEPOF  The candidate's own timestep. Uses the median so one odd gap in a
+matlab/+sih/+planner/predictAgentFutures.m:2:%PREDICTAGENTFUTURES  One track in, two futures out: it yields, or it asserts.
+matlab/+sih/+planner/predictAgentFutures.m:4:%   Task D6, piece 1 of 5. Branch/contingency MPC models exactly two modes, and
+matlab/+sih/+planner/predictAgentFutures.m:9:%   A yield future and an assert future bracket the behaviour. Anything the other
+matlab/+sih/+planner/predictAgentFutures.m:29:%     opts.yieldDecel_mps2    yield braking, negative,        default -2.0
+matlab/+sih/+planner/predictAgentFutures.m:30:%     opts.assertAccel_mps2   assert acceleration,            default  0.0
+matlab/+sih/+planner/predictAgentFutures.m:31:%     opts.assertMaxSpeed_mps ceiling on the assert future,   default 25.0
+matlab/+sih/+planner/predictAgentFutures.m:61:    opts.yieldDecel_mps2    (1,1) double {mustBeFinite}   = -2.0
+matlab/+sih/+planner/predictAgentFutures.m:62:    opts.assertAccel_mps2   (1,1) double {mustBeFinite}   =  0.0
+matlab/+sih/+planner/predictAgentFutures.m:63:    opts.assertMaxSpeed_mps (1,1) double {mustBePositive} = 25.0
+matlab/+sih/+planner/predictAgentFutures.m:88:[sY, vY] = iRamp(v0, opts.yieldDecel_mps2,  t, 0, opts.assertMaxSpeed_mps);
+matlab/+sih/+planner/predictAgentFutures.m:90:[sA, vA] = iRamp(v0, opts.assertAccel_mps2, t, 0, opts.assertMaxSpeed_mps);
+matlab/+sih/+planner/followTrunk.m:40:%   stop and says so. It does NOT creep, sound the horn, declare blocked or hand
+matlab/+sih/+planner/planTurn.m:8:%       | Roundabout  | conflict - it's a merge  | existing probe-commit        |  DROPPED
+matlab/+sih/+planner/planTurn.m:111:%   S9 and S10 do not exist yet and the yield predictor fails its own gate about one
+matlab/+sih/+planner/planTurn.m:139:%   tertiary = 7.0 m, and the backup demo asserts it to 1 mm. It must never be
+matlab/+sih/+planner/findSharedTrunk.m:5:%   this cycle. ReadThis.md section 11: "The trunk IS the probe." The car edges
+matlab/+sih/+planner/findSharedTrunk.m:15:%   Reading B, the standard contingency-MPC form, is stricter: commit to a
+matlab/+sih/+planner/findSharedTrunk.m:34:%     3. most ground covered on it     - the trunk is the probe, so a trunk that
+matlab/+sih/+planner/planContingency.m:1:function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
+matlab/+sih/+planner/planContingency.m:37:%   if the cow yields is not safe. PYield ranks and explains; it never permits.
+matlab/+sih/+planner/planContingency.m:51:%     yieldPred (1,1) struct   S3 YieldPrediction: .TrackIDs, .PYield, .Valid.
+matlab/+sih/+planner/planContingency.m:57:%     opts.yieldDecel_mps2     passed to piece 1, default -2.0
+matlab/+sih/+planner/planContingency.m:58:%     opts.assertAccel_mps2    passed to piece 1, default  0.0
+matlab/+sih/+planner/planContingency.m:92:%   dynamicCapsuleList objects per cycle. It has never been timed. Measure before
+matlab/+sih/+planner/planContingency.m:103:    yieldPred (1,1) struct
+matlab/+sih/+planner/planContingency.m:108:    opts.yieldDecel_mps2    (1,1) double {mustBeFinite} = -2.0
+matlab/+sih/+planner/planContingency.m:109:    opts.assertAccel_mps2   (1,1) double {mustBeFinite} =  0.0
+matlab/+sih/+planner/planContingency.m:119:iRequireFields(yieldPred, {'TrackIDs','PYield','Valid'}, 'yieldPred');
+matlab/+sih/+planner/planContingency.m:134:    [pY, isValid] = iLookupYield(yieldPred, tracks(k).TrackID);
+matlab/+sih/+planner/planContingency.m:138:            yieldDecel_mps2  = opts.yieldDecel_mps2, ...
+matlab/+sih/+planner/planContingency.m:139:            assertAccel_mps2 = opts.assertAccel_mps2);
+matlab/+sih/+planner/planContingency.m:244:function [pY, isValid] = iLookupYield(yieldPred, trackID)
+matlab/+sih/+planner/planContingency.m:246:idx = find(uint32(yieldPred.TrackIDs(:)) == uint32(trackID), 1, 'first');
+matlab/+sih/+planner/planContingency.m:251:isValid = logical(yieldPred.Valid(idx));
+matlab/+sih/+planner/planContingency.m:253:    pY = double(yieldPred.PYield(idx));
+matlab/+sih/+planner/NegotiatingStrategy.m:47:                                    % NOT "safe". It plots as a gap instead of a spike, and
+
+exec
+/bin/zsh -lc "sed -n '1,235p' matlab/+sih/+planner/planContingency.m" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
+%PLANCONTINGENCY  One planning cycle: fan out, imagine both futures, commit the trunk.
+%
+%   Task D6, piece 5 of 5. This is the function Person B's chart calls, about ten
+%   times a second. Everything else in D6 is a helper it drives.
+%
+%   THE CYCLE, IN ORDER
+%     1. sih.planner.generateCandidates    the fan of paths for us      (piece 2)
+%     2. sih.planner.predictAgentFutures   two futures per road user    (piece 1)
+%     3. sih.planner.checkTrajectorySafety every path against every future (piece 3)
+%     4. sih.planner.findSharedTrunk       how far we actually commit   (piece 4)
+%     5. throw the rest away and do it again next cycle
+%
+%   TWO READINGS OF THE TRUNK, AND opts.trunkMode PICKS ONE
+%   Mode "B" IS THE DEFAULT, from 4 September 2026. It commits to the longest
+%   prefix that is collision-free under every future AND that ENDS somewhere a
+%   braking-to-stop is clear under every future. That is what
+%   plan/D6-TRUNK-RULING.md rules the trunk actually is.
+%   Mode "A" is the weaker reading - collision-free along the prefix and nothing
+%   said about where it leaves us. It is kept so the two can be compared and so
+%   the cost of (b) can be measured, but it must now be ASKED FOR explicitly.
+%   It was the default while (b) was being built; it is not any more.
+%
+%   THE HARD RULE THAT COMES WITH MODE "A"
+%   While trunkMode is "A", Committed MUST STAY FALSE. A prefix can be clear
+%   along every metre of itself and still end in a state where every continuation
+%   collides, so committing irrevocably to an (a)-trunk is committing to a
+%   trajectory that has already lost. Nothing in this file sets Committed - it is
+%   Person B's Stateflow chart that does - so this is a note for the chart, and
+%   .TrunkMode is reported in the output precisely so the chart can obey it
+%   rather than assume.
+%
+%   WHY THE WORST FUTURE WINS
+%   A candidate's committable length is the MINIMUM of its safe length across
+%   every future of every road user. Not the average, not the probability-weighted
+%   value. Safety cannot be traded against likelihood: a stretch that is only safe
+%   if the cow yields is not safe. PYield ranks and explains; it never permits.
+%
+%   WHY PYield IS ONLY A LABEL HERE
+%   AGENTS.md section 3, S3: when Valid is false the planner uses the geometric
+%   role alone, never 0.5. A track with no prediction, or an invalid one, still
+%   gets both futures - it is planned against just as hard. The weight is carried
+%   through for logging and for D5's evidence, and is deliberately not used to
+%   decide anything in this function.
+%
+%   INPUTS
+%     egoState  (1,1) struct  .Position (1x3, m), .Velocity (1x3, m/s), .Yaw (rad)
+%     refPath   (1,1) referencePathFrenet   the route centreline (S10)
+%     tracks    struct array   S1 TrackList. MAY BE EMPTY and must not error -
+%                              S1 guarantee 3
+%     yieldPred (1,1) struct   S3 YieldPrediction: .TrackIDs, .PYield, .Valid.
+%                              A track missing from it is treated as invalid
+%     opts.lateralOffsets_m    passed to piece 2, default [-3 -1.5 0 1.5 3]
+%     opts.terminalSpeeds_mps  passed to piece 2, default [0 2 5 8]
+%     opts.horizon_s           shared by pieces 1 and 2, default 4.0
+%     opts.timeResolution_s    shared by pieces 1 and 2, default 0.1
+%     opts.yieldDecel_mps2     passed to piece 1, default -2.0
+%     opts.assertAccel_mps2    passed to piece 1, default  0.0
+%     opts.egoLength_m         passed to piece 3, default 4.7
+%     opts.egoWidth_m          passed to piece 3, default 1.8
+%     opts.inflation_m         passed to piece 3, default 0.0
+%     opts.minTrunkTime_s      passed to piece 4, default 0.5
+%     opts.trunkMode           "A" or "B", DEFAULT "B" - see the two readings above
+%     opts.aBrake_mps2         the braking used by the mode "B" stop check, default 4.0
+%     opts.dwellAfterStop_s    how long the stop must stay clear, default 0.0
+%
+%   OUTPUT  out struct
+%     .Trunk             the committed plan, from findSharedTrunk. Read .Blocked
+%     .Candidates        Nx1 the whole fan, kept so D5 can log what was rejected
+%     .Futures           Mx1 every future of every road user, 2 per track
+%     .SafeSteps         NxM double, safe leading steps per candidate per future
+%     .WorstPrefixSteps  Nx1 double, the minimum of each row - reading (a)
+%     .TerminalPrefixSteps Nx1 double, reading (b): the same, cut back to where a
+%                        braking-to-stop is still clear. Equals .WorstPrefixSteps
+%                        exactly in mode "A", so the two can be compared
+%     .TrunkMode         string, "A" or "B" - WHICH READING PRODUCED THIS.
+%                        Person B's chart must read it: Committed stays false
+%                        while it says "A"
+%     .StopChecks        double, how many terminal checks mode "B" actually cost.
+%                        0 in mode "A"
+%     .BindingFuture     Nx1 double, which future limited each candidate. NaN if
+%                        the candidate was safe under all of them
+%     .NumTracks         double
+%     .Blocked           logical, copied out of .Trunk for the caller's convenience
+%
+%   WHAT THIS DOES NOT SET
+%   No Accel, no SteerAngle, no Signal, no Committed. This produces a committed
+%   PATH; turning that into one EgoCommand is D2 and the Stateflow chart. Keeping
+%   them apart is what lets the trunk be tested in seconds without Simulink.
+%
+%   TODO(performance): with 20 candidates and 3 road users this builds 120
+%   dynamicCapsuleList objects per cycle. It has never been timed. Measure before
+%   optimising - the barrier layer underneath runs at 50-100 Hz and can veto
+%   anything, which is exactly why deliberation here is allowed to be slow.
+%
+%   See also SIH.PLANNER.GENERATECANDIDATES, SIH.PLANNER.PREDICTAGENTFUTURES,
+%            SIH.PLANNER.CHECKTRAJECTORYSAFETY, SIH.PLANNER.FINDSHAREDTRUNK
+
+arguments
+    egoState  (1,1) struct
+    refPath   (1,1) referencePathFrenet
+    tracks          struct
+    yieldPred (1,1) struct
+    opts.lateralOffsets_m   (1,:) double = [-3 -1.5 0 1.5 3]
+    opts.terminalSpeeds_mps (1,:) double = [0 2 5 8]
+    opts.horizon_s          (1,1) double {mustBePositive} = 4.0
+    opts.timeResolution_s   (1,1) double {mustBePositive} = 0.1
+    opts.yieldDecel_mps2    (1,1) double {mustBeFinite} = -2.0
+    opts.assertAccel_mps2   (1,1) double {mustBeFinite} =  0.0
+    opts.egoLength_m        (1,1) double {mustBePositive} = 4.7
+    opts.egoWidth_m         (1,1) double {mustBePositive} = 1.8
+    opts.inflation_m        (1,1) double {mustBeNonnegative} = 0.0
+    opts.minTrunkTime_s     (1,1) double {mustBeNonnegative} = 0.5
+    opts.trunkMode          (1,1) string {mustBeMember(opts.trunkMode,["A","B"])} = "B"
+    opts.aBrake_mps2        (1,1) double {mustBePositive} = 4.0
+    opts.dwellAfterStop_s   (1,1) double {mustBeNonnegative} = 0.0
+end
+
+iRequireFields(yieldPred, {'TrackIDs','PYield','Valid'}, 'yieldPred');
+
+% ---- 1. our own options ------------------------------------------------------
+candidates = sih.planner.generateCandidates(egoState, refPath, ...
+    lateralOffsets_m   = opts.lateralOffsets_m, ...
+    terminalSpeeds_mps = opts.terminalSpeeds_mps, ...
+    horizon_s          = opts.horizon_s, ...
+    timeResolution_s   = opts.timeResolution_s);
+
+nC = numel(candidates);
+
+% ---- 2. two futures for every road user --------------------------------------
+nT = numel(tracks);
+futures = iEmptyFutureArray();
+for k = 1:nT
+    [pY, isValid] = iLookupYield(yieldPred, tracks(k).TrackID);
+    f = sih.planner.predictAgentFutures(tracks(k), pY, isValid, ...
+            horizon_s        = opts.horizon_s, ...
+            timeResolution_s = opts.timeResolution_s, ...
+            yieldDecel_mps2  = opts.yieldDecel_mps2, ...
+            assertAccel_mps2 = opts.assertAccel_mps2);
+    futures = [futures; f(:)];  %#ok<AGROW>  at most 2 per track
+end
+nF = numel(futures);
+
+% ---- 3. every candidate against every future ---------------------------------
+safeSteps = zeros(nC, nF);
+for k = 1:nC
+    for j = 1:nF
+        r = sih.planner.checkTrajectorySafety(candidates(k), futures(j), ...
+                egoLength_m = opts.egoLength_m, ...
+                egoWidth_m  = opts.egoWidth_m, ...
+                inflation_m = opts.inflation_m);
+        safeSteps(k,j) = r.SafePrefixSteps;
+    end
+end
+
+% The worst future wins. With no road users at all, every candidate is safe for
+% its whole length - which is the right answer, not a special case.
+worst   = zeros(nC,1);
+binding = nan(nC,1);
+for k = 1:nC
+    full = numel(candidates(k).Times);
+    if nF == 0
+        worst(k) = full;
+    else
+        [worst(k), idx] = min(safeSteps(k,:));
+        if worst(k) < full
+            binding(k) = idx;
+        end
+    end
+end
+
+% ---- 3b. can we still stop from the end of that prefix? ----------------------
+% This is the whole difference between reading (a) and reading (b). Under (a) a
+% prefix only has to be clear ALONG itself; under (b) it must also END somewhere
+% a braking-to-stop is clear under every future. Skipped entirely in mode "A",
+% so the (a) path costs exactly what it did before.
+terminal   = worst;
+stopChecks = 0;
+if opts.trunkMode == "B" && nF > 0
+    for k = 1:nC
+        terminal(k) = 0;
+        % Walk back from the (a) prefix and take the FIRST length whose stop is
+        % clear - which is therefore the longest one that is. In the ordinary
+        % case the very end already works and this costs one check per future.
+        for p = worst(k):-1:1
+            [ok, used] = iStopIsSafe(candidates(k), futures, p, opts);
+            stopChecks = stopChecks + used;
+            if ok
+                terminal(k) = p;
+                break
+            end
+        end
+    end
+end
+
+% ---- 4. how far we commit ----------------------------------------------------
+if opts.trunkMode == "B"
+    rule = "STOP_FEASIBLE_PREFIX (reading B)";
+else
+    rule = "LONGEST_CLEAR_PREFIX (reading A)";
+end
+
+trunk = sih.planner.findSharedTrunk(candidates(:), terminal, ...
+            minTrunkTime_s = opts.minTrunkTime_s, ...
+            rule           = rule);
+
+out = struct( ...
+    'Trunk',            trunk, ...
+    'Candidates',       candidates(:), ...
+    'Futures',          futures, ...
+    'SafeSteps',        safeSteps, ...
+    'WorstPrefixSteps', worst, ...
+    'TerminalPrefixSteps', terminal, ...
+    'TrunkMode',        opts.trunkMode, ...
+    'StopChecks',       stopChecks, ...
+    'BindingFuture',    binding, ...
+    'NumTracks',        nT, ...
+    'Blocked',          trunk.Blocked);
+end
+
+% ------------------------------------------------------------------ helpers
+
+function [ok, used] = iStopIsSafe(candidate, futures, p, opts)
+%ISTOPISSAFE  Is braking to a stop from step p clear under EVERY future?
+%   Stops at the first future that says no, so a hopeless prefix costs one check
+%   rather than all of them. `used` reports how many were actually run.
+ok   = true;
+used = 0;
+for j = 1:numel(futures)
+    used = used + 1;
+    r = sih.planner.checkTerminalStop(candidate, futures(j), p, ...
+            aBrake_mps2      = opts.aBrake_mps2, ...
+            dwellAfterStop_s = opts.dwellAfterStop_s, ...
+            egoLength_m      = opts.egoLength_m, ...
+            egoWidth_m       = opts.egoWidth_m, ...
+
+exec
+/bin/zsh -lc "sed -n '1,190p' matlab/+sih/+planner/predictAgentFutures.m" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+function futures = predictAgentFutures(track, pYield, valid, opts)
+%PREDICTAGENTFUTURES  One track in, two futures out: it yields, or it asserts.
+%
+%   Task D6, piece 1 of 5. Branch/contingency MPC models exactly two modes, and
+%   that is precisely what Stream C's predictor outputs, so there is no third
+%   future here and there must not be one.
+%
+%   WHY TWO AND ONLY TWO
+%   A yield future and an assert future bracket the behaviour. Anything the other
+%   road user actually does lies between them, so a plan safe under both is safe
+%   in fact. Adding a "maybe" future would add cost without adding coverage.
+%
+%   WHY THE PROBABILITY IS NaN WHEN THE PREDICTION IS INVALID
+%   AGENTS.md section 3, S3: "When Valid is false the planner uses the geometric
+%   role alone - never 0.5." A made-up probability is worse than none, because
+%   whatever reads it will trust it. So this returns NaN, which cannot be summed,
+%   averaged or compared by accident. Safety never depends on it: the trunk must
+%   hold under BOTH futures regardless of how they are weighted. The weight only
+%   ranks candidates, it never permits one.
+%
+%   INPUTS
+%     track   (1,1) struct  one element of S1 TrackList. Reads .TrackID,
+%                           .Position (1x3, m), .Velocity (1x3, m/s), .Yaw (rad),
+%                           .Extent (1x3, m)
+%     pYield  (1,1) double  S3 PYield for this track, in [0,1]. Ignored if ~valid
+%     valid   (1,1) logical S3 Valid for this track
+%     opts.horizon_s          how far ahead to roll,          default 4.0
+%     opts.timeResolution_s   step,                           default 0.1
+%     opts.yieldDecel_mps2    yield braking, negative,        default -2.0
+%     opts.assertAccel_mps2   assert acceleration,            default  0.0
+%     opts.assertMaxSpeed_mps ceiling on the assert future,   default 25.0
+%     opts.movingSpeed_mps    above this, heading comes from  default 0.1
+%                             the velocity vector; below it, from .Yaw
+%
+%   OUTPUT  futures  1x2 struct array, element 1 YIELD, element 2 ASSERT
+%     .TrackID      uint32
+%     .Label        string, "YIELD" or "ASSERT"
+%     .Probability  double. pYield / 1-pYield, or NaN when ~valid
+%     .Valid        logical, copied from the input
+%     .Times        Nx1 double, s, starting at 0
+%     .States       Nx3 double, [x y theta] at each time - what the capsule
+%                   collision checker wants
+%     .Speeds       Nx1 double, m/s
+%     .Extent       1x3 double, copied from the track so piece 3 can size it
+%
+%   HEADING MODEL: constant. The agent keeps its current direction of travel and
+%   only its speed changes. A turning model would need a turn rate we do not have
+%   from S1, and inventing one would put a number in the plan that nothing
+%   measured. Revisit if S1 ever carries a yaw rate.
+%
+%   FRAME: x forward, y left, z up, same as S1.
+%
+%   See also SIH.PLANNER.VELOCITYOBSTACLE, SIH.PLANNER.GENERATECANDIDATES
+
+arguments
+    track  (1,1) struct
+    pYield (1,1) double
+    valid  (1,1) logical
+    opts.horizon_s          (1,1) double {mustBePositive} = 4.0
+    opts.timeResolution_s   (1,1) double {mustBePositive} = 0.1
+    opts.yieldDecel_mps2    (1,1) double {mustBeFinite}   = -2.0
+    opts.assertAccel_mps2   (1,1) double {mustBeFinite}   =  0.0
+    opts.assertMaxSpeed_mps (1,1) double {mustBePositive} = 25.0
+    opts.movingSpeed_mps    (1,1) double {mustBeNonnegative} = 0.1
+end
+
+iRequireFields(track, {'TrackID','Position','Velocity','Yaw','Extent'}, 'track');
+
+if valid && (pYield < 0 || pYield > 1)
+    error('sih:planner:predictAgentFutures:badPYield', ...
+          'pYield must be in [0,1] when valid is true. Got %g.', pYield);
+end
+
+t  = (0:opts.timeResolution_s:opts.horizon_s)';
+p0 = track.Position(1:2);
+v0 = norm(track.Velocity(1:2));
+
+% Direction of travel. Below movingSpeed_mps the velocity vector is noise, so
+% the body heading is the only thing left to trust.
+if v0 >= opts.movingSpeed_mps
+    theta = atan2(track.Velocity(2), track.Velocity(1));
+else
+    theta = track.Yaw;
+end
+unit = [cos(theta) sin(theta)];
+
+% YIELD: brake at a constant rate, never reverse.
+[sY, vY] = iRamp(v0, opts.yieldDecel_mps2,  t, 0, opts.assertMaxSpeed_mps);
+% ASSERT: hold speed by default, or press on, capped.
+[sA, vA] = iRamp(v0, opts.assertAccel_mps2, t, 0, opts.assertMaxSpeed_mps);
+
+if valid
+    pY = pYield;
+    pA = 1 - pYield;
+else
+    pY = NaN;
+    pA = NaN;
+end
+
+futures = [ iFuture(track, "YIELD",  pY, valid, t, p0, unit, theta, sY, vY), ...
+            iFuture(track, "ASSERT", pA, valid, t, p0, unit, theta, sA, vA) ];
+end
+
+% ------------------------------------------------------------------ helpers
+
+function f = iFuture(track, label, prob, valid, t, p0, unit, theta, s, v)
+n = numel(t);
+f = struct( ...
+    'TrackID',     uint32(track.TrackID), ...
+    'Label',       label, ...
+    'Probability', prob, ...
+    'Valid',       valid, ...
+    'Times',       t, ...
+    'States',      [p0 + s .* unit, repmat(theta, n, 1)], ...
+    'Speeds',      v, ...
+    'Extent',      track.Extent(:)');
+end
+
+function [s, v] = iRamp(v0, a, t, vMin, vMax)
+%IRAMP  Distance and speed under constant acceleration, with the speed held
+%       inside [vMin vMax]. Solved exactly rather than integrated numerically,
+%       so a stop is a stop and not a stop plus half a step of drift.
+v = min(max(v0 + a .* t, vMin), vMax);
+s = zeros(size(t));
+
+if a == 0
+    s = v0 .* t;
+    return
+end
+
+% Time at which the ramp meets whichever limit it is heading for.
+if a < 0
+    tLim = (vMin - v0) / a;
+else
+    tLim = (vMax - v0) / a;
+end
+tLim = max(tLim, 0);
+
+before = t <= tLim;
+s(before) = v0 .* t(before) + 0.5 * a .* t(before).^2;
+
+sLim  = v0 * tLim + 0.5 * a * tLim^2;
+vLim  = v0 + a * tLim;
+after = ~before;
+s(after) = sLim + vLim .* (t(after) - tLim);
+end
+
+function iRequireFields(s, names, argName)
+missing = names(~isfield(s, names));
+if ~isempty(missing)
+    error('sih:planner:predictAgentFutures:missingField', ...
+          '%s is missing required field(s): %s', argName, strjoin(missing, ', '));
+end
+end
+
+exec
+/bin/zsh -lc "sed -n '1,210p' matlab/+sih/+planner/checkTrajectorySafety.m" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+function result = checkTrajectorySafety(candidate, future, opts)
+%CHECKTRAJECTORYSAFETY  One candidate path against one future: safe, step by step.
+%
+%   Task D6, piece 3 of 5. Not "is this path safe" but "how far along this path
+%   am I safe", because piece 4 needs the prefix, not the verdict. A path that is
+%   safe for two seconds and then hit is not simply unsafe - the first two
+%   seconds of it may be exactly what we commit to.
+%
+%   WHY .SafePrefixSteps IS THE POINT
+%   The trunk is built out of leading safe stretches. A single true/false answer
+%   throws away the information the trunk is made of, so this returns the whole
+%   per-step picture and counts the unbroken run from the start.
+%
+%   WHY THE FOOTPRINTS ARE SLIGHTLY TOO BIG
+%   Following the MathWorks Frenet example, the capsule is built with
+%   Length = vehicle length and Radius = half the width, so the shape is about
+%   one width longer than the real vehicle. That errs on the safe side, which is
+%   the right direction to err. opts.inflation_m adds more on top for tracking
+%   uncertainty.
+%
+%   INPUTS
+%     candidate (1,1) struct  one element from sih.planner.generateCandidates.
+%                             Reads .Times and .States (Nx3, [x y theta])
+%     future    (1,1) struct  one element from sih.planner.predictAgentFutures.
+%                             Reads .Times, .States, .Extent, .Label, .TrackID
+%     opts.egoLength_m  ego body length,               default 4.7
+%     opts.egoWidth_m   ego body width,                default 1.8
+%     opts.inflation_m  extra margin on BOTH bodies,   default 0.0
+%
+%   OUTPUT  result struct
+%     .TrackID          uint32, whose future this was
+%     .Label            string, "YIELD" or "ASSERT"
+%     .Times            Nx1, the candidate's own time base
+%     .Safe             Nx1 logical, true = clear at that step
+%     .AllSafe          logical, true if every step is clear
+%     .FirstUnsafeIndex double, first step that is not clear, NaN if none
+%     .FirstUnsafeTime  double, s, NaN if none
+%     .SafePrefixSteps  double, unbroken clear steps counted from the start
+%     .SafePrefixTime   double, s, how long that prefix lasts
+%
+%   TIME BASES
+%   The candidate's clock wins. The future is interpolated onto it, and if the
+%   future is shorter it holds its last pose rather than vanishing - a vehicle
+%   that stopped two seconds ago is still standing there.
+%
+%   TODO(performance): a fresh dynamicCapsuleList is built per call, so a fan of
+%   20 candidates against 2 futures builds 40 of them each cycle. Fine at the
+%   scale we test at. Measure before optimising.
+%
+%   See also SIH.PLANNER.GENERATECANDIDATES, SIH.PLANNER.PREDICTAGENTFUTURES,
+%            DYNAMICCAPSULELIST
+
+arguments
+    candidate (1,1) struct
+    future    (1,1) struct
+    opts.egoLength_m (1,1) double {mustBePositive} = 4.7
+    opts.egoWidth_m  (1,1) double {mustBePositive} = 1.8
+    opts.inflation_m (1,1) double {mustBeNonnegative} = 0.0
+end
+
+iRequireFields(candidate, {'Times','States'}, 'candidate');
+iRequireFields(future,    {'Times','States','Extent','Label','TrackID'}, 'future');
+
+t = candidate.Times(:);
+n = numel(t);
+if n < 1
+    error('sih:planner:checkTrajectorySafety:emptyCandidate', ...
+          'candidate.Times is empty - there is nothing to check.');
+end
+
+egoStates = candidate.States;
+obsStates = iResampleHold(future.Times(:), future.States, t);
+
+capList = dynamicCapsuleList;
+capList.MaxNumSteps = n;        % default is 31; a 4 s plan at 0.1 s is 41 steps
+
+egoID = 1;
+[egoID, egoGeom] = egoGeometry(capList, egoID);
+egoGeom.Geometry.Length = opts.egoLength_m;
+egoGeom.Geometry.Radius = opts.egoWidth_m/2 + opts.inflation_m;
+egoGeom.Geometry.FixedTransform(1,end) = -opts.egoLength_m/2;
+updateEgoGeometry(capList, egoID, egoGeom);
+
+obsID = 2;
+obsLen = future.Extent(1);
+obsWid = future.Extent(2);
+[obsID, obsGeom] = obstacleGeometry(capList, obsID);
+obsGeom.Geometry.Length = obsLen;
+obsGeom.Geometry.Radius = obsWid/2 + opts.inflation_m;
+obsGeom.Geometry.FixedTransform(1,end) = -obsLen/2;
+updateObstacleGeometry(capList, obsID, obsGeom);
+
+updateEgoPose(capList,      egoID, struct('ID', egoID, 'States', egoStates));
+updateObstaclePose(capList, obsID, struct('ID', obsID, 'States', obsStates));
+
+hit = checkCollision(capList);
+hit = logical(hit(:));
+
+% Observed by running on R2026a, 4 Sep 2026: one ego and n pose steps gives back
+% n logicals, one per step. Refuse to guess if that ever changes.
+if numel(hit) ~= n
+    error('sih:planner:checkTrajectorySafety:unexpectedResultShape', ...
+          ['checkCollision returned %d values for %d timesteps. This function ' ...
+           'assumes one result per timestep. Stop and check the toolbox version.'], ...
+          numel(hit), n);
+end
+
+safe = ~hit;
+firstBad = find(hit, 1, 'first');
+if isempty(firstBad)
+    firstIdx  = NaN;
+    firstTime = NaN;
+    prefix    = n;
+else
+    firstIdx  = firstBad;
+    firstTime = t(firstBad);
+    prefix    = firstBad - 1;
+end
+
+if prefix >= 1
+    prefixTime = t(prefix) - t(1);
+else
+    prefixTime = 0;
+end
+
+result = struct( ...
+    'TrackID',          uint32(future.TrackID), ...
+    'Label',            future.Label, ...
+    'Times',            t, ...
+    'Safe',             safe, ...
+    'AllSafe',          all(safe), ...
+    'FirstUnsafeIndex', firstIdx, ...
+    'FirstUnsafeTime',  firstTime, ...
+    'SafePrefixSteps',  prefix, ...
+    'SafePrefixTime',   prefixTime);
+end
+
+% ------------------------------------------------------------------ helpers
+
+function out = iResampleHold(tSrc, statesSrc, tQuery)
+%IRESAMPLEHOLD  Put [x y theta] onto another clock, holding the ends.
+%   Outside the source window the first or last pose is held, because an agent
+%   whose prediction ran out has not disappeared - it is still where it was.
+tq = min(max(tQuery, tSrc(1)), tSrc(end));
+
+if numel(tSrc) == 1
+    out = repmat(statesSrc(1,:), numel(tq), 1);
+    return
+end
+
+th   = unwrap(statesSrc(:,3));           % never interpolate across a pi wrap
+xy   = interp1(tSrc, statesSrc(:,1:2), tq, 'linear');
+thq  = interp1(tSrc, th,               tq, 'linear');
+out  = [xy, thq(:)];
+end
+
+function iRequireFields(s, names, argName)
+missing = names(~isfield(s, names));
+if ~isempty(missing)
+    error('sih:planner:checkTrajectorySafety:missingField', ...
+          '%s is missing required field(s): %s', argName, strjoin(missing, ', '));
+end
+end
+
+exec
+/bin/zsh -lc "sed -n '470,550p' matlab/+sc/planSeat.m" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+
+% -----------------------------------------------------------------------------
+function v = getf(s, f, dflt)
+if isfield(s, f) && ~isempty(s.(f)), v = s.(f); else, v = dflt; end
+end
+
+function p = trunkProgress(trunk)
+S = trunk.States;
+if size(S,1) < 2, p = 0; else, p = sum(vecnorm(diff(S(:,1:2)),2,2)); end
+end
+
+function mv = iPickMovingSafe(out, minKeepSteps, curE, laneBand)
+%IPICKMOVINGSAFE  Among candidates that (a) stay within laneBand of the ego's
+%   current line and (b) are safe for at least minKeepSteps under every future,
+%   take the one that covers the MOST ground. This is a probe forward from where
+%   we are, not a swerve. Returns .k (NaN if none) and a truncated .trunk.
+mv = struct('k',NaN,'trunk',[]);
+term = out.TerminalPrefixSteps(:);
+cand = out.Candidates;
+bestProg = 0.6;  bestK = NaN;         % require > 0.6 m of real progress
+for k = 1:numel(cand)
+    if abs(cand(k).LateralOffset_m - curE) > laneBand, continue; end
+    p = min(round(term(k)), numel(cand(k).Times));
+    if p < minKeepSteps, continue; end
+    S = cand(k).States(1:p,:);
+    prog = sum(vecnorm(diff(S(:,1:2)),2,2));
+    if prog > bestProg
+        bestProg = prog;  bestK = k;
+    end
+end
+if isnan(bestK), return; end
+p = min(round(term(bestK)), numel(cand(bestK).Times));
+mv.k = bestK;
+mv.trunk = struct('States', cand(bestK).States(1:p,:), ...
+                  'Times',  cand(bestK).Times(1:p), ...
+                  'Blocked', false);
+end
+
+function tr2 = iTrackHysteresis(tr, mem, t, graceT)
+%ITRACKHYSTERESIS  Phase 8, piece 3. Bridge a track that just dropped out of
+%   the list for up to graceT seconds, dead-reckoning it forward from its own
+%   last known position/velocity - see the call site's own header for why this
+%   exists. mem is a containers.Map (TrackID -> struct('Track',...,'LastSeenT',
+%   ...)), a HANDLE mutated in place here; the caller (sc.planSeat) threads it
+%   via st.TrackMem only so a fresh run starts with an empty one.
+%
+%   A ghost's Existence decays linearly across the grace window (its last real
+%   value down to a floor of 0.2), so anything reading Existence can still
+%   tell a dead-reckoned ghost from a freshly confirmed track - never silently
+%   indistinguishable from a real detection.
+%
+%   Entries older than 3*graceT are dropped from mem outright (not just from
+%   this frame's ghosts) so the map does not grow for the length of the run.
+
+for k = 1:numel(tr)
+    id = double(tr(k).TrackID);
+    mem(id) = struct('Track', tr(k), 'LastSeenT', t);
+end
+
+seen = containers.Map('KeyType','double','ValueType','logical');
+for k = 1:numel(tr), seen(double(tr(k).TrackID)) = true; end
+
+% The exact S1 TrackList shape (AGENTS.md section 3) - built explicitly rather
+% than via tr([]) so this never depends on tr already being non-empty.
+ghosts = struct('TrackID',{},'ClassID',{},'Position',{},'Velocity',{}, ...
+                'Extent',{},'Yaw',{},'Existence',{},'Age',{},'SensorMask',{});
+allIDs = keys(mem);
+for i = 1:numel(allIDs)
+    id  = allIDs{i};
+    rec = mem(id);
+    dt  = t - rec.LastSeenT;
+
+    if dt > 3*graceT
+        remove(mem, id);
+        continue
+    end
+    if isKey(seen, id) || dt <= 0 || dt > graceT
+        continue                 % still seen this frame, or outside the grace window
+    end
+
+    g = rec.Track;
+
+exec
+/bin/zsh -lc "sed -n '170,285p' matlab/+sc/planSeat.m" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+end
+
+% ---- don't just stand there (the D9 un-freeze ladder, rungs 1 and 2) --------
+% findSharedTrunk ranks "longest safe stretch" first, and a STOPPED car has a
+% trivially long safe stretch - so once blocked it commits to standing still,
+% forever. That is the frozen-robot failure this whole project exists to beat.
+% D9 (creep -> wait -> horn -> go around -> handover) lives in Person B's chart,
+% which is not built. So the seat carries the first two rungs itself.
+usedTrunk = out.Trunk;  creeping = false;
+if ~out.Trunk.Blocked && ~isempty(out.Trunk.States) && trunkProgress(out.Trunk) < 0.6
+    % RUNG 1: creep. A probe FORWARD from roughly where we are - not a lane
+    % change. Restricted to candidates whose offset is close to the ego's
+    % current line.
+    mv = iPickMovingSafe(out, getf(ctx,'CreepMinSteps',16), ctx.e, getf(ctx,'CreepLaneBand',1.4));
+    if ~isnan(mv.k)
+        usedTrunk = mv.trunk;  creeping = true;
+    end
+end
+% ---- stuck-progress clock, not a consecutive-flag counter -------------------
+% FOUND NECESSARY BY RUNNING, not designed in advance: a first version counted
+% CONSECUTIVE steps with creeping==true and never fired, because near a real
+% obstacle the seat THRASHES - COMMIT, EMERGENCY, PROBE, COMMIT again, every
+% 0.05-0.1 s - while making near-zero net progress. That thrashing IS the
+% frozen-robot symptom, but it resets a consecutive counter almost every step.
+% This tracks real forward progress instead: st.HighWaterS only advances when
+% the ego actually gets meaningfully further along the route, and the "stuck"
+% clock is how long it's been since that last happened - immune to which
+% per-step label fired in between.
+if isnan(st.HighWaterS) || ctx.s > st.HighWaterS + 0.5
+    st.HighWaterS   = ctx.s;
+    st.LastAdvanceT = ctx.t;
+end
+stuckFor = ctx.t - st.LastAdvanceT;
+
+% ---- D9 RUNG 1.5 (WAIT) AND THE COMMITMENT (PASS) ---------------------------
+% MEASURED 7 Sep 2026, and it corrects the Phase 8 account. Dumping the whole
+% fan at every stuck tick (out.TerminalPrefixSteps / out.BindingFuture, per
+% candidate) shows the seat is NOT short of a safe go-around. At the S1 freeze
+% (t=37.25, ego stopped at s=286.06, the cow the ONLY track, 13.9 m ahead):
+%
+%     off     vT   worst  term  sane  prog   binder
+%   -2.50   11.0   41.0  41.0    1  22.85   -        fully safe, 22.85 m
+%   -1.58    8.0   41.0  41.0    1  16.71   -        the scripted pass line
+%   +0.00    0.0   41.0  41.0    1   0.60   -    <-- out.Trunk.CandidateIndex
+%
+% A completely unbound 22.85 m pass exists under EVERY future, and
+% findSharedTrunk commits to standing still - its documented tie-break is
+% longest-safe-stretch first (a stopped car ties at the full horizon), then
+% SMALLEST SIDEWAYS OFFSET, and straightness beats the pass. Rung 1 cannot help
+% (it needs trunkProgress < 0.6 and the stand-still trunk's progress is exactly
+% 0.60). Rung 2 finds the pass, uses it for ONE 0.05 s tick, resets the stuck
+% clock, and the ordinary route reverts to standing still for the next 2 s -
+% measured 17 times in a row under exact sensing, 0.0045 m of progress each.
+%
+% So the missing piece is a COMMITMENT that outlives one tick, and a WAIT that
+% decides whether one is worth taking yet. Both live here.
+stuckAfter_s = getf(ctx,'GoAroundAfterStuck_s', 2.0);
+gaMinSteps   = getf(ctx,'GoAroundMinSteps', 25);
+negCfg = struct( ...
+    'StuckAfter_s',     stuckAfter_s, ...
+    'GoAroundMinSteps', gaMinSteps, ...
+    'WaitTimeout_s',    getf(ctx,'WaitTimeout_s',   10.0), ...
+    'WaitCooldown_s',   getf(ctx,'WaitCooldown_s',   4.0), ...
+    'PassMinSteps',     getf(ctx,'PassMinSteps',     max(8, round(gaMinSteps/2))), ...
+    'PassBand_m',       getf(ctx,'PassBand_m',       0.35), ...
+    'PassHold_s',       getf(ctx,'PassHold_s',      12.0), ...
+    'PassDistance_m',   getf(ctx,'PassDistance_m',   4*egoLength), ...
+    'MinProgress_m',    getf(ctx,'PassMinProgress_m', 2*egoLength), ...
+    'MinClearance_m',   getf(ctx,'MinPassClearance_m', 0.5), ...
+    'HalfWidth_m',      hw, ...
+    'EgoWidth_m',       egoWidth, ...
+    'ELo', eLo, 'EHi', eHi, 'MaxSpeed', maxSaneSpeed);
+[st.Neg, neg] = iNegotiate(st.Neg, out, ctx, stuckFor, negCfg, trS, trE, trHalfE);
+
+wentAround = false;  holding = false;  negNote = "";
+if neg.Mode == "PASS"
+    usedTrunk = neg.Trunk;  creeping = false;  wentAround = true;  negNote = neg.Note;
+    if neg.Committed
+        st.HighWaterS = ctx.s;  st.LastAdvanceT = ctx.t;
+    end
+elseif neg.Mode == "WAIT"
+    holding = true;  creeping = false;  negNote = neg.Note;
+elseif stuckFor >= stuckAfter_s && isfield(out,'TerminalPrefixSteps')
+    % THE FLOOR - the fallback when the ladder has nothing to say, most often
+    % during the cooldown after a WAIT has timed out.
+    %
+    % THIS USED TO CALL iPickGoAround, WHICH RANKS BY RAW PROGRESS AND HAS NO
+    % CLEARANCE FLOOR, on the reasoning "the floor can never be worse than what
+    % the seat did before". MEASURED, that reasoning was wrong: on S2-sensed it
+    % committed to offset +1.75 whose clearance to the road users ahead was
+    % -0.29 m, while +-2.60 was available at +0.50 m. It is the same defect the
+    % floor in iPickPassLine exists to prevent, still live on the fallback path.
+    % "Never worse than before" does not hold once the ladder changes WHEN and
+    % WHERE the ego arrives at a decision - the fallback is reached in a
+    % different state than the old code ever reached it in. So the fallback now
+    % applies the same clearance rule as the commit; if nothing acceptable
+    % exists it simply does not commit, and the ordinary blocked-trunk braking
+    % carries the cycle, which is the safe answer.
+    ga = iPickPassLine(out, ctx, negCfg, trS, trE, trHalfE);
+    if ~isnan(ga.k)
+        usedTrunk = ga.trunk;  creeping = false;
+        st.HighWaterS = ctx.s;  st.LastAdvanceT = ctx.t;  wentAround = true;
+        negNote = "stuck " + sprintf('%.1f', stuckFor) + " s with no real progress - committed to a go-around (D9 rung 2)";
+    end
+end
+
+[fc, info] = sih.planner.followTrunk(usedTrunk, ego, ...
+          wheelbase_m     = wheelbase, ...
+          lookaheadTime_s = lookaheadT, ...
+          minLookahead_m  = minLook);
+if creeping
+    creepCap = getf(ctx,'CreepCap', 1.2);
+    if isfinite(info.TargetSpeed_mps)
+        info.TargetSpeed_mps = max(0.5, min(info.TargetSpeed_mps, creepCap));
+    else
+        info.TargetSpeed_mps = 0.6;
+
+exec
+/bin/zsh -lc "rg --files -g AGENTS.md -g 'README*' | head -30" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+AGENTS.md
+README.md
+tools/meteor/README.md
+
+exec
+/bin/zsh -lc "rg -n \"SPT|Chennai|METEOR|IDD-PeD|IDD-Ped|gap acceptance|critical gap|SVO|cooperat\" . --glob '*.md' --glob '"'!node_modules/**'"' | head -150" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+./README.md:131:METEOR dataset (Chandra et al., ICRA 2023). COLREGs formulation after Kuwata et al. and
+./ml/C-prediction.md:213:METEOR is **93.4 GB** in five pieces. **The official website is dead.** There is exactly one place
+./ml/C-prediction.md:219:huggingface-cli download XijunWang/METEOR --repo-type dataset --local-dir ./meteor
+./ml/C-prediction.md:221:cat chunk_* > METEOR_Dataset.zip
+./ml/C-prediction.md:222:unzip METEOR_Dataset.zip
+./ml/C-prediction.md:325:**Learned from METEOR — both are *parameters*, not policies:**
+./ml/C-prediction.md:343:  association** to compute the rate features. METEOR hands you the tracks.
+./ml/C-prediction.md:348:  per-agent 3-D** — which independently confirms the frozen "never lift METEOR to 3-D" rule.
+./ml/C-prediction.md:353:  filled from METEOR at all.** Do not spend time on `ecef2enu`. The choice of what to do instead
+./ml/C-prediction.md:377:CLI instead, it is `hf download XijunWang/METEOR --repo-type dataset --local-dir ./meteor`.
+./ml/C-prediction.md:379:**Consequence: METEOR no longer depends on the DGX.** 1.81 GB runs on a laptop. Start today.
+./ml/C-prediction.md:400:1. **We only have about 79 of METEOR's 1,251 clips.** On that slice the whole dataset holds
+./ml/C-prediction.md:477:And one rule that is not obvious: **never convert METEOR into 3-D.** It needs depth estimation,
+./derisk/check06-dgx-questions.md:80:hf download XijunWang/METEOR --repo-type dataset --local-dir ./meteor
+./derisk/check06-dgx-questions.md:83:**Verified live 31 Aug 2026** at `huggingface.co/datasets/XijunWang/METEOR` — public, **not
+./derisk/check06-dgx-questions.md:138:The documented `cat chunk_* > METEOR_Dataset.zip` holds the chunks **and** the joined zip at
+./derisk/check06-dgx-questions.md:144:  cat "$f" >> METEOR_Dataset.zip && rm -f "$f" || { echo "FAILED at $f"; break; }
+./derisk/check06-dgx-questions.md:146:unzip -t METEOR_Dataset.zip | tail -3      # verify BEFORE trusting it
+./derisk/check06-dgx-questions.md:147:unzip METEOR_Dataset.zip
+./CLAUDE.md:46:| **ML** | Shourya + Kishan, independently | METEOR, the yield models, calibration, evaluation, ONNX export | `ml/`, `matlab/+sih/+models/`, `matlab/+sih/+prediction/` |
+./ml/ReadThis.md:136:METEOR has **1,251 clips**. Annotations only: **1.81 GB to download, 10.28 GB on disk.** We do
+./ml/ReadThis.md:167:- **METEOR's own paper groups these behaviours** and predicts them together — its benchmark task
+./ml/ReadThis.md:171:  2024) exists to handle heavy-tailed behaviour classes in METEOR. **Cite it.** It is a known
+./ml/ReadThis.md:203:`huggingface.co/datasets/XijunWang/METEOR` — public, no login. One zip in five pieces, 93.4 GB
+./ml/ReadThis.md:236:the one-hot slots for dog, pushcart, animal-drawn cart and static obstacle — **METEOR contains
+./ml/ReadThis.md:240:**4 · The ego's own speed and acceleration are nearly empty**, because METEOR records the car's
+./ml/ReadThis.md:265:| 28–30 | Our own speed, turn rate, acceleration | nearly empty in METEOR, see above |
+./ml/ReadThis.md:269:from our MATLAB simulation.** That is why nothing is a distance — METEOR has no distances. We
+./ml/ReadThis.md:274:Feature 31 is the action **our** car is considering. But METEOR only ever shows what the driver
+./AGENTS.md:46:- **Dataset is METEOR**, not IDD-X
+./AGENTS.md:47:- **Project the simulation down to the image plane. Never lift METEOR up to 3-D**
+./ml/CHEATSHEET.md:66:| Clips in METEOR | **1,251** (2,502 XML files) |
+./ml/TROUBLESHOOTING.md:79:**The physical gate in `parse_xml.py` has been removed or widened.** METEOR stores the ego
+./ml/TROUBLESHOOTING.md:88:METEOR never contains. A **different** list is worth reporting — a **longer** list may mean the
+./tools/meteor/README.md:1:# Pull single METEOR clips without downloading 93 GB
+./tools/meteor/README.md:20:- **The audio track is digitally silent** (mean and max both -91 dB). No horns from METEOR.
+./PROGRESS.md:27:| **1** | **The Predictor** | LSTM (`yield_lstm.py`) | Predicts if an adjacent vehicle will yield / let our vehicle merge | METEOR Markings (1.8 GB) | **[HIGH]** | Deployed inside simulation car (MATLAB) |
+./PROGRESS.md:28:| **2** | **The Predictor (Group)** | Attention (`yield_attention.py`) | Evaluates interactions across all nearby vehicles simultaneously | METEOR Markings (1.8 GB) | **[HIGH]** | Deployed / compared against Model 1 |
+./PROGRESS.md:41:4. **Metric Honesty & Accuracy Ban:** Accuracy is banned as a primary metric. In METEOR, yielding occurs ~1 in 1,262 instances across 25,000 vehicles. A naive model predicting "no yield" achieves 99.9% accuracy while being completely useless. Models must be evaluated on **Precision**, **Recall**, and an **Operating Point Threshold Sweep** guaranteeing dangerous false-yield errors occur $\le 1\%$ of the time.
+./PROGRESS.md:85:* **[01:00 - 02:35 IST] Milestone Completed: METEOR Annotation Acquisition (Step 9)**
+./PROGRESS.md:97:    ls ~/meteor-data/METEOR_Dataset/
+./PROGRESS.md:493:[x] METEOR Dataset Unpacked & Preprocessed: 1,248 clips, 3.73M sequences
+./PROGRESS.md:630:    - Analyzed timestamps in all 1,248 METEOR clips (`(REC|Rec)_YYYY_MM_DD_HH_MM_SS_F.npz`).
+./PROGRESS.md:753:  * **Objective & Scope:** Quantitatively audit the METEOR annotation timing and the LSTM's temporal warning capability around assertion onsets across the 307 calibration clips. Answer whether the current label target identifies concurrent behaviour or provides advance warning, ensuring honest claims before opening the untouched test set.
+./ml/ML.md:54:**Dataset.** `huggingface.co/datasets/XijunWang/METEOR`, public, ungated. One zip in 5 chunks,
+./ml/ML.md:61:**Structure.** `METEOR_Dataset/Frame XML Annotations/*.zip`, one zip per clip, holding
+./ml/ML.md:90:ClassID 11 dog, 12 pushcart, 13 animal-drawn cart, 15 static obstacle. METEOR contains none of
+./ml/ML.md:151:- Never lift METEOR into 3-D or use monocular depth.
+./world/handoff/PPT-TEAMMATE-PROMPT.md:70:- **METEOR's own authors measured that models that do well on Waymo fail on METEOR.**
+./plan/S3-PYIELD-RULING.md:16:  1 in 301 in METEOR and cannot be learned. That decision was correct and is documented in
+./plan/CLAIM-LEDGER.md:91:| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples of either, so no detection performance can be claimed for them."** | Features `[23,24,25,27]` are permanently dead in the frozen 31-dim vector — a data property, not a bug |
+./plan/CLAIM-LEDGER.md:211:| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples, so we cannot claim detection performance for them. Cows and tractors are present."** | Features `[23,24,25,27]` are dead - dog, pushcart, animal-drawn cart, static obstacle |
+./GUIDE.md:22:| **Part 3: METEOR Data Acquisition & Prep** | 8–17 | 🟢 10/10 COMPLETE | 2,502 XMLs fetched, 3.73M sequences extracted (10 Hz, 31 features, 0 leakage) |
+./GUIDE.md:63:| 1 | The predictor | Says whether a vehicle beside us will let us in | METEOR markings, 1.8 GB | HIGH |
+./GUIDE.md:100:| python/meteor/parse_xml.py | Reads METEOR's annotation files |
+./GUIDE.md:147:4. Four of the 31 numbers are empty. METEOR records the car's own position once per clip, not as it moves, so we cannot compute our own speed, turning or acceleration from it. The model is effectively working with 27 numbers. build_dataset.py warns you about this do not ignore the warning. [cite: 1]
+./GUIDE.md:245:ls ~/meteor-data/METEOR_Dataset/
+./GUIDE.md:554:| **Model 1 (Predictor)** | 1-Layer LSTM ($H=64$) | Single-vehicle intent (METEOR 1.8 GB) | **CRITICAL PATH:** Export to ONNX, run MATLAB check, send opset | Baseline in-car model |
+./GUIDE.md:555:| **Model 2 (Attention)** | Dense Attention ($H=64, A=16$) | Multi-vehicle spatial interaction (METEOR 1.8 GB) | **DONE / BENCHMARKED:** Slide owned ($AP=0.3691$, $ECE=0.1502$) | Primary in-car model (post-Sept 7) |
+./world/notes/dashcam-pass-01.md:35:Better than the Hyderabad METEOR footage for our purposes.
+
+exec
+/bin/zsh -lc 'cat AGENTS.md' in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+# SIH26037 - agent rules
+
+Read by Antigravity, Cursor, Claude Code, and Codex (Codex CLI reads `AGENTS.md` by convention,
+same file, no separate file needed for it).
+**Section 3 below is the frozen contract. It is the reason six people can work at once.**
+
+## The project
+Smart India Hackathon 2026, problem statement **SIH26037** (MathWorks): adaptive path planning on
+unstructured Indian roads.
+
+> An Indian junction has no controller. We built the planner that negotiates instead of waiting -
+> in MATLAB, against a cow that behaves like a cow.
+
+**Latest state and per-person next steps: `HANDOFF.md`.**
+PRD: a PDF, ask Aditya. Your tasks: your stream folder, `ml/` or `plan/`.
+Who does what: `TEAM.md`. **The World is Aditya's** - the 3D city, the demo, and `world/` are his,
+even though the repos were merged 8 Sep so everything lives in one clone. `S1` and `S9` come from
+him.
+
+**Machine-learning task? Read `ml/ML.md` first.** Planner task? Read `plan/ReadThis.md` first.
+Neither loads automatically, and both carry facts you must not re-derive.
+
+## 1 - Hard rules
+
+**Never change section 3.** Six people build against it; a silent change breaks five.
+If it needs changing, stop and ask a human.
+
+**Never edit `matlab/baseline/`.** That is MathWorks' shipped planner, unmodified, and it is our
+control arm. A tuned baseline is a strawman and kills the result.
+
+**Verify, do not assume.** Never write a number you did not produce by running something.
+`TODO(unverified)` is acceptable; a plausible number is not.
+
+**Report errors in full.** A trimmed stack trace costs a day.
+
+## 2 - Settled - do not reopen
+- **No RoadRunner.** `drivingScenario` + `roadNetwork(...,'OpenStreetMap',f)` + OpenDRIVE export
+- **Lidar and radar in the loop; camera offline.** The cuboid environment emits object lists, not
+  pixels. Measured: a cow at 9.2 m is 77×63 px in a 140° dashcam frame
+- **Two models, one loader: the LSTM and a dense-adjacency GNN.** Sparse message passing cannot
+  import (no `Gather`/`Scatter`) - written as an adjacency **matmul + softmax** it imports fine.
+  `Adjacency` exists for exactly this. **The LSTM ships first and is never blocked by the GNN.**
+- **Do not import YOLO.** Use MATLAB's built-in YOLOX
+- **Foundation is `mathworks/OpenTrafficLab`.** Subclass `DrivingStrategy`; delete `TrafficController`.
+  **Needs 2 fixes on R2026a** - see `plan/OPENTRAFFICLAB-R2026a.md`. Never edit its folder
+- **Dataset is METEOR**, not IDD-X
+- **Project the simulation down to the image plane. Never lift METEOR up to 3-D**
+
+### Re-locked 31 Aug 2026 - design
+- **Probe and commit is the mechanism.** Creep (S6=0.5), read the answer, commit or abort.
+  Deleting `TrafficController` is a consequence, not the headline
+- **COLREGs is a tie-break, not negotiation** - it buys legibility. Hill roads: *Rules of the
+  Road, 1989* - **downhill gives way to uphill**
+- **Contingency planning:** N paths 3-5 s ahead, each rolled under **two futures (yield/assert)**
+  weighted by `PYield`, checked with `dynamicCapsuleList`, **commit only the trunk safe under
+  both.** The trunk IS the probe. Rates: route 2-5 Hz - contingency 10 Hz - **barriers 50-100 Hz**
+- **Two barriers:** `h_agent` for movers, `h_road` (S9) for the ground. **A khai returns no lidar
+  points and can never be an S1 track. No mode switch - geometry decides which binds**
+- **`v_max = min( sqrt(aLat*R), sqrt(2*aBrake*(VisibleRange - v*tReact)), vRoute )`.
+  No weather mode** - bad weather shrinks `VisibleRange` and speed falls out
+- **Reversibility:** escape breadcrumbs (S10) - point of no return sets `Committed` - blockage
+  ladder ends in a **re-route** - galli deadlock: **nearer a passing place reverses**
+- **Turn type is DERIVED from `S10.GoalHeading`, never classified.** No sign detection
+- **Handover is terminal.** A driver is always in the seat - no remote operator. **Raise
+  `Signal=6` BEFORE `Committed`** - a late handover is a failure (M11)
+- **Three baselines:** Frenet **given the reference path it needs** - **ORCA** (assumes everyone
+  runs it; a cow does not) - **always-yield**
+- **Models (1 Sep 2026):** predictor -> Python->ONNX, LSTM + attention, **never Gather/Scatter** -
+  spotter -> **YOLOX** (*not RTMDet* - inference-only in MATLAB) - road -> DeepLab v3+ -
+  lidar -> **PointPillars, native MATLAB**
+- **Split by clip, never by frame** - adjacent frames leak and inflate every score
+- **IDD-3D is DATA, not a model:** replay real tracks; compare real vs simulated point clouds
+
+## 3 - THE FROZEN CONTRACT
+
+### S1 TrackList - Perception -> everyone
+Sensor-agnostic: lidar and radar are fused *before* this struct.
+
+| Field | Type | Units |
+|---|---|---|
+| `TrackID` | uint32 | stable across frames, never reused |
+| `ClassID` | uint8 | see S5 |
+| `Position` | 1x3 double | m, ego frame: x fwd, y left, z up |
+| `Velocity` | 1x3 double | m/s |
+| `Extent` | 1x3 double | m - length, width, height |
+| `Yaw` | double | rad |
+| `Existence` | double | 0-1 |
+| `Age` | uint32 | frames |
+| `SensorMask` | uint8 | bit0 lidar, bit1 radar, bit2 camera, **bit3 near-field ring** |
+
+Four guarantees: sorted by `TrackID` - never contains the ego - **may be empty, and consumers must
+not error** - no `NaN`/`Inf` in `Position` - drop the track instead.
+
+### S2 FeatureFrame - 31 dims, depth-free
+`1-2` u_c, v_c (box centre ÷ image size) - `3` v_bottom - `4-5` w, h - `6` log(w/h) -
+`7-9` du, dv, dh - **`10` tau = h/(dh/dt)** clamp ±100 - `11` lateral closure -
+`12-27` 16-way class one-hot - `28-30` ego speed, yaw rate, accel - `31` candidate action.
+
+```
+.Data [N x 31 single]  .Adjacency [N x N single]  .TrackIDs [N x 1 uint32]  .Timestamp double
+```
+Sequence: `[T x 31]`, T = 20 at 10 Hz. Front-pad when younger than T.
+**`Adjacency` is always emitted even though the LSTM ignores it.** Do not remove it.
+**Positions 1-31 are frozen and never move.** New features may only be *appended* at 32+, and
+only with a changelog row. Stream D reads by position.
+
+### S3 YieldPrediction
+`.TrackIDs [N x 1 uint32]` - `.PYield [N x 1 double]` in [0,1] - `.Valid [N x 1 logical]`.
+**When `Valid` is false the planner uses the geometric role alone - never 0.5.**
+
+### S4 Role and EgoCommand
+```
+Role: .TrackID uint32  .Role uint8(S7)  .Beta double rad  .Lambda double rad  .TCPA double s
+EgoCommand: .Accel double [-6,+3] m/s^2  .SteerAngle double [-0.6,+0.6] rad  .Mode uint8(S8)  .Reason string
+            .MirrorsFolded logical   folding narrows the ego footprint ~20 cm - a real action
+            .Signal uint8            0 none - 1 horn - 2 headlight flash - 3 declare blocked
+                                     4 indicate left - 5 indicate right  (legibility is the point)
+                                     6 REQUEST DRIVER HANDOVER - must be raised BEFORE .Committed
+                                     goes true. India requires a driver in the seat, so this is the
+                                     terminal state. Raising it after the point of no return is a
+                                     failure, not a handover - log it as one (M11)
+            .Gear int8               +1 forward - 0 hold - -1 REVERSE. Without reverse a 3-point
+                                     U-turn and backing out of a galli are both impossible
+            .Committed logical       true past the point of no return - planner must NOT re-decide
+```
+`beta = asin(dMin/d)`, `lambda = acos((v_r . r)/(|v_r| d))`. **Collision iff lambda < beta.**
+Log `h = lambda - beta` every step - it is our safety evidence.
+
+### S5 ClassID - never renumber
+`0` unknown - `1` car - `2` truck - `3` bus - **`4` auto-rickshaw** - `5` motorbike - `6` scooter -
+`7` van - `8` pedestrian - `9` bicycle - **`10` cow** - `11` dog - **`12` pushcart** -
+**`13` animal-drawn cart** - `14` tractor - `15` static obstacle.
+`drivingScenario` reserves its own 1-6 - use `sih.util.toSimClassID()`. **Never hardcode either.**
+
+### S6 Candidate action (feature 31)
+`0.0` hold - `1.0` accelerate/commit - `-1.0` decelerate/give way - `0.5` creep (probe)
+
+### S7 Role codes
+`0` SAFE - `1` GIVE_WAY (early, substantial; pass astern) - `2` STAND_ON (**hold course and speed**) -
+`3` HEAD_ON - `4` OVERTAKING. Sector boundaries **22.5°, 90°, 112.5°**; sign of tCPA disambiguates.
+
+### S8 Planner mode
+`0` STRUCTURED (lanes exist - defer) - `1` UNSTRUCTURED (ours) - `2` EMERGENCY (`h < 0`).
+
+### S9 DrivableSpace - Perception -> planner
+A khai is not an object. Lidar returns **nothing** from a drop-off, so it can never appear in S1.
+This carries the ground itself.
+
+```
+.Costmap      vehicleCostmap   wraps MathWorks' shipped object - do NOT invent a new one
+.EdgeDistance double  m   signed distance to the drivable boundary, + inside
+.EdgeSide     uint8       0 unknown - 1 wall/rising - 2 drop/falling
+.VisibleRange double  m   furthest confidently-observed ground along the path
+.Valid        logical     false => planner falls back to a fixed conservative corridor
+```
+
+Two rules the planner must honour:
+- **`d_min = f(EdgeSide, speed)` - asymmetric AND speed-dependent.** Larger on `EdgeSide == 2`
+  than on `1`: a wall dents a panel, a drop is fatal - weighted by **consequence**, not collision
+  probability. And larger with speed: at 2 km/h centimetres will do, at 40 km/h you need ~1.5 m.
+  **Footprint is the real body including mirrors, and shrinks when `MirrorsFolded` is true.**
+  Check the **swept path of the whole body**, not the centreline.
+- **Speed is capped by sight:** `v_max = sqrt(2*aBrake*(VisibleRange - v*tReact))`.
+
+`h_road = EdgeDistance - dMin(EdgeSide) >= 0` is a barrier of the same form as `h = lambda - beta`.
+**Both must hold. No mode switch** - geometry decides which binds.
+
+### S10 Route - coarse goal, and it must be re-plannable
+Not a navigator. It supplies a goal and accepts failure feedback.
+```
+.GoalHeading  double rad   direction of the next goal - TURN TYPE IS DERIVED FROM THIS, never classified
+.GoalPoint    1x2 double m ego frame
+.BlockedEdges uint32 []    edges the planner has declared impassable - route AROUND them
+.EscapePoints Nx3 double   breadcrumbs [x y width_m] of places wide enough to turn around in
+```
+**Turn type is derived:** heading change ~180° + tight radius = U-turn - ~90° across a stream = cut.
+**No sign detection, no classifier.**
+`v_max = min( sqrt(aLat*R), sqrt(2*aBrake*(VisibleRange - v*tReact)), vRoute )`.
+
+### File formats
+`results/<run>/trajectories.csv` -> `t,actor_id,class_id,x,y,z,yaw`, SI units, header row -
+`results/<run>/metrics.json` -> keys `M1`-`M10` - `results/<run>/config.json` -> **a copy of the
+inputs; a number without its config is not a result** -
+`ml/python/export/yield_lstm_opset<N>.onnx` -> in `sequence [1,20,31]`, out `yield_logits [1,2]` -
+`ml/python/export/yield_gnn_opset<N>.onnx` -> in `sequence [1,A,20,31]` + `adjacency [1,A,A]`,
+out `yield_logits [1,A,2]`. **`A` = max agents, fixed at export and recorded in `config.json`.**
+The two are interchangeable at the S3 boundary: both produce `PYield` per `TrackID`.
+
+## 4 - Stack
+MATLAB R2024b+ / Simulink / Stateflow - Automated Driving, Computer Vision, Image Processing,
+Deep Learning, Sensor Fusion & Tracking, Navigation, Lidar toolboxes - Python 3.11 + PyTorch +
+ONNX - Blender 4.x Cycles - ONNX -> `importNetworkFromONNX` -> Simulink **Predict** block
+(not ONNX Model Predict - that is simulation-only). Opsets: R2024b 6-18, R2025a+ 6-20.
+
+## 5 - Conventions
+- All project code in `matlab/+sih/`. Call as `sih.planner.assignRoles(...)`
+- **`lanespec` is lowercase.** `laneSpec` does not exist. This has already cost us once
+- One function per file. Every public function documents its inputs with units and names the
+  contract struct it produces or consumes
+- **SI units always.** Put the unit in the name where ambiguous: `dist_m`, `angle_rad`, `t_s`
+- Prefer `arguments` blocks over manual `nargin` checks
+- Python: type hints on public functions, `pathlib.Path` not strings
+- `ml/python/meteor/features.py` and its MATLAB twin must produce identical vectors
+
+## 6 - Never
+- Never commit datasets, `.onnx` weights, or `results/`
+- Never hardcode a path under `/Users/` or `C:\`
+- Never invent a number
+- Never edit `matlab/baseline/`
+
+exec
+/bin/zsh -lc "sed -n '210,330p' ml/ReadThis.md" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+### What one clip contains
+
+One zip per clip, holding one XML file per frame. Recorded at **30 frames per second**; we use
+every 3rd frame to get to 10 per second, which is what the contract asks for.
+
+Every object in a frame carries a `track_id` that stays the same across frames — **so you never
+have to work out which car in this frame is which car in the last one.** That is normally the
+hardest part of this job and it is done for you.
+
+### The four things that will bite you
+
+**1 · There is no 3-D position for other vehicles.** The XML has `x-axis`, `y-axis`, `z-axis`
+inside every object's box, which looks like a 3-D position. It is not. It is **the ego
+vehicle's own GPS position, copied onto every object.** Every value is about 6,380 km from the
+origin, because that is the radius of the Earth.
+
+**Never build 3-D positions from it, and never use monocular depth to invent them.** Everything
+we compute lives in the flat image, which is why the feature vector has no distances in it.
+
+**2 · The behaviour labels are dirty.** `Behaviour` contains `false`, `False`, and `fasle`
+(misspelt in the source data), mixed with `Start` and `End` markers. `RuleBreak` is not a
+true/false at all — it holds `false` or a reason like `WrongLane`. `Pedestrain` is misspelt
+throughout. All of this is already handled in `parse_xml.py`. **Compare case-insensitively and
+treat anything unrecognised as false.**
+
+**3 · Four of the 31 features are permanently empty**, and that is correct, not a bug. They are
+the one-hot slots for dog, pushcart, animal-drawn cart and static obstacle — **METEOR contains
+none of them.** This is also why the cow in our simulation is hand-built rather than learned:
+`Animal` appears 5 times in 24 clips. You cannot learn animal behaviour from that.
+
+**4 · The ego's own speed and acceleration are nearly empty**, because METEOR records the car's
+position once per clip rather than continuously. They are gated to physically possible values in
+`parse_xml.py`. **If you ever see an ego speed above about 40 m/s in the build output, that
+gate has been removed — stop and say so.** Before the gate existed, this feature reached
+557 m/s (2,008 km/h) and drowned every other feature in the model.
+
+---
+
+# 4 · The feature vector — the 31 numbers
+
+This is the interface between you and the Planner track (Antara, Anjali). **It is frozen.** Positions 1–31 never move.
+New features can only be added at position 32 or later, and only with a changelog entry,
+because the planner reads them **by position** — if you reorder them it silently reads the
+wrong thing and nobody gets an error.
+
+| # | What it is | Why it is here |
+|---|---|---|
+| 1–2 | Where the box centre is in the image | where they are |
+| 3 | Bottom edge of the box | lower in frame ≈ closer |
+| 4–5 | Box width and height | apparent size |
+| 6 | log(width / height) | shape — tells a bus from a scooter |
+| 7–9 | How fast 1, 2 and 5 are changing | how they are moving |
+| **10** | **`tau` = height ÷ (rate height grows)** | **seconds until contact, from the box growing alone. No distance needed** |
+| **11** | Seconds until they reach our path line | the sideways version of 10 |
+| 12–27 | Which of 16 classes it is | a cow is not a bus |
+| 28–30 | Our own speed, turn rate, acceleration | nearly empty in METEOR, see above |
+| 31 | The action our car is considering | during training this is what the driver actually did |
+
+**The rule behind all of it: every number here can be computed BOTH from a dashcam video AND
+from our MATLAB simulation.** That is why nothing is a distance — METEOR has no distances. We
+project the simulation down into a flat image rather than trying to lift the video into 3-D.
+
+### The known weakness, which we say out loud before a judge finds it
+
+Feature 31 is the action **our** car is considering. But METEOR only ever shows what the driver
+actually did — we never see what would have happened if they had done something else. So at
+driving time the model is asked about actions no one in the data ever took.
+
+**We do not hide this.** The honest test is M8, the closed-loop yield ledger: run the model
+inside the simulation and compare what it predicted against what happened. Say this first.
+
+### Features 1–31 exist in TWO places and they must agree exactly
+
+- `ml/python/meteor/features.py` — trains the model
+- `matlab/+sih/+prediction/buildFeatureFrame.m` — runs it in MATLAB
+
+**If those two ever disagree, the model is fed different numbers at driving time than it saw in
+training. Nothing crashes. Accuracy silently collapses and it looks like the planner is broken,
+days later, in someone else's code.**
+
+`/ml-parity` is the only thing standing between us and that. Run it after **any** change to
+either file, and commit the regenerated fixture together with the change.
+
+---
+
+# 5 · The flow — every step, in order
+
+Set `DATA` to a folder **outside the repository**. `~/meteor-data` is fine.
+Never write data or model files inside the repo; `.gitignore` blocks them and committing them
+is forbidden.
+
+```bash
+pip install torch numpy onnx onnxruntime onnxscript
+```
+**`onnxscript` is not optional.** Without it the export dies with `ModuleNotFoundError`.
+
+### Step 1 — get the data
+```bash
+python3 ml/python/meteor/fetch_annotations.py --out $DATA
+```
+Resumable and CRC-checked; safe to stop and restart. **Expect `fetched=2502`** — that is 2,502
+*files*, one Frame XML and one Video XML set for each of the 1,251 clips.
+
+### Step 2 — measure both labels, apply Decision 2
+```bash
+python3 ml/python/meteor/check_balance.py --data $DATA --clips 1251 --every 10
+```
+Prints `yield` and `assert` side by side, plus a per-class breakdown and a verdict.
+**This decides what the whole stream trains on. Do it before anything else.**
+
+### Step 3 — turn XML into training data
+```bash
+python3 ml/python/meteor/build_dataset.py --data $DATA --out $DATA/features \
+        --label <yield|assert> --force
+```
+
+**`--force` is required after ANY change to `features.py`, `parse_xml.py`, or the label.**
+Without it the script skips clips that already have a `.npz` file and you silently train on the
+old code. That failure looks exactly like a training problem and it is not one — it cost a whole
+run to find once already.
+
+
+exec
+/bin/zsh -lc "sed -n '310,430p' ml/C-prediction.md" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+Stream D runs `derisk/check04_onnx_lstm.m` to find out which.
+
+**Send Stream D the working format number the moment you have it. Do not wait for training to
+finish.** That single number blocks their entire integration.
+
+---
+
+### C6 — Two things we LEARN, and a long list we do not  *(NEW 31 Aug)*
+
+**The rule that keeps this honest.**
+
+**Measured, never learned:** can I fit through a gap · can I turn around · point of no return ·
+which way to re-route. These are geometry and search. Learning them would need data covering every
+galli on earth, and the failure is catastrophic — a car that drives somewhere it cannot leave.
+
+**Learned from METEOR — both are *parameters*, not policies:**
+
+1. **The clearance Indians actually accept.** Mine the real lateral gaps drivers pass at, in the
+   image plane. Stream D's `d_min` should be **fitted to observed behaviour, not guessed.** A
+   margin chosen in an office is the difference between a car that flows and one that blocks a
+   galli all day. **This is the single most useful number you can hand D.**
+2. **Blockage patience** — how long a driver waits before treating an obstruction as permanent.
+
+### C7 — What the data actually contains  *(verified 31 Aug, read this before you download)*
+
+Confirmed by reading the archive directly, without downloading it:
+
+- **The behaviour labels ARE per-agent.** Every non-ego object carries a populated `<attributes>`
+  block. Measured 180 of 180 across 90 frames. The old worry (that `xml2rawframe.py` filters to
+  `EgoVehicle`) was about *their script*, not the data.
+- **Attributes present:** `Yield` · `Cutting` · `OverTaking` · `LaneChanging` · `LaneChanging(m)` ·
+  `ZigzagMovement` · `OverSpeeding` · `RuleBreak` · `Behaviour` · **`track_id`** · `keyframe`.
+- **`track_id` is the find** — stable IDs across frames mean **you do not write your own
+  association** to compute the rate features. METEOR hands you the tracks.
+- **Annotation is a full 30 Hz** — 1,800 frames per one-minute clip, numbered 0..1799. Take every
+  third frame for the contract's 10 Hz.
+- **The `x-axis/y-axis/z-axis` fields in `<bndbox>` are ECEF, and they are the EGO's position
+  repeated on every object** (identical across objects, |r| = 6380.7 km). So there is **no
+  per-agent 3-D** — which independently confirms the frozen "never lift METEOR to 3-D" rule.
+- **CORRECTED 1 Sep 2026 — the ECEF does NOT give you ego motion.** This file previously said ego
+  speed and yaw rate came "for free" by differentiating it. **Measured, and wrong:** the value is
+  **constant across every frame of a clip** — one clip-level location tag, not a trajectory. The
+  clip-level Video XML has no GPS, speed or ego motion either. **So S2 features 28-31 cannot be
+  filled from METEOR at all.** Do not spend time on `ecef2enu`. The choice of what to do instead
+  is **Aditya's, not yours** — see issue #1.
+- **Class names in the wild:** `Car`, `MotorBike`, `Bus`, **`MotorizedTricycle`** (= auto-rickshaw,
+  our ClassID 4), `EgoVehicle`.
+
+### C8 — You do not need 93 GB  *(NEW)*
+
+The archive is ordered by category, so the annotations sit contiguously at both ends of the file:
+
+| section | files | download | extracted |
+|---|---|---|---|
+| **Frame XML Annotations** | 1,251 | **1.55 GB** | 2.04 GB |
+| Raw Videos | 1,250 | 91.57 GB | 104.86 GB |
+| **Video XML Annotations** | 1,251 | **0.27 GB** | 8.25 GB |
+
+**Every feature comes from boxes and classes, which live in the XML. The video is only needed to
+look at.** So the training download is **1.81 GB**, expanding to 10.28 GB.
+
+```bash
+python ml/python/meteor/fetch_annotations.py --out <somewhere-not-in-the-repo>
+```
+Resumable, CRC-checked, skips what is already there. Add `--videos 5` for sample clips.
+
+**`huggingface-cli download` is dead** — renamed to `hf` in v0.34, removed in v1.0. If you use the
+CLI instead, it is `hf download XijunWang/METEOR --repo-type dataset --local-dir ./meteor`.
+
+**Consequence: METEOR no longer depends on the DGX.** 1.81 GB runs on a laptop. Start today.
+
+
+### C9 — Your agent can now run the whole pipeline itself  *(NEW 1 Sep)*
+
+The pipeline was run end to end on 1 Sep and seven things were broken. They are fixed and pushed.
+**You do not have to drive it step by step any more.** In Antigravity, type:
+
+| Command | What it does |
+|---|---|
+| **`/ml-run`** | Builds features, splits, trains both models, evaluates, exports to ONNX |
+| **`/ml-parity`** | Checks the Python and MATLAB feature builders still agree |
+
+Those live in `.agents/workflows/`. If the slash command does not work in your version, open the
+file and tell your agent to follow it — it is ordinary markdown.
+
+**The workflow stops on its own at anything a human must decide.** That is deliberate. When it
+stops, send Aditya what it printed rather than pushing past it.
+
+**Two things it will stop on right now:**
+
+1. **We only have about 79 of METEOR's 1,251 clips.** On that slice the whole dataset holds
+   **109 yields in 68,011 samples, and only 6 land in validation.** Every accuracy number from a
+   set that small is noise. The fix is the full download — 1.81 GB, 10.28 GB on disk.
+2. **The `Yield` label may be the wrong target.** At 1 in 620 it may not be learnable at all. The
+   alternative is predicting **assertiveness** (`OverTaking OR LaneChanging OR Cutting`, about
+   1 in 18), which for a planner means nearly the same thing. **Aditya decides this, not you and
+   not your agent** — but decide it on the full dataset, not on 3% of it.
+
+### C10 — Three things that were wrong and are worth knowing  *(NEW 1 Sep)*
+
+**Features 28-31 were not empty, they were poisoned.** The GPS guard checked distance instead of
+speed, so ego speed reached **557 m/s** and acceleration **±5,576 m/s²** — sitting in the same
+input layer as features whose values live between 0 and 1. Fixed. If you ever see an ego speed
+above about 40 m/s in the build output, the guard has been removed. Say so.
+
+**`Gather` was never really a graph problem.** We had it written down that `Gather` comes from
+message passing and blocks the MATLAB import. It also comes from ordinary indexing — `out[:, -1, :]`
+emits one. Both models were producing it, including the LSTM. Fixed in both.
+
+**PyTorch lies about the ONNX opset.** Ask for 9, 11 or 13 and you get a file stamped **18**. The
+export script now reads the number back out of the file. This matters because that number is the
+one thing Stream D is waiting on from you — sending the wrong one costs them a day.
+
+
+### C11 — Your MATLAB install is SMALLER than the simulation people's  *(NEW 1 Sep)*
+
+You are not using the simulation machine. You need MATLAB only for four things, and they need
+far less than Stream A and D do.
+
+| What you install | Why |
+|---|---|
+
+exec
+/bin/zsh -lc "sed -n '1,150p' plan/S3-PYIELD-RULING.md" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+# S3 `PYield` — what the number actually means. Ruling, 4 September 2026.
+
+**Read this if you produce S3 (Stream C) or consume it (Stream D). It is the difference between
+the planner weighting its branches correctly and weighting them backwards.**
+
+`AGENTS.md` section 3 is **not** changed by this file. S3 still reads
+`.PYield [N x 1 double] in [0,1]` and `.Valid [N x 1 logical]`. What this file fixes is that
+section 3 never said *probability of what*, and the model we trained answers a different question
+from the one the field name implies.
+
+---
+
+## The problem, in three lines
+
+- The model was trained on **`assert`** — "did this road user take the gap?" — because `yield` occurs
+  1 in 301 in METEOR and cannot be learned. That decision was correct and is documented in
+  `ml/ReadThis.md`.
+- The contract field is called **`PYield`**, the export is `yield_lstm_opset<N>.onnx`, and its
+  output tensor is `yield_logits`.
+- **`ml/ReadThis.md` says explicitly: "Not asserting is not the same as yielding."** So it is not
+  even a clean `1 - p` flip. A driver who simply carries on doing nothing is in the negative class
+  for both.
+
+Plug P(assert) into a field named `PYield` and **D6 weights its two futures backwards**, silently,
+with nothing erroring. That is the exact failure mode this project keeps losing to.
+
+---
+
+## The ruling
+
+> **`PYield` carries `1 - P(assert)`: the probability that the other road user does NOT take the gap.**
+
+Stream C computes it. Stream D consumes it. Nobody renames anything, and section 3 stays frozen.
+
+### Why this and not the alternatives
+
+**Not `PYield = P(assert)`.** The field name would then mean the opposite of what it says. Someone
+reads `PYield` in six weeks, assumes it means yield, and the planner drives into the gap.
+
+**Not "`Valid = false` always, ignore the model."** Safe, but it throws away the entire ML stream
+and there is no reason to — see the safety argument below.
+
+### The honest caveat, which must go in the report
+
+`1 - P(assert)` lumps **"actively yielded"** together with **"did nothing"**. Those are not the same
+thing, and treating "did nothing" as yielding is **optimistic**. State it plainly:
+
+> We predict whether the other road user will take the gap. Not taking it is what our safety check
+> actually needs to know. We do not claim to predict active yielding.
+
+That is Aditya's wording from `ml/ReadThis.md`, and it is already the agreed language.
+
+---
+
+## Why an optimistic `PYield` is not a safety hole
+
+This only holds because of the D6 ruling, so it must not be separated from it.
+
+**`PYield` does not decide what is safe. It decides what is preferred.**
+
+Per `plan/D6-TRUNK-RULING.md`, the trunk is the prefix that is safe **under both futures** — yield
+*and* assert — and a braking-to-stop must be clear from the end of it under both. The weights never
+enter that test. They only rank candidates that have already passed it.
+
+**So a mis-weighted `PYield` costs efficiency, not safety.** The car dithers or waits longer than it
+needed to. It does not drive into anything. The barrier `h = lambda - beta` and the both-futures
+check are what carry safety, and neither reads `PYield`.
+
+**Stream D: if you ever find yourself using `PYield` to decide whether something is safe rather than
+which safe thing to prefer, stop. That is outside this ruling and the argument above no longer
+holds.**
+
+---
+
+## The second ruling: the model is not allowed to say GO yet
+
+Measured on the full validation set, 249 clips, 783,928 samples:
+
+| | Model 1 (LSTM) | Model 2 (Attention) | Target |
+|---|---|---|---|
+| Average Precision | 0.3500 | **0.3691** | beats 0.0982 random ✓ |
+| Calibration error | 0.2079 | **0.1502** | — |
+| **Dangerous error rate** | 20.18% | — | **≤ 1.0%** ✗ |
+
+**The model fails its own operating-point gate by a factor of twenty.** At threshold 0.99 it says GO
+1,630 times out of 783,928 — already maximally conservative — and is still wrong 1 in 5 times it
+commits.
+
+> **Ruling: set `Valid = false` wherever the model cannot meet the ≤1% dangerous-error bar, and let
+> the planner fall back to the geometric role.** S3 already mandates exactly that behaviour:
+> *"When `Valid` is false the planner uses the geometric role alone - never 0.5."*
+
+This is not a workaround. It is the contract being used as designed, and it is a **better result to
+present than a hidden 20%**:
+
+> We measured our own predictor against a safety threshold we fixed before training. It does not
+> clear it, so the planner does not let it drive — it falls back to geometry. Here is the number.
+
+**Do not ship a model that failed Check 4/5 without this gate.** Three of our previous entries died
+from shipping things that were not finished.
+
+---
+
+## Consequences, by stream
+
+**Stream C**
+- Emit `PYield = 1 - P(assert)`. Do it at the S3 boundary, once, in one place.
+- Emit `Valid = false` in the band where the dangerous-error rate exceeds 1%. Record the threshold
+  and the measured rate in `results/<run>/config.json`.
+- The `.onnx` output tensor stays `yield_logits` — the file format in section 3 is frozen. The
+  conversion happens on the MATLAB side of the boundary, not by renaming the tensor.
+- Keep reporting the `yield` label as a measured data limitation, as `ml/ReadThis.md` says.
+
+**Stream D**
+- `PYield` is the weight on the *"they do not take the gap"* branch. `1 - PYield` weights the
+  *"they take the gap"* branch, which is the dangerous one.
+- **Never treat `PYield` as a safety criterion.** It ranks; it does not permit.
+- When `Valid` is false, geometric role alone. **Never 0.5.**
+
+---
+
+## Status
+
+**This is a ruling by Claude at Aditya's instruction on 4 September 2026, not a decision Aditya made
+personally. It touches what the project claims, so he can overturn it** — but until he does, build
+against it, because two streams guessing differently is worse than either answer.
+
+Nothing in `AGENTS.md` section 3 was changed to make this work.
+
+web search: 
+web search: Schwarting Pierson Alonso Mora Karaman Rus Social behavior for autonomous vehicles PNAS 2019 18 25 percent prediction SVO online ...
+web search: 
+web search: '18%'
+web search: 
+web search: "Hubmann" "belief state planning" urban intersections POMDP real vehicle ...
+web search: 
+web search: "mixed observability" "pedestrian" "real vehicle" autonomous ...
+codex
+The code confirms a sharper problem than the notes implied: `PYield` is carried through but does not affect `planContingency` selection, and the two futures only change speed while holding heading fixed. The comment that those two paths bracket “anything the other road user actually does” is false for turns, lateral seepage, sudden swerves and intermediate collision paths. I’ll design the upgrade around a richer response model while keeping the frozen S3 interface intact.
+web search: 
+web search: site:arxiv.org autonomous driving social value orientation online inference interaction 2023 2024 2025 ...
+web search: 
+web search: "social value orientation" "Indian" "autonomous driving" ...
+web search: 
+web search: "Multimodal Covariance Steering in Belief Space with Active Probing" arxiv ...
+web search: 
+web search: India uncontrolled intersection critical gap two wheeler auto rickshaw car bus truck critical gap seconds pdf ...
+web search: 
+web search: https://www.sciencedirect.com/science/article/pii/S2352146516306901
+web search: 
+web search: "Estimation of Critical Gap for through Movement" Ahmedabad car three wheeler two wheeler 2016 pdf table ...
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+context compacted
+codex
+The repo check found a consequential distinction: the current `PYield` is recorded, but the contingency planner does not use it to choose a path. I’m checking the proposed belief model against Indian gap studies and nearby published planners before recommending how to change that.
+web search: 
+web search: SPT Chennai drone traffic trajectory dataset Indian roads autonomous driving SPT Chennai ...
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: India unsignalised intersection critical gap vehicle type two wheeler three wheeler car bus 2024 pdf ...
+web search: 
+web search: 
+web search: 
+web search: 'TABLE 8.5'
+web search: 
+web search: "Behavior of two-wheelers at limited priority uncontrolled T-intersections" 2.38 3.06 ...
+web search: 
+web search: '1.21'
+web search: 
+web search: 2019 2025 social value orientation autonomous driving online inference interaction planning follow up SVO paper code ...
+web search: 
+web search: 
+web search: 
+web search: "Game-Theoretic Lane-Change Decision-Making" "Social Value Orientation" 2026 ...
+web search: 
+web search: SPT Chennai disordered traffic dataset download CSV trajectories github ...
+web search: 
+web search: https://sites.bu.edu/pierson/files/2021/05/schwarting2019pnas.pdf
+web search: 
+web search: '18%'
+web search: 
+web search: 'Data Availability Statement'
+web search: 
+web search: "SVO" "active probing" "contingency" autonomous driving ...
+web search: 
+web search: "Active Altruism Learning and Information Sufficiency for Autonomous Driving" paper 2021 ...
+web search: 
+web search: Sadigh Landolfi Sastry Seshia Dragan Planning for cars that coordinate with people active information gathering 2018 autonomous robots pdf ...
+exec
+/bin/zsh -lc "nl -ba matlab/+sih/+planner/planContingency.m | sed -n '1,210p'" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+     1	function out = planContingency(egoState, refPath, tracks, yieldPred, opts)
+     2	%PLANCONTINGENCY  One planning cycle: fan out, imagine both futures, commit the trunk.
+     3	%
+     4	%   Task D6, piece 5 of 5. This is the function Person B's chart calls, about ten
+     5	%   times a second. Everything else in D6 is a helper it drives.
+     6	%
+     7	%   THE CYCLE, IN ORDER
+     8	%     1. sih.planner.generateCandidates    the fan of paths for us      (piece 2)
+     9	%     2. sih.planner.predictAgentFutures   two futures per road user    (piece 1)
+    10	%     3. sih.planner.checkTrajectorySafety every path against every future (piece 3)
+    11	%     4. sih.planner.findSharedTrunk       how far we actually commit   (piece 4)
+    12	%     5. throw the rest away and do it again next cycle
+    13	%
+    14	%   TWO READINGS OF THE TRUNK, AND opts.trunkMode PICKS ONE
+    15	%   Mode "B" IS THE DEFAULT, from 4 September 2026. It commits to the longest
+    16	%   prefix that is collision-free under every future AND that ENDS somewhere a
+    17	%   braking-to-stop is clear under every future. That is what
+    18	%   plan/D6-TRUNK-RULING.md rules the trunk actually is.
+    19	%   Mode "A" is the weaker reading - collision-free along the prefix and nothing
+    20	%   said about where it leaves us. It is kept so the two can be compared and so
+    21	%   the cost of (b) can be measured, but it must now be ASKED FOR explicitly.
+    22	%   It was the default while (b) was being built; it is not any more.
+    23	%
+    24	%   THE HARD RULE THAT COMES WITH MODE "A"
+    25	%   While trunkMode is "A", Committed MUST STAY FALSE. A prefix can be clear
+    26	%   along every metre of itself and still end in a state where every continuation
+    27	%   collides, so committing irrevocably to an (a)-trunk is committing to a
+    28	%   trajectory that has already lost. Nothing in this file sets Committed - it is
+    29	%   Person B's Stateflow chart that does - so this is a note for the chart, and
+    30	%   .TrunkMode is reported in the output precisely so the chart can obey it
+    31	%   rather than assume.
+    32	%
+    33	%   WHY THE WORST FUTURE WINS
+    34	%   A candidate's committable length is the MINIMUM of its safe length across
+    35	%   every future of every road user. Not the average, not the probability-weighted
+    36	%   value. Safety cannot be traded against likelihood: a stretch that is only safe
+    37	%   if the cow yields is not safe. PYield ranks and explains; it never permits.
+    38	%
+    39	%   WHY PYield IS ONLY A LABEL HERE
+    40	%   AGENTS.md section 3, S3: when Valid is false the planner uses the geometric
+    41	%   role alone, never 0.5. A track with no prediction, or an invalid one, still
+    42	%   gets both futures - it is planned against just as hard. The weight is carried
+    43	%   through for logging and for D5's evidence, and is deliberately not used to
+    44	%   decide anything in this function.
+    45	%
+    46	%   INPUTS
+    47	%     egoState  (1,1) struct  .Position (1x3, m), .Velocity (1x3, m/s), .Yaw (rad)
+    48	%     refPath   (1,1) referencePathFrenet   the route centreline (S10)
+    49	%     tracks    struct array   S1 TrackList. MAY BE EMPTY and must not error -
+    50	%                              S1 guarantee 3
+    51	%     yieldPred (1,1) struct   S3 YieldPrediction: .TrackIDs, .PYield, .Valid.
+    52	%                              A track missing from it is treated as invalid
+    53	%     opts.lateralOffsets_m    passed to piece 2, default [-3 -1.5 0 1.5 3]
+    54	%     opts.terminalSpeeds_mps  passed to piece 2, default [0 2 5 8]
+    55	%     opts.horizon_s           shared by pieces 1 and 2, default 4.0
+    56	%     opts.timeResolution_s    shared by pieces 1 and 2, default 0.1
+    57	%     opts.yieldDecel_mps2     passed to piece 1, default -2.0
+    58	%     opts.assertAccel_mps2    passed to piece 1, default  0.0
+    59	%     opts.egoLength_m         passed to piece 3, default 4.7
+    60	%     opts.egoWidth_m          passed to piece 3, default 1.8
+    61	%     opts.inflation_m         passed to piece 3, default 0.0
+    62	%     opts.minTrunkTime_s      passed to piece 4, default 0.5
+    63	%     opts.trunkMode           "A" or "B", DEFAULT "B" - see the two readings above
+    64	%     opts.aBrake_mps2         the braking used by the mode "B" stop check, default 4.0
+    65	%     opts.dwellAfterStop_s    how long the stop must stay clear, default 0.0
+    66	%
+    67	%   OUTPUT  out struct
+    68	%     .Trunk             the committed plan, from findSharedTrunk. Read .Blocked
+    69	%     .Candidates        Nx1 the whole fan, kept so D5 can log what was rejected
+    70	%     .Futures           Mx1 every future of every road user, 2 per track
+    71	%     .SafeSteps         NxM double, safe leading steps per candidate per future
+    72	%     .WorstPrefixSteps  Nx1 double, the minimum of each row - reading (a)
+    73	%     .TerminalPrefixSteps Nx1 double, reading (b): the same, cut back to where a
+    74	%                        braking-to-stop is still clear. Equals .WorstPrefixSteps
+    75	%                        exactly in mode "A", so the two can be compared
+    76	%     .TrunkMode         string, "A" or "B" - WHICH READING PRODUCED THIS.
+    77	%                        Person B's chart must read it: Committed stays false
+    78	%                        while it says "A"
+    79	%     .StopChecks        double, how many terminal checks mode "B" actually cost.
+    80	%                        0 in mode "A"
+    81	%     .BindingFuture     Nx1 double, which future limited each candidate. NaN if
+    82	%                        the candidate was safe under all of them
+    83	%     .NumTracks         double
+    84	%     .Blocked           logical, copied out of .Trunk for the caller's convenience
+    85	%
+    86	%   WHAT THIS DOES NOT SET
+    87	%   No Accel, no SteerAngle, no Signal, no Committed. This produces a committed
+    88	%   PATH; turning that into one EgoCommand is D2 and the Stateflow chart. Keeping
+    89	%   them apart is what lets the trunk be tested in seconds without Simulink.
+    90	%
+    91	%   TODO(performance): with 20 candidates and 3 road users this builds 120
+    92	%   dynamicCapsuleList objects per cycle. It has never been timed. Measure before
+    93	%   optimising - the barrier layer underneath runs at 50-100 Hz and can veto
+    94	%   anything, which is exactly why deliberation here is allowed to be slow.
+    95	%
+    96	%   See also SIH.PLANNER.GENERATECANDIDATES, SIH.PLANNER.PREDICTAGENTFUTURES,
+    97	%            SIH.PLANNER.CHECKTRAJECTORYSAFETY, SIH.PLANNER.FINDSHAREDTRUNK
+    98	
+    99	arguments
+   100	    egoState  (1,1) struct
+   101	    refPath   (1,1) referencePathFrenet
+   102	    tracks          struct
+   103	    yieldPred (1,1) struct
+   104	    opts.lateralOffsets_m   (1,:) double = [-3 -1.5 0 1.5 3]
+   105	    opts.terminalSpeeds_mps (1,:) double = [0 2 5 8]
+   106	    opts.horizon_s          (1,1) double {mustBePositive} = 4.0
+   107	    opts.timeResolution_s   (1,1) double {mustBePositive} = 0.1
+   108	    opts.yieldDecel_mps2    (1,1) double {mustBeFinite} = -2.0
+   109	    opts.assertAccel_mps2   (1,1) double {mustBeFinite} =  0.0
+   110	    opts.egoLength_m        (1,1) double {mustBePositive} = 4.7
+   111	    opts.egoWidth_m         (1,1) double {mustBePositive} = 1.8
+   112	    opts.inflation_m        (1,1) double {mustBeNonnegative} = 0.0
+   113	    opts.minTrunkTime_s     (1,1) double {mustBeNonnegative} = 0.5
+   114	    opts.trunkMode          (1,1) string {mustBeMember(opts.trunkMode,["A","B"])} = "B"
+   115	    opts.aBrake_mps2        (1,1) double {mustBePositive} = 4.0
+   116	    opts.dwellAfterStop_s   (1,1) double {mustBeNonnegative} = 0.0
+   117	end
+   118	
+   119	iRequireFields(yieldPred, {'TrackIDs','PYield','Valid'}, 'yieldPred');
+   120	
+   121	% ---- 1. our own options ------------------------------------------------------
+   122	candidates = sih.planner.generateCandidates(egoState, refPath, ...
+   123	    lateralOffsets_m   = opts.lateralOffsets_m, ...
+   124	    terminalSpeeds_mps = opts.terminalSpeeds_mps, ...
+   125	    horizon_s          = opts.horizon_s, ...
+   126	    timeResolution_s   = opts.timeResolution_s);
+   127	
+   128	nC = numel(candidates);
+   129	
+   130	% ---- 2. two futures for every road user --------------------------------------
+   131	nT = numel(tracks);
+   132	futures = iEmptyFutureArray();
+   133	for k = 1:nT
+   134	    [pY, isValid] = iLookupYield(yieldPred, tracks(k).TrackID);
+   135	    f = sih.planner.predictAgentFutures(tracks(k), pY, isValid, ...
+   136	            horizon_s        = opts.horizon_s, ...
+   137	            timeResolution_s = opts.timeResolution_s, ...
+   138	            yieldDecel_mps2  = opts.yieldDecel_mps2, ...
+   139	            assertAccel_mps2 = opts.assertAccel_mps2);
+   140	    futures = [futures; f(:)];  %#ok<AGROW>  at most 2 per track
+   141	end
+   142	nF = numel(futures);
+   143	
+   144	% ---- 3. every candidate against every future ---------------------------------
+   145	safeSteps = zeros(nC, nF);
+   146	for k = 1:nC
+   147	    for j = 1:nF
+   148	        r = sih.planner.checkTrajectorySafety(candidates(k), futures(j), ...
+   149	                egoLength_m = opts.egoLength_m, ...
+   150	                egoWidth_m  = opts.egoWidth_m, ...
+   151	                inflation_m = opts.inflation_m);
+   152	        safeSteps(k,j) = r.SafePrefixSteps;
+   153	    end
+   154	end
+   155	
+   156	% The worst future wins. With no road users at all, every candidate is safe for
+   157	% its whole length - which is the right answer, not a special case.
+   158	worst   = zeros(nC,1);
+   159	binding = nan(nC,1);
+   160	for k = 1:nC
+   161	    full = numel(candidates(k).Times);
+   162	    if nF == 0
+   163	        worst(k) = full;
+   164	    else
+   165	        [worst(k), idx] = min(safeSteps(k,:));
+   166	        if worst(k) < full
+   167	            binding(k) = idx;
+   168	        end
+   169	    end
+   170	end
+   171	
+   172	% ---- 3b. can we still stop from the end of that prefix? ----------------------
+   173	% This is the whole difference between reading (a) and reading (b). Under (a) a
+   174	% prefix only has to be clear ALONG itself; under (b) it must also END somewhere
+   175	% a braking-to-stop is clear under every future. Skipped entirely in mode "A",
+   176	% so the (a) path costs exactly what it did before.
+   177	terminal   = worst;
+   178	stopChecks = 0;
+   179	if opts.trunkMode == "B" && nF > 0
+   180	    for k = 1:nC
+   181	        terminal(k) = 0;
+   182	        % Walk back from the (a) prefix and take the FIRST length whose stop is
+   183	        % clear - which is therefore the longest one that is. In the ordinary
+   184	        % case the very end already works and this costs one check per future.
+   185	        for p = worst(k):-1:1
+   186	            [ok, used] = iStopIsSafe(candidates(k), futures, p, opts);
+   187	            stopChecks = stopChecks + used;
+   188	            if ok
+   189	                terminal(k) = p;
+   190	                break
+   191	            end
+   192	        end
+   193	    end
+   194	end
+   195	
+   196	% ---- 4. how far we commit ----------------------------------------------------
+   197	if opts.trunkMode == "B"
+   198	    rule = "STOP_FEASIBLE_PREFIX (reading B)";
+   199	else
+   200	    rule = "LONGEST_CLEAR_PREFIX (reading A)";
+   201	end
+   202	
+   203	trunk = sih.planner.findSharedTrunk(candidates(:), terminal, ...
+   204	            minTrunkTime_s = opts.minTrunkTime_s, ...
+   205	            rule           = rule);
+   206	
+   207	out = struct( ...
+   208	    'Trunk',            trunk, ...
+   209	    'Candidates',       candidates(:), ...
+   210	    'Futures',          futures, ...
+
+exec
+/bin/zsh -lc "nl -ba matlab/+sih/+planner/predictAgentFutures.m | sed -n '1,170p'" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+     1	function futures = predictAgentFutures(track, pYield, valid, opts)
+     2	%PREDICTAGENTFUTURES  One track in, two futures out: it yields, or it asserts.
+     3	%
+     4	%   Task D6, piece 1 of 5. Branch/contingency MPC models exactly two modes, and
+     5	%   that is precisely what Stream C's predictor outputs, so there is no third
+     6	%   future here and there must not be one.
+     7	%
+     8	%   WHY TWO AND ONLY TWO
+     9	%   A yield future and an assert future bracket the behaviour. Anything the other
+    10	%   road user actually does lies between them, so a plan safe under both is safe
+    11	%   in fact. Adding a "maybe" future would add cost without adding coverage.
+    12	%
+    13	%   WHY THE PROBABILITY IS NaN WHEN THE PREDICTION IS INVALID
+    14	%   AGENTS.md section 3, S3: "When Valid is false the planner uses the geometric
+    15	%   role alone - never 0.5." A made-up probability is worse than none, because
+    16	%   whatever reads it will trust it. So this returns NaN, which cannot be summed,
+    17	%   averaged or compared by accident. Safety never depends on it: the trunk must
+    18	%   hold under BOTH futures regardless of how they are weighted. The weight only
+    19	%   ranks candidates, it never permits one.
+    20	%
+    21	%   INPUTS
+    22	%     track   (1,1) struct  one element of S1 TrackList. Reads .TrackID,
+    23	%                           .Position (1x3, m), .Velocity (1x3, m/s), .Yaw (rad),
+    24	%                           .Extent (1x3, m)
+    25	%     pYield  (1,1) double  S3 PYield for this track, in [0,1]. Ignored if ~valid
+    26	%     valid   (1,1) logical S3 Valid for this track
+    27	%     opts.horizon_s          how far ahead to roll,          default 4.0
+    28	%     opts.timeResolution_s   step,                           default 0.1
+    29	%     opts.yieldDecel_mps2    yield braking, negative,        default -2.0
+    30	%     opts.assertAccel_mps2   assert acceleration,            default  0.0
+    31	%     opts.assertMaxSpeed_mps ceiling on the assert future,   default 25.0
+    32	%     opts.movingSpeed_mps    above this, heading comes from  default 0.1
+    33	%                             the velocity vector; below it, from .Yaw
+    34	%
+    35	%   OUTPUT  futures  1x2 struct array, element 1 YIELD, element 2 ASSERT
+    36	%     .TrackID      uint32
+    37	%     .Label        string, "YIELD" or "ASSERT"
+    38	%     .Probability  double. pYield / 1-pYield, or NaN when ~valid
+    39	%     .Valid        logical, copied from the input
+    40	%     .Times        Nx1 double, s, starting at 0
+    41	%     .States       Nx3 double, [x y theta] at each time - what the capsule
+    42	%                   collision checker wants
+    43	%     .Speeds       Nx1 double, m/s
+    44	%     .Extent       1x3 double, copied from the track so piece 3 can size it
+    45	%
+    46	%   HEADING MODEL: constant. The agent keeps its current direction of travel and
+    47	%   only its speed changes. A turning model would need a turn rate we do not have
+    48	%   from S1, and inventing one would put a number in the plan that nothing
+    49	%   measured. Revisit if S1 ever carries a yaw rate.
+    50	%
+    51	%   FRAME: x forward, y left, z up, same as S1.
+    52	%
+    53	%   See also SIH.PLANNER.VELOCITYOBSTACLE, SIH.PLANNER.GENERATECANDIDATES
+    54	
+    55	arguments
+    56	    track  (1,1) struct
+    57	    pYield (1,1) double
+    58	    valid  (1,1) logical
+    59	    opts.horizon_s          (1,1) double {mustBePositive} = 4.0
+    60	    opts.timeResolution_s   (1,1) double {mustBePositive} = 0.1
+    61	    opts.yieldDecel_mps2    (1,1) double {mustBeFinite}   = -2.0
+    62	    opts.assertAccel_mps2   (1,1) double {mustBeFinite}   =  0.0
+    63	    opts.assertMaxSpeed_mps (1,1) double {mustBePositive} = 25.0
+    64	    opts.movingSpeed_mps    (1,1) double {mustBeNonnegative} = 0.1
+    65	end
+    66	
+    67	iRequireFields(track, {'TrackID','Position','Velocity','Yaw','Extent'}, 'track');
+    68	
+    69	if valid && (pYield < 0 || pYield > 1)
+    70	    error('sih:planner:predictAgentFutures:badPYield', ...
+    71	          'pYield must be in [0,1] when valid is true. Got %g.', pYield);
+    72	end
+    73	
+    74	t  = (0:opts.timeResolution_s:opts.horizon_s)';
+    75	p0 = track.Position(1:2);
+    76	v0 = norm(track.Velocity(1:2));
+    77	
+    78	% Direction of travel. Below movingSpeed_mps the velocity vector is noise, so
+    79	% the body heading is the only thing left to trust.
+    80	if v0 >= opts.movingSpeed_mps
+    81	    theta = atan2(track.Velocity(2), track.Velocity(1));
+    82	else
+    83	    theta = track.Yaw;
+    84	end
+    85	unit = [cos(theta) sin(theta)];
+    86	
+    87	% YIELD: brake at a constant rate, never reverse.
+    88	[sY, vY] = iRamp(v0, opts.yieldDecel_mps2,  t, 0, opts.assertMaxSpeed_mps);
+    89	% ASSERT: hold speed by default, or press on, capped.
+    90	[sA, vA] = iRamp(v0, opts.assertAccel_mps2, t, 0, opts.assertMaxSpeed_mps);
+    91	
+    92	if valid
+    93	    pY = pYield;
+    94	    pA = 1 - pYield;
+    95	else
+    96	    pY = NaN;
+    97	    pA = NaN;
+    98	end
+    99	
+   100	futures = [ iFuture(track, "YIELD",  pY, valid, t, p0, unit, theta, sY, vY), ...
+   101	            iFuture(track, "ASSERT", pA, valid, t, p0, unit, theta, sA, vA) ];
+   102	end
+   103	
+   104	% ------------------------------------------------------------------ helpers
+   105	
+   106	function f = iFuture(track, label, prob, valid, t, p0, unit, theta, s, v)
+   107	n = numel(t);
+   108	f = struct( ...
+   109	    'TrackID',     uint32(track.TrackID), ...
+   110	    'Label',       label, ...
+   111	    'Probability', prob, ...
+   112	    'Valid',       valid, ...
+   113	    'Times',       t, ...
+   114	    'States',      [p0 + s .* unit, repmat(theta, n, 1)], ...
+   115	    'Speeds',      v, ...
+   116	    'Extent',      track.Extent(:)');
+   117	end
+   118	
+   119	function [s, v] = iRamp(v0, a, t, vMin, vMax)
+   120	%IRAMP  Distance and speed under constant acceleration, with the speed held
+   121	%       inside [vMin vMax]. Solved exactly rather than integrated numerically,
+   122	%       so a stop is a stop and not a stop plus half a step of drift.
+   123	v = min(max(v0 + a .* t, vMin), vMax);
+   124	s = zeros(size(t));
+   125	
+   126	if a == 0
+   127	    s = v0 .* t;
+   128	    return
+   129	end
+   130	
+   131	% Time at which the ramp meets whichever limit it is heading for.
+   132	if a < 0
+   133	    tLim = (vMin - v0) / a;
+   134	else
+   135	    tLim = (vMax - v0) / a;
+   136	end
+   137	tLim = max(tLim, 0);
+   138	
+   139	before = t <= tLim;
+   140	s(before) = v0 .* t(before) + 0.5 * a .* t(before).^2;
+   141	
+   142	sLim  = v0 * tLim + 0.5 * a * tLim^2;
+   143	vLim  = v0 + a * tLim;
+   144	after = ~before;
+   145	s(after) = sLim + vLim .* (t(after) - tLim);
+   146	end
+   147	
+   148	function iRequireFields(s, names, argName)
+   149	missing = names(~isfield(s, names));
+   150	if ~isempty(missing)
+   151	    error('sih:planner:predictAgentFutures:missingField', ...
+   152	          '%s is missing required field(s): %s', argName, strjoin(missing, ', '));
+   153	end
+   154	end
+
+exec
+/bin/zsh -lc "nl -ba matlab/+sih/+planner/checkTrajectorySafety.m | sed -n '1,130p'" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+     1	function result = checkTrajectorySafety(candidate, future, opts)
+     2	%CHECKTRAJECTORYSAFETY  One candidate path against one future: safe, step by step.
+     3	%
+     4	%   Task D6, piece 3 of 5. Not "is this path safe" but "how far along this path
+     5	%   am I safe", because piece 4 needs the prefix, not the verdict. A path that is
+     6	%   safe for two seconds and then hit is not simply unsafe - the first two
+     7	%   seconds of it may be exactly what we commit to.
+     8	%
+     9	%   WHY .SafePrefixSteps IS THE POINT
+    10	%   The trunk is built out of leading safe stretches. A single true/false answer
+    11	%   throws away the information the trunk is made of, so this returns the whole
+    12	%   per-step picture and counts the unbroken run from the start.
+    13	%
+    14	%   WHY THE FOOTPRINTS ARE SLIGHTLY TOO BIG
+    15	%   Following the MathWorks Frenet example, the capsule is built with
+    16	%   Length = vehicle length and Radius = half the width, so the shape is about
+    17	%   one width longer than the real vehicle. That errs on the safe side, which is
+    18	%   the right direction to err. opts.inflation_m adds more on top for tracking
+    19	%   uncertainty.
+    20	%
+    21	%   INPUTS
+    22	%     candidate (1,1) struct  one element from sih.planner.generateCandidates.
+    23	%                             Reads .Times and .States (Nx3, [x y theta])
+    24	%     future    (1,1) struct  one element from sih.planner.predictAgentFutures.
+    25	%                             Reads .Times, .States, .Extent, .Label, .TrackID
+    26	%     opts.egoLength_m  ego body length,               default 4.7
+    27	%     opts.egoWidth_m   ego body width,                default 1.8
+    28	%     opts.inflation_m  extra margin on BOTH bodies,   default 0.0
+    29	%
+    30	%   OUTPUT  result struct
+    31	%     .TrackID          uint32, whose future this was
+    32	%     .Label            string, "YIELD" or "ASSERT"
+    33	%     .Times            Nx1, the candidate's own time base
+    34	%     .Safe             Nx1 logical, true = clear at that step
+    35	%     .AllSafe          logical, true if every step is clear
+    36	%     .FirstUnsafeIndex double, first step that is not clear, NaN if none
+    37	%     .FirstUnsafeTime  double, s, NaN if none
+    38	%     .SafePrefixSteps  double, unbroken clear steps counted from the start
+    39	%     .SafePrefixTime   double, s, how long that prefix lasts
+    40	%
+    41	%   TIME BASES
+    42	%   The candidate's clock wins. The future is interpolated onto it, and if the
+    43	%   future is shorter it holds its last pose rather than vanishing - a vehicle
+    44	%   that stopped two seconds ago is still standing there.
+    45	%
+    46	%   TODO(performance): a fresh dynamicCapsuleList is built per call, so a fan of
+    47	%   20 candidates against 2 futures builds 40 of them each cycle. Fine at the
+    48	%   scale we test at. Measure before optimising.
+    49	%
+    50	%   See also SIH.PLANNER.GENERATECANDIDATES, SIH.PLANNER.PREDICTAGENTFUTURES,
+    51	%            DYNAMICCAPSULELIST
+    52	
+    53	arguments
+    54	    candidate (1,1) struct
+    55	    future    (1,1) struct
+    56	    opts.egoLength_m (1,1) double {mustBePositive} = 4.7
+    57	    opts.egoWidth_m  (1,1) double {mustBePositive} = 1.8
+    58	    opts.inflation_m (1,1) double {mustBeNonnegative} = 0.0
+    59	end
+    60	
+    61	iRequireFields(candidate, {'Times','States'}, 'candidate');
+    62	iRequireFields(future,    {'Times','States','Extent','Label','TrackID'}, 'future');
+    63	
+    64	t = candidate.Times(:);
+    65	n = numel(t);
+    66	if n < 1
+    67	    error('sih:planner:checkTrajectorySafety:emptyCandidate', ...
+    68	          'candidate.Times is empty - there is nothing to check.');
+    69	end
+    70	
+    71	egoStates = candidate.States;
+    72	obsStates = iResampleHold(future.Times(:), future.States, t);
+    73	
+    74	capList = dynamicCapsuleList;
+    75	capList.MaxNumSteps = n;        % default is 31; a 4 s plan at 0.1 s is 41 steps
+    76	
+    77	egoID = 1;
+    78	[egoID, egoGeom] = egoGeometry(capList, egoID);
+    79	egoGeom.Geometry.Length = opts.egoLength_m;
+    80	egoGeom.Geometry.Radius = opts.egoWidth_m/2 + opts.inflation_m;
+    81	egoGeom.Geometry.FixedTransform(1,end) = -opts.egoLength_m/2;
+    82	updateEgoGeometry(capList, egoID, egoGeom);
+    83	
+    84	obsID = 2;
+    85	obsLen = future.Extent(1);
+    86	obsWid = future.Extent(2);
+    87	[obsID, obsGeom] = obstacleGeometry(capList, obsID);
+    88	obsGeom.Geometry.Length = obsLen;
+    89	obsGeom.Geometry.Radius = obsWid/2 + opts.inflation_m;
+    90	obsGeom.Geometry.FixedTransform(1,end) = -obsLen/2;
+    91	updateObstacleGeometry(capList, obsID, obsGeom);
+    92	
+    93	updateEgoPose(capList,      egoID, struct('ID', egoID, 'States', egoStates));
+    94	updateObstaclePose(capList, obsID, struct('ID', obsID, 'States', obsStates));
+    95	
+    96	hit = checkCollision(capList);
+    97	hit = logical(hit(:));
+    98	
+    99	% Observed by running on R2026a, 4 Sep 2026: one ego and n pose steps gives back
+   100	% n logicals, one per step. Refuse to guess if that ever changes.
+   101	if numel(hit) ~= n
+   102	    error('sih:planner:checkTrajectorySafety:unexpectedResultShape', ...
+   103	          ['checkCollision returned %d values for %d timesteps. This function ' ...
+   104	           'assumes one result per timestep. Stop and check the toolbox version.'], ...
+   105	          numel(hit), n);
+   106	end
+   107	
+   108	safe = ~hit;
+   109	firstBad = find(hit, 1, 'first');
+   110	if isempty(firstBad)
+   111	    firstIdx  = NaN;
+   112	    firstTime = NaN;
+   113	    prefix    = n;
+   114	else
+   115	    firstIdx  = firstBad;
+   116	    firstTime = t(firstBad);
+   117	    prefix    = firstBad - 1;
+   118	end
+   119	
+   120	if prefix >= 1
+   121	    prefixTime = t(prefix) - t(1);
+   122	else
+   123	    prefixTime = 0;
+   124	end
+   125	
+   126	result = struct( ...
+   127	    'TrackID',          uint32(future.TrackID), ...
+   128	    'Label',            future.Label, ...
+   129	    'Times',            t, ...
+   130	    'Safe',             safe, ...
+
+exec
+/bin/zsh -lc 'rg -n "PYield|false.go|false go|Valid=false|31.dim|METEOR" plan ml matlab/+sc/planSeat.m' in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+matlab/+sc/planSeat.m:120:                'PYield',  zeros(n,1), ...
+matlab/+sc/planSeat.m:123:    yp = struct('TrackIDs',uint32([]),'PYield',[],'Valid',logical([]));
+ml/C-prediction.md:25:> You produce `S3 PYield`. The planner consumes it through the frozen contract and never opens
+ml/C-prediction.md:213:METEOR is **93.4 GB** in five pieces. **The official website is dead.** There is exactly one place
+ml/C-prediction.md:219:huggingface-cli download XijunWang/METEOR --repo-type dataset --local-dir ./meteor
+ml/C-prediction.md:221:cat chunk_* > METEOR_Dataset.zip
+ml/C-prediction.md:222:unzip METEOR_Dataset.zip
+ml/C-prediction.md:325:**Learned from METEOR — both are *parameters*, not policies:**
+ml/C-prediction.md:343:  association** to compute the rate features. METEOR hands you the tracks.
+ml/C-prediction.md:348:  per-agent 3-D** — which independently confirms the frozen "never lift METEOR to 3-D" rule.
+ml/C-prediction.md:353:  filled from METEOR at all.** Do not spend time on `ecef2enu`. The choice of what to do instead
+ml/C-prediction.md:377:CLI instead, it is `hf download XijunWang/METEOR --repo-type dataset --local-dir ./meteor`.
+ml/C-prediction.md:379:**Consequence: METEOR no longer depends on the DGX.** 1.81 GB runs on a laptop. Start today.
+ml/C-prediction.md:400:1. **We only have about 79 of METEOR's 1,251 clips.** On that slice the whole dataset holds
+ml/C-prediction.md:477:And one rule that is not obvious: **never convert METEOR into 3-D.** It needs depth estimation,
+plan/D-planner.md:25:> **The yield predictor is not yours.** You consume `S3 PYield` through the frozen contract and
+plan/D-planner.md:26:> never open the model that produced it. If `PYield` looks wrong, **say so to a human** — do not
+ml/python/model/calibrate.py:399:        print(f"Enforcing safety rule: Gate status = {gate_status}. Model must emit Valid=false.")
+ml/ReadThis.md:13:detection into the `Valid=false` fallback. Check `HANDOFF.md` at the repo root for the current,
+ml/ReadThis.md:71:**You produce `S3 PYield`. You do not consume it.** The planner reads it through the contract and
+ml/ReadThis.md:136:METEOR has **1,251 clips**. Annotations only: **1.81 GB to download, 10.28 GB on disk.** We do
+ml/ReadThis.md:167:- **METEOR's own paper groups these behaviours** and predicts them together — its benchmark task
+ml/ReadThis.md:171:  2024) exists to handle heavy-tailed behaviour classes in METEOR. **Cite it.** It is a known
+ml/ReadThis.md:203:`huggingface.co/datasets/XijunWang/METEOR` — public, no login. One zip in five pieces, 93.4 GB
+ml/ReadThis.md:236:the one-hot slots for dog, pushcart, animal-drawn cart and static obstacle — **METEOR contains
+ml/ReadThis.md:240:**4 · The ego's own speed and acceleration are nearly empty**, because METEOR records the car's
+ml/ReadThis.md:265:| 28–30 | Our own speed, turn rate, acceleration | nearly empty in METEOR, see above |
+ml/ReadThis.md:269:from our MATLAB simulation.** That is why nothing is a distance — METEOR has no distances. We
+ml/ReadThis.md:274:Feature 31 is the action **our** car is considering. But METEOR only ever shows what the driver
+ml/ML.md:54:**Dataset.** `huggingface.co/datasets/XijunWang/METEOR`, public, ungated. One zip in 5 chunks,
+ml/ML.md:61:**Structure.** `METEOR_Dataset/Frame XML Annotations/*.zip`, one zip per clip, holding
+ml/ML.md:90:ClassID 11 dog, 12 pushcart, 13 animal-drawn cart, 15 static obstacle. METEOR contains none of
+ml/ML.md:151:- Never lift METEOR into 3-D or use monocular depth.
+ml/python/tests/test_metrics.py:140:    # 6. PYield = 1 - P(assert) is checked without changing the ONNX output tensor
+ml/python/tests/test_metrics.py:142:    # S3 specifies PYield = 1 - P(assert), while ONNX tensor remains yield_logits.
+ml/python/tests/test_metrics.py:148:    check("PYield == 1 - P(assert) identity holds", close(p_yield, float(probs[0])))
+ml/python/tests/test_metrics.py:149:    check("high P(assert) maps to low PYield", p_assert > 0.85 and p_yield < 0.15)
+ml/CHEATSHEET.md:66:| Clips in METEOR | **1,251** (2,502 XML files) |
+ml/TROUBLESHOOTING.md:79:**The physical gate in `parse_xml.py` has been removed or widened.** METEOR stores the ego
+ml/TROUBLESHOOTING.md:88:METEOR never contains. A **different** list is worth reporting — a **longer** list may mean the
+ml/python/model/evaluate.py:330:        print("  S3 boundary: PYield = 1 - q\n")
+ml/python/model/evaluate.py:524:        print("At the S3 boundary compute PYield = 1 - P(assert) exactly once.")
+ml/python/model/evaluate.py:525:    print("Outside the validated gate, emit Valid=false and fall back to geometry alone.")
+plan/ARBITRATION-RULING.md:90:**1. It must not read `PYield`.** `plan/S3-PYIELD-RULING.md` is explicit: *"`PYield` ranks; it does
+plan/ARBITRATION-RULING.md:92:is decided on geometry alone. If you find yourself weighting the winner by `PYield`, stop — that is
+ml/python/meteor/build_dataset.py:1:"""Turn METEOR clip archives into training sequences.
+ml/python/meteor/build_dataset.py:59:        # feature 31 carries the action the ego ACTUALLY took, since METEOR never shows the
+ml/python/meteor/build_dataset.py:104:    src = args.data / "METEOR_Dataset" / FRAME_DIR
+ml/python/meteor/build_dataset.py:138:    # A constant feature carries no information. METEOR's ECEF is a single clip-level location
+ml/python/meteor/build_dataset.py:155:            print("  that class never appears in METEOR - dog, pushcart, animal-drawn cart and")
+ml/python/meteor/build_dataset.py:161:        print("  METEOR stores ego position once per clip, not per frame, so these are near-empty")
+plan/CONTRACT-AB.md:58:| `predictAgentFutures` | one track (S1), PYield and Valid (S3), `opts` | 1x2 futures, YIELD and ASSERT, each with `.States` `.Speeds` `.Probability` | **done, tested** — 17 tests |
+plan/CONTRACT-AB.md:93:**Three things `arbitrate` must NOT do:** read `PYield` (it ranks, it does not permit —
+plan/ReadThis.md:31:`S3 PYield` and never open the model that produced it. **Install your fence** (top of this file)
+plan/ReadThis.md:80:**You consume the yield predictor, you do not own it.** It reaches you as `S3 PYield` through the
+plan/ReadThis.md:146:2. **For each agent, imagine two futures**: they yield, or they assert. Weight them by `PYield`,
+plan/ReadThis.md:234:| **S3** YieldPrediction | The ML track — `PYield` per track |
+plan/S3-PYIELD-RULING.md:1:# S3 `PYield` — what the number actually means. Ruling, 4 September 2026.
+plan/S3-PYIELD-RULING.md:7:`.PYield [N x 1 double] in [0,1]` and `.Valid [N x 1 logical]`. What this file fixes is that
+plan/S3-PYIELD-RULING.md:16:  1 in 301 in METEOR and cannot be learned. That decision was correct and is documented in
+plan/S3-PYIELD-RULING.md:18:- The contract field is called **`PYield`**, the export is `yield_lstm_opset<N>.onnx`, and its
+plan/S3-PYIELD-RULING.md:24:Plug P(assert) into a field named `PYield` and **D6 weights its two futures backwards**, silently,
+plan/S3-PYIELD-RULING.md:31:> **`PYield` carries `1 - P(assert)`: the probability that the other road user does NOT take the gap.**
+plan/S3-PYIELD-RULING.md:37:**Not `PYield = P(assert)`.** The field name would then mean the opposite of what it says. Someone
+plan/S3-PYIELD-RULING.md:38:reads `PYield` in six weeks, assumes it means yield, and the planner drives into the gap.
+plan/S3-PYIELD-RULING.md:55:## Why an optimistic `PYield` is not a safety hole
+plan/S3-PYIELD-RULING.md:59:**`PYield` does not decide what is safe. It decides what is preferred.**
+plan/S3-PYIELD-RULING.md:65:**So a mis-weighted `PYield` costs efficiency, not safety.** The car dithers or waits longer than it
+plan/S3-PYIELD-RULING.md:67:check are what carry safety, and neither reads `PYield`.
+plan/S3-PYIELD-RULING.md:69:**Stream D: if you ever find yourself using `PYield` to decide whether something is safe rather than
+plan/S3-PYIELD-RULING.md:107:- Emit `PYield = 1 - P(assert)`. Do it at the S3 boundary, once, in one place.
+plan/S3-PYIELD-RULING.md:115:- `PYield` is the weight on the *"they do not take the gap"* branch. `1 - PYield` weights the
+plan/S3-PYIELD-RULING.md:117:- **Never treat `PYield` as a safety criterion.** It ranks; it does not permit.
+ml/python/meteor/parse_xml.py:1:"""Parse METEOR frame annotations into the Box/EgoState objects features.py consumes.
+ml/python/meteor/parse_xml.py:20:# S5 ClassID. Names are the strings that actually appear in METEOR.
+ml/python/meteor/parse_xml.py:47:# Every per-object behaviour attribute METEOR carries. Kept in one place so the label can be
+ml/python/meteor/parse_xml.py:62:    """METEOR's booleans are dirty: `false`, `False`, and the misspelt `fasle` all appear,
+ml/python/meteor/parse_xml.py:148:MAX_SPEED_MPS = 40.0        # 144 km/h. Nothing in METEOR's Hyderabad traffic goes faster.
+ml/python/meteor/parse_xml.py:160:    (2,008 km/h) across 39 clips on 1 Sep 2026. METEOR records ego position once per clip,
+ml/python/meteor/parse_xml.py:210:    In METEOR we only observe what the driver did, never what they would have done otherwise.
+plan/D6-TRUNK-RULING.md:55:2. roll each under both futures, weighted by `PYield` (S3)
+ml/python/meteor/unpack.py:1:"""Unpack METEOR clip archives.
+ml/python/meteor/unpack.py:21:    ap.add_argument("--data", type=Path, required=True, help="folder holding METEOR_Dataset/")
+ml/python/meteor/unpack.py:26:    src = args.data / "METEOR_Dataset" / FRAME_DIR
+ml/python/meteor/check_balance.py:31:    src = args.data / "METEOR_Dataset" / FRAME_DIR
+ml/python/meteor/check_balance.py:110:    print(f"\nSampled {clips} clips. METEOR has 1,251 - a verdict from a small sample is a")
+ml/python/meteor/fetch_annotations.py:1:"""Fetch only METEOR's annotations, by HTTP range request.
+ml/python/meteor/fetch_annotations.py:22:BASE = "https://huggingface.co/datasets/XijunWang/METEOR/resolve/main/"
+plan/CLAIM-LEDGER.md:31:> (11 Sep). The bar is ≤1.00%. The CI upper bound exceeds it, so `Valid=false` stands
+plan/CLAIM-LEDGER.md:89:| *"Our ML model decides who yields"* | **"As of the last figure we have (4 Sep, not independently re-run this pass), it did not clear its own pre-registered safety bar — 20.18% dangerous-error rate against a ≤1% target — so it emits `Valid=false` and the planner falls back to the geometric right-of-way role. Calibration is Shourya's current, in-progress work."** | Flagged as not re-verified this session rather than re-quoted as current fact |
+plan/CLAIM-LEDGER.md:91:| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples of either, so no detection performance can be claimed for them."** | Features `[23,24,25,27]` are permanently dead in the frozen 31-dim vector — a data property, not a bug |
+plan/CLAIM-LEDGER.md:211:| *"We detect pushcarts and animal-drawn carts"* | **"S5 defines them. METEOR contains no examples, so we cannot claim detection performance for them. Cows and tractors are present."** | Features `[23,24,25,27]` are dead - dog, pushcart, animal-drawn cart, static obstacle |
+ml/python/meteor/features.py:1:"""Feature builder — the 31-dimension vector defined in AGENTS.md section 3 S2.
+ml/python/meteor/features.py:3:The whole point: every quantity here is computable BOTH from a METEOR bounding-box track
+ml/python/meteor/features.py:7:Do not lift METEOR into 3-D. Project the simulation down instead. Lifting needs monocular
+ml/python/meteor/features.py:29:    """One detection in the image plane. Identical shape from METEOR XML or from
+
+web search: 
+web search: 2023 2024 POMDP intention pedestrian autonomous vehicle on road real vehicle test interaction ...
+web search: 
+web search: 
+web search: 
+web search: "Exploring pedestrian surrogate safety measures" "11.57" ...
+web search: 
+web search: 'India'
+web search: 
+web search: 'Indonesia'
+web search: 
+web search: "Exploring pedestrian surrogate safety measures" "Yielding by speed" ...
+web search: 
+web search: "India" "yielding rate" "pedestrians" "motorcycles" crosswalk ...
+web search: 
+web search: 'yielding'
+web search: 
+web search: 
+codex
+The novelty check turned up two close predecessors: a 2022 particle-filter/POMDP merger that estimates cooperation continuously, and a 2021 paper that actively learns another driver’s altruism. A 2026 paper also combines beliefs, probing, and a runtime risk layer. I’m narrowing the proposed contribution to what Indian, lane-free data and a measured MATLAB implementation can actually support.
+web search: 
+web search: "3.76" "Kanpur" pedestrian critical headway uncontrolled ...
+web search: 
+web search: 
+web search: 
+web search: "Pedestrian temporal gap acceptance behavior at unsignalized intersections in Kanpur" 3.76 DOI ...
+web search: 
+web search: "Driver behavior modeling at uncontrolled intersections under Indian traffic conditions" pdf critical gap 2024 ...
+web search: 
+web search: 
+web search: 
+web search: "Study of unique merging behavior under mixed traffic conditions" four types normal forced group cover ...
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: "Uncertainty-Aware Online Merge Planning" GitHub code ...
+exec
+/bin/zsh -lc "nl -ba plan/S3-PYIELD-RULING.md | sed -n '10,76p'" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+    10	
+    11	---
+    12	
+    13	## The problem, in three lines
+    14	
+    15	- The model was trained on **`assert`** — "did this road user take the gap?" — because `yield` occurs
+    16	  1 in 301 in METEOR and cannot be learned. That decision was correct and is documented in
+    17	  `ml/ReadThis.md`.
+    18	- The contract field is called **`PYield`**, the export is `yield_lstm_opset<N>.onnx`, and its
+    19	  output tensor is `yield_logits`.
+    20	- **`ml/ReadThis.md` says explicitly: "Not asserting is not the same as yielding."** So it is not
+    21	  even a clean `1 - p` flip. A driver who simply carries on doing nothing is in the negative class
+    22	  for both.
+    23	
+    24	Plug P(assert) into a field named `PYield` and **D6 weights its two futures backwards**, silently,
+    25	with nothing erroring. That is the exact failure mode this project keeps losing to.
+    26	
+    27	---
+    28	
+    29	## The ruling
+    30	
+    31	> **`PYield` carries `1 - P(assert)`: the probability that the other road user does NOT take the gap.**
+    32	
+    33	Stream C computes it. Stream D consumes it. Nobody renames anything, and section 3 stays frozen.
+    34	
+    35	### Why this and not the alternatives
+    36	
+    37	**Not `PYield = P(assert)`.** The field name would then mean the opposite of what it says. Someone
+    38	reads `PYield` in six weeks, assumes it means yield, and the planner drives into the gap.
+    39	
+    40	**Not "`Valid = false` always, ignore the model."** Safe, but it throws away the entire ML stream
+    41	and there is no reason to — see the safety argument below.
+    42	
+    43	### The honest caveat, which must go in the report
+    44	
+    45	`1 - P(assert)` lumps **"actively yielded"** together with **"did nothing"**. Those are not the same
+    46	thing, and treating "did nothing" as yielding is **optimistic**. State it plainly:
+    47	
+    48	> We predict whether the other road user will take the gap. Not taking it is what our safety check
+    49	> actually needs to know. We do not claim to predict active yielding.
+    50	
+    51	That is Aditya's wording from `ml/ReadThis.md`, and it is already the agreed language.
+    52	
+    53	---
+    54	
+    55	## Why an optimistic `PYield` is not a safety hole
+    56	
+    57	This only holds because of the D6 ruling, so it must not be separated from it.
+    58	
+    59	**`PYield` does not decide what is safe. It decides what is preferred.**
+    60	
+    61	Per `plan/D6-TRUNK-RULING.md`, the trunk is the prefix that is safe **under both futures** — yield
+    62	*and* assert — and a braking-to-stop must be clear from the end of it under both. The weights never
+    63	enter that test. They only rank candidates that have already passed it.
+    64	
+    65	**So a mis-weighted `PYield` costs efficiency, not safety.** The car dithers or waits longer than it
+    66	needed to. It does not drive into anything. The barrier `h = lambda - beta` and the both-futures
+    67	check are what carry safety, and neither reads `PYield`.
+    68	
+    69	**Stream D: if you ever find yourself using `PYield` to decide whether something is safe rather than
+    70	which safe thing to prefer, stop. That is outside this ruling and the argument above no longer
+    71	holds.**
+    72	
+    73	---
+    74	
+    75	## The second ruling: the model is not allowed to say GO yet
+    76	
+
+exec
+/bin/zsh -lc "nl -ba plan/S3-PYIELD-RULING.md | sed -n '75,125p'" in /Users/aditya/dev/sih2026
+ succeeded in 0ms:
+    75	## The second ruling: the model is not allowed to say GO yet
+    76	
+    77	Measured on the full validation set, 249 clips, 783,928 samples:
+    78	
+    79	| | Model 1 (LSTM) | Model 2 (Attention) | Target |
+    80	|---|---|---|---|
+    81	| Average Precision | 0.3500 | **0.3691** | beats 0.0982 random ✓ |
+    82	| Calibration error | 0.2079 | **0.1502** | — |
+    83	| **Dangerous error rate** | 20.18% | — | **≤ 1.0%** ✗ |
+    84	
+    85	**The model fails its own operating-point gate by a factor of twenty.** At threshold 0.99 it says GO
+    86	1,630 times out of 783,928 — already maximally conservative — and is still wrong 1 in 5 times it
+    87	commits.
+    88	
+    89	> **Ruling: set `Valid = false` wherever the model cannot meet the ≤1% dangerous-error bar, and let
+    90	> the planner fall back to the geometric role.** S3 already mandates exactly that behaviour:
+    91	> *"When `Valid` is false the planner uses the geometric role alone - never 0.5."*
+    92	
+    93	This is not a workaround. It is the contract being used as designed, and it is a **better result to
+    94	present than a hidden 20%**:
+    95	
+    96	> We measured our own predictor against a safety threshold we fixed before training. It does not
+    97	> clear it, so the planner does not let it drive — it falls back to geometry. Here is the number.
+    98	
+    99	**Do not ship a model that failed Check 4/5 without this gate.** Three of our previous entries died
+   100	from shipping things that were not finished.
+   101	
+   102	---
+   103	
+   104	## Consequences, by stream
+   105	
+   106	**Stream C**
+   107	- Emit `PYield = 1 - P(assert)`. Do it at the S3 boundary, once, in one place.
+   108	- Emit `Valid = false` in the band where the dangerous-error rate exceeds 1%. Record the threshold
+   109	  and the measured rate in `results/<run>/config.json`.
+   110	- The `.onnx` output tensor stays `yield_logits` — the file format in section 3 is frozen. The
+   111	  conversion happens on the MATLAB side of the boundary, not by renaming the tensor.
+   112	- Keep reporting the `yield` label as a measured data limitation, as `ml/ReadThis.md` says.
+   113	
+   114	**Stream D**
+   115	- `PYield` is the weight on the *"they do not take the gap"* branch. `1 - PYield` weights the
+   116	  *"they take the gap"* branch, which is the dangerous one.
+   117	- **Never treat `PYield` as a safety criterion.** It ranks; it does not permit.
+   118	- When `Valid` is false, geometric role alone. **Never 0.5.**
+   119	
+   120	---
+   121	
+   122	## Status
+   123	
+   124	**This is a ruling by Claude at Aditya's instruction on 4 September 2026, not a decision Aditya made
+   125	personally. It touches what the project claims, so he can overturn it** — but until he does, build
+
+web search: 
+web search: SkyEye dataset Ahmedabad 4 intersections trajectory download github 2019 ...
+web search: 
+web search: 
+web search: 
+web search: 
+codex
+One Indian finding changes the prior design: a seven-class junction study reports smaller accepted gaps for two-wheelers than for buses and trucks, but that measures a vehicle’s own gap-taking decision. It does not justify assigning “selfishness” or yielding probabilities by class. I’ll use those figures only for maneuver priors and keep responsiveness to ego as a separately measured quantity.
+web search: 
+web search: 
+codex
+# P3 Round 2 — replacing yield/assert
+
+**Recommendation:** represent each relevant road user with a belief over **what they may do** and **how strongly they respond to our motion**. Use that belief to rank reversible plans and decide when a cautious probe is useful. Keep permission to move with a separate geometric and braking check. I would call the continuous variable *response propensity*, not an SVO angle: observed motion alone does not establish a driver’s psychological preference.
+
+## 1. Audit of the candidate
+
+| Finding | Consequence |
+|---|---|
+| Schwarting et al. report **18% lower position error with “static best” SVO** and **25% with dynamically estimated SVO**, across 92 recorded US merges. “Static best” is fitted to the interaction; neither result is a real-car deployment result. [PNAS paper](https://sites.bu.edu/pierson/files/2021/05/schwarting2019pnas.pdf) | Strong evidence that social preference helps prediction; weak evidence for transferring a fixed class prior to Indian roads. |
+| arXiv **1704.04322 is by Bouton, Cosgun and Kochenderfer**, not Hubmann, and reports simulation. [Paper](https://arxiv.org/abs/1704.04322) | Correct the attribution. A separate, earlier MOMDP was tested on an autonomous golf cart with pedestrians. [Bandyopadhyay et al.](https://dspace.mit.edu/entities/publication/ed3df604-a9da-4c15-b70f-a3a115241e09) |
+| Your [planner](/Users/aditya/dev/sih2026/matlab/+sih/+planner/planContingency.m:39) currently carries `PYield` for logging but **does not use it to rank or permit candidates**; default generation is 5 offsets × 4 speeds. The [predictor](/Users/aditya/dev/sih2026/matlab/+sih/+planner/predictAgentFutures.m:46) changes speed along a fixed heading. | This upgrade needs a real planner integration, not just a better probability field. The comment that the two futures “bracket” actual behavior is false for turns and lateral movement. |
+| The repo defines `PYield = 1 − P(assert)`, where “did nothing” can be counted with “did not take the gap.” Its recorded validation shows a **20.18% dangerous-error rate** against a **≤1% gate** and instructs `Valid=false` where that gate fails. [Ruling](/Users/aditya/dev/sih2026/plan/S3-PYIELD-RULING.md:13) | Do not interpret current `PYield` as a calibrated probability of active yielding. Whether the deployed runtime currently emits `Valid=false` everywhere required is **UNVERIFIED**. |
+| A raw entropy-reduction reward can encourage probes whose information will never change the driving decision. Geary et al. demonstrate this failure and propose **expected reward gain** instead. [Paper](https://arxiv.org/abs/2110.04580) | Probe only when resolving the uncertainty can improve a *safe* subsequent choice. |
+
+## 2. Serious representations
+
+“Compute” is a **relative implementation assessment**, not a measured latency on your machine. “Vehicle” distinguishes an autonomous vehicle experiment from evaluation on recorded human driving.
+
+| Approach | Output and data required | Vehicle evidence; compute; code |
+|---|---|---|
+| **Discrete maneuver/type belief**: keep, brake, turn, cross; optionally passive/aggressive style. Needs tracked motion and maneuver labels. [Latent-driver paper](https://arxiv.org/pdf/1704.05566.pdf) | Its published evaluation used synthetic drivers. Low runtime cost after training; [research code](https://github.com/sisl/latent_driver). A fixed type misses changes within an encounter. |
+| **SVO / reward weighting**: an inferred angle or reward weights trading own and others’ outcomes; needs interaction trajectories and a specified reward/game model. [Schwarting et al.](https://sites.bu.edu/pierson/files/2021/05/schwarting2019pnas.pdf) | Recorded NGSIM data plus simulation, no verified vehicle test. Online game solving costs more than a small classifier; [third-party reproduction](https://github.com/superboySB/SVO4AD), authors’ runnable code **UNVERIFIED**. Later SVO–Stackelberg and SVO-conditioned-prediction studies already cover much of this mechanism. [2023 study](https://saemobilus.sae.org/articles/game-theory-based-lane-change-decision-making-considering-vehicles-social-value-orientation-2023-01-7109), [2026 MATLAB/Python study](https://www.mdpi.com/2079-9292/15/9/1914) |
+| **Continuous cooperation belief + POMDP**: a distribution over another driver’s cooperation level, updated by a particle filter; outputs a merge policy. Needs responsive trajectories and an actor model. [Kruse et al., 2022](https://arxiv.org/abs/2207.05228) | High-fidelity **simulation**, not verified on a vehicle. Particle update is modest; online belief-tree planning is the costly part. Public code **UNVERIFIED**. This is particularly close to your proposal. |
+| **Intent belief / MOMDP**: discrete hidden destination or crossing intent alongside observed kinematics. Needs intent-conditioned motion models. [Bandyopadhyay et al.](https://dspace.mit.edu/entities/publication/ed3df604-a9da-4c15-b70f-a3a115241e09) | A golf-cart pedestrian experiment establishes real-platform feasibility, but is from **2013** and does not establish dense-road capability. A 2024 unsignalized-intersection POMDP study used aerial-data-seeded **simulation**. [Study](https://arxiv.org/abs/2412.06405) |
+| **Ego-conditioned joint prediction**: distributions of others’ paths *given a candidate ego path*. Needs multi-agent tracks and, ideally, varied ego actions. [Waymo conditional behavior prediction](https://waymo-prod.appspot.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [MotionLM](https://waymo-prod.appspot.com/research/motionlm/) | The cited research pages describe prediction models; their deployment in a particular Waymo runtime planner is **UNVERIFIED**. Inference cost grows with ego candidates and sampled futures. Public implementation of these models **UNVERIFIED**. |
+| **Level-k, Stackelberg, Nash / learned games**: response or equilibrium trajectories under assumed reasoning levels and payoffs; needs a payoff model and online fitting. [Open level-k simulator](https://sites.google.com/umich.edu/testing-of-automotive-cps/game-theoretic-traffic-simulator), [GPG-drive paper/code](https://brechtevens.github.io/GPG-drive/) | The cited implementations show simulation and offer code, including an intersection MATLAB model on the level-k site. A distinct 2024 game/IRL study reports real-vehicle tests, but its **72.73% decision similarity and zero reported safety violations** do not validate this approach for Indian crowds. [Study](https://arxiv.org/abs/2402.11467) Exact online equilibrium solving is expensive. |
+| **Inverse RL / reward distributions**: inferred costs or driving-style mixture from demonstrations; predicts behavior by optimizing those costs. [Probabilistic IRL](https://arxiv.org/abs/2008.08812) | Evaluated on recorded human driving, not a vehicle for that paper. Offline learning can be expensive; online lookup plus prediction is cheaper. A separate IRL *ego planner* has been tested on a vehicle in Las Vegas; that is evidence for IRL planning, not for online inference of every neighboring driver. [DriveIRL](https://arxiv.org/abs/2206.03004) |
+| **Active information gathering**: choose a reversible action because observing the response can improve the next decision. Needs an ego-conditioned response model. [Sadigh et al.](https://people.eecs.berkeley.edu/~sastry/pubs/Pdfs%20of%202018/SadighPlanning2018.pdf), [Geary et al.](https://arxiv.org/abs/2110.04580) | Human-user studies and simulation in the cited work; an on-road autonomous test is **UNVERIFIED**. Evaluating information value for every candidate is costly. The August 2026 ego-conditioned MPPI paper also explicitly probes in closed-loop simulation. [Mustafa et al.](https://arxiv.org/abs/2608.21400) |
+| **Traffic-engineering gap model**: probability of accepting a gap given its duration, speeds, geometry and vehicle classes. Needs observed **accepted and rejected opportunities**, not just successful turns. [Indian study](https://link.springer.com/article/10.1007/s40534-014-0057-8) | Cheap logistic/lookup inference; no autonomous-vehicle result implied. It estimates what the *gap-seeking vehicle* does, **not** whether a conflicting vehicle will yield to us. |
+
+## 3. Indian evidence that can actually set priors
+
+| Observation | Appropriate use |
+|---|---|
+| Across **six Indian unsignalized intersections**, a study’s model lists base critical gaps for right turns from **major/minor** roads, respectively: two-wheeler **2.5/3.5 s**; three-wheeler **2.7/3.7 s**; small car **2.7/3.8 s**; bus **3.6/5.5 s**; truck **3.8/5.7 s**. These are *model base values*, not universal safe gaps or yield probabilities. [Mohan & Chandra, Table 10](https://www.researchgate.net/profile/Mithun-Mohan-2/publication/350907993_Investigating_the_Influence_of_Conflicting_Flow%27s_Composition_on_Critical_Gap_under_Heterogeneous_Traffic_Conditions/links/61ae043529948f41dbcddfab/Investigating-the-Influence-of-Conflicting-Flows-Composition-on-Critical-Gap-under-Heterogeneous-Traffic-Conditions.pdf) | Initialize **maneuver/gap-taking** models by class and geometry. The bus/truck figures also undermine the proposed “bus/truck = selfish” prior: physical clearing time matters. |
+| At four Maharashtra T-junctions, for a displayed **3 s** gap, about **22%** of right-turning two-wheelers accepted it when the conflicting vehicle was a two-wheeler, versus about **10%** when it was a car. [Patil & Sangole study](https://link.springer.com/article/10.1007/s40534-014-0057-8) | Condition gap acceptance on **both** parties’ class. These cumulative observations are site-specific, not a general response-to-ego probability. |
+| One congested Chennai T-junction study classified merges as **group 37%, forced 26%, normal 21%, vehicle-cover 16%**. [Kanagaraj et al.](https://www.sciencedirect.com/science/article/abs/pii/S1369847815000224) | Add **group** and **cover** as interaction modes. A single scalar cooperativeness cannot represent them. |
+| A Kanpur unsignalized-intersection study reports **3.76 s mean pedestrian critical headway** and about **38% rolling-gap crossings**. [Study](https://www.sciencedirect.com/science/article/abs/pii/S1369847820304927) A separate Patna study observed **722 interactions**, with **26% rolling crossings** and **54.8% group crossings**. [Study](https://www.nature.com/articles/s41598-026-55112-9) | Set context-dependent pedestrian **crossing modes**, with wide uncertainty. These numbers are not vehicle-to-pedestrian yielding rates. |
+| Indian midblock research finds driver yielding varies with speed and road geometry; the accessible evidence does **not** establish a transferable, vehicle-class-specific yielding percentage. [Study](https://doi.org/10.1016/j.iatssr.2020.06.001) | **UNVERIFIED:** numerical Indian priors for `P(car/bus/two-wheeler yields to pedestrian or ego)`. Measure them from annotated interaction opportunities before using them. |
+
+## 4. Buildable representation and planner
+
+I recommend an **intent × response belief**, implemented first with fixed-size MATLAB arrays:
+
+1. **Per tracked actor:** retain measured S1 kinematics; a belief over `z = {continue, enter/cross, brake/turn, group/cover when relevant}`; five grid values for a continuous **response coefficient** `c∈[0,1]`; and an explicit *unmodelled/uncertain* probability. Treat animals with a separate motion model, not SVO. Five grid points and a limit of three decision-relevant actors are **proposed engineering choices**, not published performance claims. This follows the distinction between intent, latent cooperation and multimodal motion in [Kruse et al.](https://arxiv.org/abs/2207.05228) and [Chakravarty et al.](https://arxiv.org/abs/2602.14540).
+
+2. **Update using the action we actually executed:**  
+   `bₜ(z,c) ∝ P(observed acceleration, lateral motion | z,c, ego actionₜ₋₁, scene) × predicted bₜ₋₁(z,c)`.  
+   Broaden the belief after occlusion, track loss or model mismatch. Do **not** claim to learn responsiveness during a period when ego’s motion offered the other actor no observable choice. A small grid Bayes update is easier to bound and deploy than a full particle-filter POMDP; the latter is demonstrated for merging by [Kruse et al.](https://arxiv.org/abs/2207.05228).
+
+3. **Predict conditionally, plan reversibly:** for each shortlisted ego path, produce a few actor motion modes conditional on that path and the current belief. Rank candidates by progress, comfort and future options. Give a cautious probe credit only for its **expected improvement in a later safe decision**, minus delay and disturbance; do not give a blanket entropy bonus. [Conditional prediction](https://waymo-prod.appspot.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [information-sufficiency result](https://arxiv.org/abs/2110.04580).
+
+4. **Independently certify the executed prefix and stop:** check a no-cooperation response, plausible lateral/turning envelopes, tracking uncertainty and a reachable braking stop. The current [two fixed-heading futures](/Users/aditya/dev/sih2026/matlab/+sih/+planner/predictAgentFutures.m:87) cannot provide that certificate. Only probe within a prefix that remains stoppable without another actor yielding. Treat a resulting stall as an explicit state with persistence and a safe escape route; the reported S2/S3 stall still needs its own fix.
+
+**Training and calibration**
+
+| Data | Use and limit |
+|---|---|
+| [SPT Chennai](https://www.chennaitrafficdata.com/about-our-data) | Its listed fields include metric longitudinal/lateral positions, velocities, accelerations and vehicle class: useful for following, seepage and response distributions. The [paper](https://www.sciencedirect.com/science/article/pii/S0968090X25004358) says it is public, but the site’s [access page](https://www.chennaitrafficdata.com/how-to-access) did not expose a verifiable download in this check: **file access UNVERIFIED**. One arterial segment does not supply all junction modes. |
+| [METEOR](https://arxiv.org/abs/2109.07648) | Use tracked image-plane behaviors for recognition and weak class/context pretraining. The repo records absent per-frame metric ego motion and only the **executed**, not alternative, ego action; it cannot identify a causal response-to-probe model or metric safe gaps. [Dataset notes](/Users/aditya/dev/sih2026/ml/ReadThis.md:203) |
+| [IDD-PeD annotations/code](https://github.com/Ruthvik9/IDD-PeD) | Train crossing intent and image-plane pedestrian motion, including attention, gestures and interaction labels. Those labels do not by themselves identify how the pedestrian would react to a different ego action. |
+| [EoT Ahmedabad](https://github.com/NaveenKumar-1311/EoT-EyeonTraffic) and [Indian junction studies](https://www.researchgate.net/profile/Mithun-Mohan-2/publication/350907993_Investigating_the_Influence_of_Conflicting_Flow%27s_Composition_on_Critical_Gap_under_Heterogeneous_Traffic_Conditions/links/61ae043529948f41dbcddfab/Investigating-the-Influence-of-Conflicting-Flows-Composition-on-Critical-Gap-under-Heterogeneous-Traffic-Conditions.pdf) | Seed junction scenes and accepted/rejected gap distributions. EoT lists one unsignalized and two signalized Ahmedabad sites; access to its referenced SkyEye track repository returned 404 here, so usable individual tracks are **UNVERIFIED**. |
+| **Randomized interactive simulation** | Generate the missing counterfactual ego actions and actor responses; fit the response model there, then calibrate its *observable* trajectory and mode statistics against Indian recordings. Sim-to-road transfer of its causal response coefficient remains **UNVERIFIED**. |
+
+Test against binary yield/assert, fixed class priors and no-probe ablations. Across the P1 top-25 scenarios, record collision/contact, minimum clearance, successful safe gap use, false commitments, permanent stalls, probability calibration and cycle-time **p95/p99**. Include group/cover merges, lateral cut-ins, occlusion and nonresponse so the learned model cannot win merely by assuming courtesy. These are proposed evaluation requirements, motivated by the [Chennai merge modes](https://www.sciencedirect.com/science/article/abs/pii/S1369847815000224) and the [current fixed-heading model](/Users/aditya/dev/sih2026/matlab/+sih/+planner/predictAgentFutures.m:46).
+
+## 5. Novelty and the 100 ms gate
+
+| Closest prior art | What it already occupies |
+|---|---|
+| [Sadigh et al., 2018](https://people.eecs.berkeley.edu/~sastry/pubs/Pdfs%20of%202018/SadighPlanning2018.pdf); [Geary et al., 2021](https://arxiv.org/abs/2110.04580) | Online preference inference and purposeful probing, including when probing has decision value. |
+| [Kruse et al., 2022](https://arxiv.org/abs/2207.05228); [LeTS-Drive](https://arxiv.org/abs/2101.03834) and its [code](https://github.com/cindycia/lets-drive) | Continuous cooperation belief with online POMDP merging; real-time belief-guided planning in simulated dense, unregulated heterogeneous traffic. |
+| [2026 SVO-conditioned MATLAB/Python planner](https://www.mdpi.com/2079-9292/15/9/1914); [Chakravarty et al., 2026](https://arxiv.org/abs/2602.14540); [Mustafa et al., 2026](https://arxiv.org/abs/2608.21400) | SVO inference plus prediction/fallback; multimodal belief plus active probing and risk monitoring; ego-conditioned generative probing. |
+
+**Novelty verdict:** the combined *mechanism* is occupied. I found **no verified publication with the exact combination evaluated on Indian lane-free traffic in a real-time MATLAB/Simulink closed loop**, but absence from this search is not proof of firstness. The defensible contribution is a **measured India-calibrated implementation**, with group/cover/rolling-gap modes, uncertainty-aware safety, and an ablation showing fewer contacts *and* fewer permanent stalls.
+
+The timing gate comes first. Using your **736 ms** measurement and **88%** capsule-list share: capsule work is **647.68 ms** and everything else **88.32 ms**. A 100 ms cycle leaves **11.68 ms** for capsule work *and every new computation*, requiring about a **55.5× reduction in that hotspot alone** if other costs stay fixed. The current checker [constructs a new `dynamicCapsuleList` for each candidate–future call](/Users/aditya/dev/sih2026/matlab/+sih/+planner/checkTrajectorySafety.m:74); adding belief branches directly to that loop worsens it. First use vectorized broad-phase rejection, retain only a small candidate shortlist, then run exact near-term swept-occupancy and stop checks. Measure the whole loop again before claiming 10 Hz. The belief grid may be cheap; **its integration is not yet proven to meet 100 ms**.
+
+**Still UNVERIFIED:** usable SPT download; public code and runtime for several cited recent planners; transferable Indian vehicle-to-pedestrian yielding rates by class; causal response-to-ego parameters from the observational datasets; the new design’s safety coverage and 100 ms runtime; whether the current deployed S3 output obeys its documented `Valid=false` gate.
+tokens used
+10,18,206
+# P3 Round 2 — replacing yield/assert
+
+**Recommendation:** represent each relevant road user with a belief over **what they may do** and **how strongly they respond to our motion**. Use that belief to rank reversible plans and decide when a cautious probe is useful. Keep permission to move with a separate geometric and braking check. I would call the continuous variable *response propensity*, not an SVO angle: observed motion alone does not establish a driver’s psychological preference.
+
+## 1. Audit of the candidate
+
+| Finding | Consequence |
+|---|---|
+| Schwarting et al. report **18% lower position error with “static best” SVO** and **25% with dynamically estimated SVO**, across 92 recorded US merges. “Static best” is fitted to the interaction; neither result is a real-car deployment result. [PNAS paper](https://sites.bu.edu/pierson/files/2021/05/schwarting2019pnas.pdf) | Strong evidence that social preference helps prediction; weak evidence for transferring a fixed class prior to Indian roads. |
+| arXiv **1704.04322 is by Bouton, Cosgun and Kochenderfer**, not Hubmann, and reports simulation. [Paper](https://arxiv.org/abs/1704.04322) | Correct the attribution. A separate, earlier MOMDP was tested on an autonomous golf cart with pedestrians. [Bandyopadhyay et al.](https://dspace.mit.edu/entities/publication/ed3df604-a9da-4c15-b70f-a3a115241e09) |
+| Your [planner](/Users/aditya/dev/sih2026/matlab/+sih/+planner/planContingency.m:39) currently carries `PYield` for logging but **does not use it to rank or permit candidates**; default generation is 5 offsets × 4 speeds. The [predictor](/Users/aditya/dev/sih2026/matlab/+sih/+planner/predictAgentFutures.m:46) changes speed along a fixed heading. | This upgrade needs a real planner integration, not just a better probability field. The comment that the two futures “bracket” actual behavior is false for turns and lateral movement. |
+| The repo defines `PYield = 1 − P(assert)`, where “did nothing” can be counted with “did not take the gap.” Its recorded validation shows a **20.18% dangerous-error rate** against a **≤1% gate** and instructs `Valid=false` where that gate fails. [Ruling](/Users/aditya/dev/sih2026/plan/S3-PYIELD-RULING.md:13) | Do not interpret current `PYield` as a calibrated probability of active yielding. Whether the deployed runtime currently emits `Valid=false` everywhere required is **UNVERIFIED**. |
+| A raw entropy-reduction reward can encourage probes whose information will never change the driving decision. Geary et al. demonstrate this failure and propose **expected reward gain** instead. [Paper](https://arxiv.org/abs/2110.04580) | Probe only when resolving the uncertainty can improve a *safe* subsequent choice. |
+
+## 2. Serious representations
+
+“Compute” is a **relative implementation assessment**, not a measured latency on your machine. “Vehicle” distinguishes an autonomous vehicle experiment from evaluation on recorded human driving.
+
+| Approach | Output and data required | Vehicle evidence; compute; code |
+|---|---|---|
+| **Discrete maneuver/type belief**: keep, brake, turn, cross; optionally passive/aggressive style. Needs tracked motion and maneuver labels. [Latent-driver paper](https://arxiv.org/pdf/1704.05566.pdf) | Its published evaluation used synthetic drivers. Low runtime cost after training; [research code](https://github.com/sisl/latent_driver). A fixed type misses changes within an encounter. |
+| **SVO / reward weighting**: an inferred angle or reward weights trading own and others’ outcomes; needs interaction trajectories and a specified reward/game model. [Schwarting et al.](https://sites.bu.edu/pierson/files/2021/05/schwarting2019pnas.pdf) | Recorded NGSIM data plus simulation, no verified vehicle test. Online game solving costs more than a small classifier; [third-party reproduction](https://github.com/superboySB/SVO4AD), authors’ runnable code **UNVERIFIED**. Later SVO–Stackelberg and SVO-conditioned-prediction studies already cover much of this mechanism. [2023 study](https://saemobilus.sae.org/articles/game-theory-based-lane-change-decision-making-considering-vehicles-social-value-orientation-2023-01-7109), [2026 MATLAB/Python study](https://www.mdpi.com/2079-9292/15/9/1914) |
+| **Continuous cooperation belief + POMDP**: a distribution over another driver’s cooperation level, updated by a particle filter; outputs a merge policy. Needs responsive trajectories and an actor model. [Kruse et al., 2022](https://arxiv.org/abs/2207.05228) | High-fidelity **simulation**, not verified on a vehicle. Particle update is modest; online belief-tree planning is the costly part. Public code **UNVERIFIED**. This is particularly close to your proposal. |
+| **Intent belief / MOMDP**: discrete hidden destination or crossing intent alongside observed kinematics. Needs intent-conditioned motion models. [Bandyopadhyay et al.](https://dspace.mit.edu/entities/publication/ed3df604-a9da-4c15-b70f-a3a115241e09) | A golf-cart pedestrian experiment establishes real-platform feasibility, but is from **2013** and does not establish dense-road capability. A 2024 unsignalized-intersection POMDP study used aerial-data-seeded **simulation**. [Study](https://arxiv.org/abs/2412.06405) |
+| **Ego-conditioned joint prediction**: distributions of others’ paths *given a candidate ego path*. Needs multi-agent tracks and, ideally, varied ego actions. [Waymo conditional behavior prediction](https://waymo-prod.appspot.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [MotionLM](https://waymo-prod.appspot.com/research/motionlm/) | The cited research pages describe prediction models; their deployment in a particular Waymo runtime planner is **UNVERIFIED**. Inference cost grows with ego candidates and sampled futures. Public implementation of these models **UNVERIFIED**. |
+| **Level-k, Stackelberg, Nash / learned games**: response or equilibrium trajectories under assumed reasoning levels and payoffs; needs a payoff model and online fitting. [Open level-k simulator](https://sites.google.com/umich.edu/testing-of-automotive-cps/game-theoretic-traffic-simulator), [GPG-drive paper/code](https://brechtevens.github.io/GPG-drive/) | The cited implementations show simulation and offer code, including an intersection MATLAB model on the level-k site. A distinct 2024 game/IRL study reports real-vehicle tests, but its **72.73% decision similarity and zero reported safety violations** do not validate this approach for Indian crowds. [Study](https://arxiv.org/abs/2402.11467) Exact online equilibrium solving is expensive. |
+| **Inverse RL / reward distributions**: inferred costs or driving-style mixture from demonstrations; predicts behavior by optimizing those costs. [Probabilistic IRL](https://arxiv.org/abs/2008.08812) | Evaluated on recorded human driving, not a vehicle for that paper. Offline learning can be expensive; online lookup plus prediction is cheaper. A separate IRL *ego planner* has been tested on a vehicle in Las Vegas; that is evidence for IRL planning, not for online inference of every neighboring driver. [DriveIRL](https://arxiv.org/abs/2206.03004) |
+| **Active information gathering**: choose a reversible action because observing the response can improve the next decision. Needs an ego-conditioned response model. [Sadigh et al.](https://people.eecs.berkeley.edu/~sastry/pubs/Pdfs%20of%202018/SadighPlanning2018.pdf), [Geary et al.](https://arxiv.org/abs/2110.04580) | Human-user studies and simulation in the cited work; an on-road autonomous test is **UNVERIFIED**. Evaluating information value for every candidate is costly. The August 2026 ego-conditioned MPPI paper also explicitly probes in closed-loop simulation. [Mustafa et al.](https://arxiv.org/abs/2608.21400) |
+| **Traffic-engineering gap model**: probability of accepting a gap given its duration, speeds, geometry and vehicle classes. Needs observed **accepted and rejected opportunities**, not just successful turns. [Indian study](https://link.springer.com/article/10.1007/s40534-014-0057-8) | Cheap logistic/lookup inference; no autonomous-vehicle result implied. It estimates what the *gap-seeking vehicle* does, **not** whether a conflicting vehicle will yield to us. |
+
+## 3. Indian evidence that can actually set priors
+
+| Observation | Appropriate use |
+|---|---|
+| Across **six Indian unsignalized intersections**, a study’s model lists base critical gaps for right turns from **major/minor** roads, respectively: two-wheeler **2.5/3.5 s**; three-wheeler **2.7/3.7 s**; small car **2.7/3.8 s**; bus **3.6/5.5 s**; truck **3.8/5.7 s**. These are *model base values*, not universal safe gaps or yield probabilities. [Mohan & Chandra, Table 10](https://www.researchgate.net/profile/Mithun-Mohan-2/publication/350907993_Investigating_the_Influence_of_Conflicting_Flow%27s_Composition_on_Critical_Gap_under_Heterogeneous_Traffic_Conditions/links/61ae043529948f41dbcddfab/Investigating-the-Influence-of-Conflicting-Flows-Composition-on-Critical-Gap-under-Heterogeneous-Traffic-Conditions.pdf) | Initialize **maneuver/gap-taking** models by class and geometry. The bus/truck figures also undermine the proposed “bus/truck = selfish” prior: physical clearing time matters. |
+| At four Maharashtra T-junctions, for a displayed **3 s** gap, about **22%** of right-turning two-wheelers accepted it when the conflicting vehicle was a two-wheeler, versus about **10%** when it was a car. [Patil & Sangole study](https://link.springer.com/article/10.1007/s40534-014-0057-8) | Condition gap acceptance on **both** parties’ class. These cumulative observations are site-specific, not a general response-to-ego probability. |
+| One congested Chennai T-junction study classified merges as **group 37%, forced 26%, normal 21%, vehicle-cover 16%**. [Kanagaraj et al.](https://www.sciencedirect.com/science/article/abs/pii/S1369847815000224) | Add **group** and **cover** as interaction modes. A single scalar cooperativeness cannot represent them. |
+| A Kanpur unsignalized-intersection study reports **3.76 s mean pedestrian critical headway** and about **38% rolling-gap crossings**. [Study](https://www.sciencedirect.com/science/article/abs/pii/S1369847820304927) A separate Patna study observed **722 interactions**, with **26% rolling crossings** and **54.8% group crossings**. [Study](https://www.nature.com/articles/s41598-026-55112-9) | Set context-dependent pedestrian **crossing modes**, with wide uncertainty. These numbers are not vehicle-to-pedestrian yielding rates. |
+| Indian midblock research finds driver yielding varies with speed and road geometry; the accessible evidence does **not** establish a transferable, vehicle-class-specific yielding percentage. [Study](https://doi.org/10.1016/j.iatssr.2020.06.001) | **UNVERIFIED:** numerical Indian priors for `P(car/bus/two-wheeler yields to pedestrian or ego)`. Measure them from annotated interaction opportunities before using them. |
+
+## 4. Buildable representation and planner
+
+I recommend an **intent × response belief**, implemented first with fixed-size MATLAB arrays:
+
+1. **Per tracked actor:** retain measured S1 kinematics; a belief over `z = {continue, enter/cross, brake/turn, group/cover when relevant}`; five grid values for a continuous **response coefficient** `c∈[0,1]`; and an explicit *unmodelled/uncertain* probability. Treat animals with a separate motion model, not SVO. Five grid points and a limit of three decision-relevant actors are **proposed engineering choices**, not published performance claims. This follows the distinction between intent, latent cooperation and multimodal motion in [Kruse et al.](https://arxiv.org/abs/2207.05228) and [Chakravarty et al.](https://arxiv.org/abs/2602.14540).
+
+2. **Update using the action we actually executed:**  
+   `bₜ(z,c) ∝ P(observed acceleration, lateral motion | z,c, ego actionₜ₋₁, scene) × predicted bₜ₋₁(z,c)`.  
+   Broaden the belief after occlusion, track loss or model mismatch. Do **not** claim to learn responsiveness during a period when ego’s motion offered the other actor no observable choice. A small grid Bayes update is easier to bound and deploy than a full particle-filter POMDP; the latter is demonstrated for merging by [Kruse et al.](https://arxiv.org/abs/2207.05228).
+
+3. **Predict conditionally, plan reversibly:** for each shortlisted ego path, produce a few actor motion modes conditional on that path and the current belief. Rank candidates by progress, comfort and future options. Give a cautious probe credit only for its **expected improvement in a later safe decision**, minus delay and disturbance; do not give a blanket entropy bonus. [Conditional prediction](https://waymo-prod.appspot.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [information-sufficiency result](https://arxiv.org/abs/2110.04580).
+
+4. **Independently certify the executed prefix and stop:** check a no-cooperation response, plausible lateral/turning envelopes, tracking uncertainty and a reachable braking stop. The current [two fixed-heading futures](/Users/aditya/dev/sih2026/matlab/+sih/+planner/predictAgentFutures.m:87) cannot provide that certificate. Only probe within a prefix that remains stoppable without another actor yielding. Treat a resulting stall as an explicit state with persistence and a safe escape route; the reported S2/S3 stall still needs its own fix.
+
+**Training and calibration**
+
+| Data | Use and limit |
+|---|---|
+| [SPT Chennai](https://www.chennaitrafficdata.com/about-our-data) | Its listed fields include metric longitudinal/lateral positions, velocities, accelerations and vehicle class: useful for following, seepage and response distributions. The [paper](https://www.sciencedirect.com/science/article/pii/S0968090X25004358) says it is public, but the site’s [access page](https://www.chennaitrafficdata.com/how-to-access) did not expose a verifiable download in this check: **file access UNVERIFIED**. One arterial segment does not supply all junction modes. |
+| [METEOR](https://arxiv.org/abs/2109.07648) | Use tracked image-plane behaviors for recognition and weak class/context pretraining. The repo records absent per-frame metric ego motion and only the **executed**, not alternative, ego action; it cannot identify a causal response-to-probe model or metric safe gaps. [Dataset notes](/Users/aditya/dev/sih2026/ml/ReadThis.md:203) |
+| [IDD-PeD annotations/code](https://github.com/Ruthvik9/IDD-PeD) | Train crossing intent and image-plane pedestrian motion, including attention, gestures and interaction labels. Those labels do not by themselves identify how the pedestrian would react to a different ego action. |
+| [EoT Ahmedabad](https://github.com/NaveenKumar-1311/EoT-EyeonTraffic) and [Indian junction studies](https://www.researchgate.net/profile/Mithun-Mohan-2/publication/350907993_Investigating_the_Influence_of_Conflicting_Flow%27s_Composition_on_Critical_Gap_under_Heterogeneous_Traffic_Conditions/links/61ae043529948f41dbcddfab/Investigating-the-Influence-of-Conflicting-Flows-Composition-on-Critical-Gap-under-Heterogeneous-Traffic-Conditions.pdf) | Seed junction scenes and accepted/rejected gap distributions. EoT lists one unsignalized and two signalized Ahmedabad sites; access to its referenced SkyEye track repository returned 404 here, so usable individual tracks are **UNVERIFIED**. |
+| **Randomized interactive simulation** | Generate the missing counterfactual ego actions and actor responses; fit the response model there, then calibrate its *observable* trajectory and mode statistics against Indian recordings. Sim-to-road transfer of its causal response coefficient remains **UNVERIFIED**. |
+
+Test against binary yield/assert, fixed class priors and no-probe ablations. Across the P1 top-25 scenarios, record collision/contact, minimum clearance, successful safe gap use, false commitments, permanent stalls, probability calibration and cycle-time **p95/p99**. Include group/cover merges, lateral cut-ins, occlusion and nonresponse so the learned model cannot win merely by assuming courtesy. These are proposed evaluation requirements, motivated by the [Chennai merge modes](https://www.sciencedirect.com/science/article/abs/pii/S1369847815000224) and the [current fixed-heading model](/Users/aditya/dev/sih2026/matlab/+sih/+planner/predictAgentFutures.m:46).
+
+## 5. Novelty and the 100 ms gate
+
+| Closest prior art | What it already occupies |
+|---|---|
+| [Sadigh et al., 2018](https://people.eecs.berkeley.edu/~sastry/pubs/Pdfs%20of%202018/SadighPlanning2018.pdf); [Geary et al., 2021](https://arxiv.org/abs/2110.04580) | Online preference inference and purposeful probing, including when probing has decision value. |
+| [Kruse et al., 2022](https://arxiv.org/abs/2207.05228); [LeTS-Drive](https://arxiv.org/abs/2101.03834) and its [code](https://github.com/cindycia/lets-drive) | Continuous cooperation belief with online POMDP merging; real-time belief-guided planning in simulated dense, unregulated heterogeneous traffic. |
+| [2026 SVO-conditioned MATLAB/Python planner](https://www.mdpi.com/2079-9292/15/9/1914); [Chakravarty et al., 2026](https://arxiv.org/abs/2602.14540); [Mustafa et al., 2026](https://arxiv.org/abs/2608.21400) | SVO inference plus prediction/fallback; multimodal belief plus active probing and risk monitoring; ego-conditioned generative probing. |
+
+**Novelty verdict:** the combined *mechanism* is occupied. I found **no verified publication with the exact combination evaluated on Indian lane-free traffic in a real-time MATLAB/Simulink closed loop**, but absence from this search is not proof of firstness. The defensible contribution is a **measured India-calibrated implementation**, with group/cover/rolling-gap modes, uncertainty-aware safety, and an ablation showing fewer contacts *and* fewer permanent stalls.
+
+The timing gate comes first. Using your **736 ms** measurement and **88%** capsule-list share: capsule work is **647.68 ms** and everything else **88.32 ms**. A 100 ms cycle leaves **11.68 ms** for capsule work *and every new computation*, requiring about a **55.5× reduction in that hotspot alone** if other costs stay fixed. The current checker [constructs a new `dynamicCapsuleList` for each candidate–future call](/Users/aditya/dev/sih2026/matlab/+sih/+planner/checkTrajectorySafety.m:74); adding belief branches directly to that loop worsens it. First use vectorized broad-phase rejection, retain only a small candidate shortlist, then run exact near-term swept-occupancy and stop checks. Measure the whole loop again before claiming 10 Hz. The belief grid may be cheap; **its integration is not yet proven to meet 100 ms**.
+
+**Still UNVERIFIED:** usable SPT download; public code and runtime for several cited recent planners; transferable Indian vehicle-to-pedestrian yielding rates by class; causal response-to-ego parameters from the observational datasets; the new design’s safety coverage and 100 ms runtime; whether the current deployed S3 output obeys its documented `Valid=false` gate.

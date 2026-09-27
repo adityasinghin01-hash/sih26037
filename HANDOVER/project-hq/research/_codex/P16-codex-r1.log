@@ -1,0 +1,513 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0ded2-a95a-7d63-87b2-cc52c975a9ec
+--------
+user
+PHASE P16 — INDIAN TRAFFIC NUMBERS (SIH26037, Indian-road autonomous driving system).
+
+Purpose: these numbers will (a) set the behaviour of the simulated Indian road users (CARLA/SUMO/Simulink
+actors) and (b) set the priors of our planner's per-actor "response propensity" belief, and (c) appear on
+a national-round PPT read by expert judges. A wrong number is worse than a missing one.
+
+RULES (non-negotiable):
+- I (Claude) will open every URL you give me and check the exact number against the exact sentence/table.
+- Every number needs: value, unit, city/site, sample size (n), year of data, road/junction type, and the
+  exact link (DOI or publisher page; PDF if open). Quote the sentence or table/row it comes from.
+- Primary sources only (peer-reviewed papers, government reports, IRC codes). No blogs, no AI summaries.
+- If no Indian number exists for an item, write "NOT FOUND" and say what the closest thing is. Do not
+  substitute a foreign number without labelling it FOREIGN.
+- Label each line FACT (read in source) or JUDGMENT (your inference). Mark UNVERIFIED if you could not
+  open the full text.
+- Prefer Indian data; note when a number is site-specific and should not be generalised.
+
+ALREADY IN HAND (do NOT re-search, but flag if any is wrong):
+- Two-wheeler seepage lateral gap: observed mean 0.906 m; SUMO default minGap 2.5 m; calibrated model 0.609 m
+  (ScienceDirect S1389128626005220, IDD/TIAND, 13,219 events).
+- Patil & Sangole (Maharashtra T-junctions): ~22% of right-turning two-wheelers accept a 3 s gap vs a
+  two-wheeler, ~10% vs a car (Springer s40534-014-0057-8).
+- Kanagaraj et al., Chennai T-junction merges: group 37%, forced 26%, normal 21%, cover 16%
+  (ScienceDirect S1369847815000224).
+- Kanpur unsignalised: pedestrian critical headway 3.76 s mean, ~38% rolling-gap crossings
+  (ScienceDirect S1369847820304927).
+- Patna midblock: 722 interactions, 26% rolling, 54.8% group crossings (Nature Sci Rep s41598-026-55112-9).
+- Red-phase pedestrian crossings: 3,608 of 8,089 arrivals, 12 intersections (S0925753521004446).
+- MoRTH 2023: wrong-side/lane-indiscipline 5.5% of deaths (category is combined).
+- Haryana Assembly: 3,383 stray-cattle crashes, 919 deaths over 5 years.
+
+WHAT TO FIND (six items):
+1. PEDESTRIAN YIELD RATE: share of Indian drivers who yield/slow for a crossing pedestrian, ideally by
+   vehicle class (car, bus, two-wheeler, auto). Midblock and unsignalised. Also driver yielding vs speed.
+   (Known lead: doi 10.1016/j.iatssr.2020.06.001 — open it and extract any actual numbers.)
+2. CRITICAL GAPS BY VEHICLE CLASS: Mohan & Chandra, "Investigating the Influence of Conflicting Flow's
+   Composition on Critical Gap under Heterogeneous Traffic Conditions" — find the publisher version
+   (journal, year, DOI) and confirm Table 10 values: right turn major/minor: 2W 2.5/3.5 s, 3W 2.7/3.7,
+   small car 2.7/3.8, bus 3.6/5.5, truck 3.8/5.7. If the publisher page is paywalled, find any open copy
+   or another paper that reprints them. Also 1–2 other Indian per-class critical-gap sources, and the
+   IRC value if IRC:SP:41 or Indo-HCM (CSIR-CRRI 2017) gives one.
+3. TWO-WHEELER LATERAL GAPS: besides seepage mean, lateral clearance by speed and by the pair of vehicle
+   classes (2W-car, 2W-bus, 2W-2W); lateral shift frequency. Indo-HCM or Indian papers.
+4. CATTLE ON ROAD FREQUENCY: any Indian count of animals per km or per hour on roads, animal-involved
+   crash share nationally (MoRTH has "animal" as an object/cause? check), stray cattle counts
+   (Livestock Census 2019 stray cattle number), any per-state road-cattle survey.
+5. WRONG-WAY SHARE: share of vehicles observed driving wrong-way on Indian roads (observational counts at
+   sites, not only crash share); MoRTH's separate wrong-side crash/death figure if the report splits it.
+6. SPEEDS IN MIXED TRAFFIC: free-flow and typical speeds by class (2W, car, auto, bus, truck, tractor,
+   cycle, pedestrian walking speed) on Indian urban roads, village/rural roads, and highways; Indo-HCM
+   is the obvious source. Also Indian pedestrian walking speed (mean, 15th percentile) and cattle
+   walking speed if any source exists.
+
+OUTPUT FORMAT (markdown):
+- One table per item: | Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+- Then "How to use in the sim" (one line per item, JUDGMENT).
+- Then "NOT FOUND / UNVERIFIED" list.
+- Then "Corrections to the ALREADY IN HAND list" (if any).
+Keep it tight. No padding.
+
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+I’ll check the primary papers and government documents directly, keep each figure tied to its site and sample, and leave gaps marked where the source does not support a usable number. I’ll also verify the supplied leads where a claim may be misleading.
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/SKILL.md' in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, ignore this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action** — including clarifying questions, exploring the codebase, or checking files. If it turns out wrong for the situation, you don't have to use it.
+
+**Before entering plan mode:** if you haven't already brainstormed, invoke the brainstorming skill first.
+
+Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
+
+## Skill Priority
+
+When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Superpowers' most common process skills, but the rule holds for any of them.
+
+- "Let's build X" → superpowers:brainstorming first, then implementation skills.
+- "Fix this bug" → superpowers:systematic-debugging first, then domain skills.
+
+## Red Flags
+
+These thoughts mean STOP—you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
+| "Let me gather information first" | Skills tell you HOW to gather information. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "This doesn't count as a task" | Action = task. Check for skills. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
+| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+
+## Platform Adaptation
+
+If your harness appears here, read its reference file for special instructions:
+
+- Codex: `references/codex-tools.md`
+- Pi: `references/pi-tools.md`
+- Antigravity: `references/antigravity-tools.md`
+
+## User Instructions
+
+User instructions (CLAUDE.md, AGENTS.md, GEMINI.md, etc, direct requests) take precedence over skills, which in turn override default behavior. Only skip skill workflows or instructions when your human partner has explicitly told you to.
+
+codex
+I’m using the using-superpowers skill to structure the source check. I’ll treat figures visible only in abstracts or search snippets as unverified.
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/references/codex-tools.md' in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+## Subagent dispatch requires multi-agent support
+
+Add to your Codex config (`~/.codex/config.toml`):
+
+```toml
+[features]
+multi_agent = true
+```
+
+This enables `spawn_agent`, `wait_agent`, and `close_agent` for skills like `dispatching-parallel-agents` and `subagent-driven-development`. When using subagent-driven-development, close reviewer subagents when their review returns. Keep each implementer subagent open until its task's review passes — the fix loop resumes the implementer — then close it. If your harness cannot send another message to a spawned agent, dispatch each fix round as a fresh implementer carrying the brief, the report file, and the findings.
+
+## Environment Detection
+
+Skills that create worktrees or finish branches should detect their
+environment with read-only git commands before proceeding:
+
+```bash
+GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
+GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+BRANCH=$(git branch --show-current)
+```
+
+- `GIT_DIR != GIT_COMMON` → already in a linked worktree (skip creation)
+- `BRANCH` empty → detached HEAD (cannot branch/push/PR from sandbox)
+
+See `using-git-worktrees` Step 0 and `finishing-a-development-branch`
+Step 1 for how each skill uses these signals.
+
+## Codex App Finishing
+
+When the sandbox blocks branch/push operations (detached HEAD in an
+externally managed worktree), the agent commits all work and informs
+the user to use the App's native controls:
+
+- **"Create branch"** — names the branch, then commit/push/PR via App UI
+- **"Hand off to local"** — transfers work to the user's local checkout
+
+The agent can still run tests, stage files, and output suggested branch
+names, commit messages, and PR descriptions for the user to copy.
+
+web search: 
+web search: 10.1016/j.iatssr.2020.06.001 pedestrian yielding India PDF drivers speed ...
+web search: 
+web search: https://doi.org/10.1016/j.iatssr.2020.06.001
+web search: 
+web search: "Exploring pedestrian surrogate safety measures" "yield" "speed" full text ...
+web search: 
+web search: 'Yielding'
+web search: 
+web search: 'Download PDF'
+web search: 
+web search: site:sciencedirect.com/science/article/pii "Investigating the influence of conflicting" ...
+web search: 
+web search: "Exploring pedestrian surrogate safety measures" "yielding compliance" Table ...
+web search: 
+web search: https://api.elsevier.com/content/article/PII:S0386111220300522?httpAccept=text/plain
+codex
+Mohan and Chandra’s Table 10 is confirmed in an author hosted full PDF. Its figures are **base values** for right turns at rural or suburban unsignalised sites; the paper also adjusts them for large vehicles in the conflicting flow. I’m checking the other items with the same distinction between observed counts and model parameters.
+web search: 
+web search: site:dahd.gov.in 20th livestock census 2019 stray cattle 50 lakh 5 million pdf ...
+web search: 
+web search: site:dahd.gov.in "Stray Cattle" "2019" "million" ...
+web search: 
+web search: "Road Accidents in India 2023" "Driving on wrong side" "25,"
+ ...
+web search: 
+web search: India wrong way driving observational study percentage vehicles counted traffic ...
+web search: 
+web search: '6.6%'
+web search: 
+web search: "Vision-based investigation of road traffic and violations at urban roundabout in India" "wrong way" ...
+web search: 
+web search: "Bhavsar" "wrong way" "786" ...
+web search: 
+web search: "15.3%" "wrong way" "Bhavsar" ...
+web search: 
+web search: Indo HCM 2017 free flow speed vehicle class two wheeler car bus truck urban road pdf ...
+web search: 
+web search: 
+web search: 
+web search: 'Data collection'
+web search: 
+web search: '2021 to'
+web search: 
+web search: Indian pedestrian walking speed 15th percentile mean midblock crosswalk study n ...
+web search: 
+web search: "Parametric Study of Pedestrian Speeds at Midblock Crossings" DOI ...
+web search: 
+web search: https://ascelibrary.org/doi/10.1061/%28ASCE%29UP.1943-5444.0000083
+web search: 
+web search: 
+web search: 
+web search: 'Table 4 Model'
+web search: 
+web search: Indian "bike-bus" "lateral clearance" ...
+web search: 
+web search: 'Table 2'
+web search: 
+web search: India midblock pedestrian driver yielding rate percent vehicle type video study ...
+web search: 
+web search: "Exploring pedestrian surrogate safety measures" "yielding" "Table" ...
+web search: 
+web search: 
+web search: 
+web search: 'Table 5. Yielding'
+web search: 
+web search: 'Tab le 1.'
+web search: 
+web search: "452 interactions" "yielding" New Delhi ...
+web search: 
+web search: https://link.springer.com/article/10.1007/s41062-026-02547-8
+web search: 
+web search: India unsignalized intersection critical gap vehicle class two wheeler three wheeler car bus truck table pdf ...
+web search: 
+web search: 'TABLE III-1'
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 'Table 4'
+web search: 
+web search: "Critical Gap through Clearing Behavior of Drivers at Unsignalised Intersections" DOI ...
+context compacted
+codex
+The sources found so far support some site-specific inputs, but several requested national or class-specific figures are missing. I’m checking the denominators and study dates before putting any number in the tables.
+web search: 
+web search: site:journals.plos.org/plosone/article 0234594 cattle Raipur survey conducted year 7.28 transect ...
+web search: 
+web search: '2018'
+web search: 
+web search: 
+web search: 
+web search: 'January'
+web search: 
+web search: 'ratio of'
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 'July'
+web search: 
+web search: 
+web search: 
+web search: 'Table III-2'
+web search: 
+web search: 'Guwahati'
+codex
+I confirmed Mohan and Chandra’s Table 10 values. They are fitted base critical gaps; the paper’s observed site values differ and its model adds an adjustment for the conflicting flow. I’ll label that distinction in the table so the base values are not treated as direct observations.
+web search: 
+web search: site:morth.gov.in/sites/default/files/Road-Accident-in-India-2023-Publications.pdf "Driving on wrong side/Lane indiscipline" "25,242" ...
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 'wrong side'
+web search: 
+web search: 
+web search: 
+web search: 'Animal'
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 
+web search: 'average speed of the interacting'
+web search: 
+web search: 'Table 3'
+web search: 
+web search: "Roundabout Capacity in Heterogeneous Traffic Condition" "doi" Sonu Mathew ...
+web search: 
+web search: 
+web search: 
+web search: '38.80'
+web search: 
+web search: 
+web search: 
+web search: 
+codex
+**NR means the source does not report the fieldwork year or denominator.** Publication year is not substituted for data year. Values with NR are leads for checking, not presentation-ready national estimates.
+
+### 1. Pedestrian yield rate
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| 6.58; 12.24 | % driver yielding compliance | Vakola and Bandra, Mumbai; interaction n NR; data year NR | Vakola: marked, eight-lane divided midblock crossing; Bandra: unmarked, four-lane divided midblock crossing | Chaudhari et al., [DOI](https://doi.org/10.1016/j.iatssr.2020.06.001), [author-posted preproof](https://www.researchgate.net/publication/342332408_Exploring_pedestrian_surrogate_safety_measures_by_road_geometry_at_midblock_crosswalks_A_perspective_under_mixed_traffic_conditions) | Table 5, driver column: `I … 6.58`; `VI … 12.24`. Section 6.5 defines a yield as a driver slowing or stopping to give way. | FACT; denominator and fieldwork year NR | **Yes, preproof**; final publisher text not opened |
+| 67.92 | % of pedestrian–vehicle interactions in which driver yielded | New Delhi; n=452 interactions; data year NR | One midblock crossing; geometry NR | Khan et al., [publisher abstract](https://link.springer.com/article/10.1007/s41062-026-02547-8) | “drivers yield in 67.92% of total interactions” | FACT; **UNVERIFIED** study details | **No**—abstract only |
+
+Neither source supplies a verified car/bus/2W/auto yield breakdown. The two rates use different sites and study definitions; they must not be pooled. Chaudhari et al. report that yielding varies with approach speed and geometry, but give no checked yield-by-speed table.
+
+### 2. Critical gaps by vehicle class
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| Right turn **major/minor**: 2W **2.5/3.5**, 3W **2.7/3.7**, small car **2.7/3.8**, bus **3.6/5.5**, truck **3.8/5.7** | s, **fitted base critical gap** | Six unnamed Indian suburban/rural sites; n=1,262 major turns + 1,488 minor turns, class-specific n NR; data year NR | Four T and two four-leg unsignalised junctions; four-lane divided major roads | Mohan & Chandra, *International Journal of Transportation Science and Technology* **10 (2021)**, [DOI](https://doi.org/10.1016/j.ijtst.2021.01.004), [open published-paper copy](https://www.researchgate.net/profile/Mithun-Mohan-2/publication/350907993_Investigating_the_Influence_of_Conflicting_Flow%27s_Composition_on_Critical_Gap_under_Heterogeneous_Traffic_Conditions/links/61ae043529948f41dbcddfab/Investigating-the-Influence-of-Conflicting-Flows-Composition-on-Critical-Gap-under-Heterogeneous-Traffic-Conditions.pdf) | Table 10 rows `2W 2.5 … 3.5`; `3W 2.7 … 3.7`; `CS 2.7 … 3.8`; `BUS 3.6 … 5.5`; `TRUCK 3.8 … 5.7` | FACT | **Yes** |
+| Minor/major: car **4.30/3.80** (n=81/89); 2W **3.50/2.60** (n=325/207); 3W **3.85/3.00** (n=113/76) | s, estimated critical gap | Intersection 1, among four sites in Hyderabad and Thiruvananthapuram; July–August **2006**. Paper does not map site 1 to a city. | Semirural, unsignalised T; two-lane major, one-lane minor | Ashalatha & Chandra, [DOI](https://doi.org/10.1007/s12205-011-1392-5), [author-posted full text](https://www.researchgate.net/publication/257774195_Critical_gap_through_clearing_behavior_of_drivers_at_unsignalised_intersections) | Table 2, intersection 1: `Car 4.30 (81) 3.80 (89)`; `Motorized 2-wheeler 3.50 (325) 2.60 (207)`; `3-wheeler 3.85 (113) 3.00 (76)` | FACT | **Yes** |
+| Jaipur: 2W **1.21**, 3W **1.50**, small car **1.94**; Thiruvananthapuram: **1.45**, **1.74**, **1.78** | s, estimated entry critical gap | Chomu House Circle and Chakka roundabout; class n NR; data year NR | Four-leg roundabouts | Mathew et al., [DOI](https://doi.org/10.1016/j.trpro.2017.12.147), [open paper](https://universalcollegeofengineering.edu.in/wp-content/uploads/2024/04/46.-Roundabout-Capacity-in-Heterogeneous-Traffic-Condition-Modification-of-HCM-Equation-and-Calibration.pdf) | Table 3: `Jaipur 1.21 1.50 1.94`; `Trivandrum 1.45 1.74 1.78` | FACT; **roundabout entries only** | **Yes** |
+| Passenger car right turn, major **4.8**, minor **5.8**, in the code’s 32 km/h example | s, **design critical gap** | IRC:SP:41, **1994** code; empirical n/site/year not supplied | At-grade intersection; two-lane major road | [IRC:SP:41 PDF](https://law.resource.org/pub/in/bis/irc/irc.gov.in.sp.041.1994.pdf) | Table III-2, “Basic Critical Gap … For Passenger Cars”; worked example gives `4.8 (sec)` and `5.8 (sec)` | FACT; code value, not field observation | **Yes** |
+
+Mohan and Chandra’s Table 10 is **not** its observed site table: its model adjusts each base value for the proportion of large vehicles in conflicting flow. It also excludes group and multistage gap acceptances.
+
+### 3. Two-wheeler lateral gaps and shifts
+
+Let \(v\) be the **pair’s average speed in km/h** and \(C\) its modelled lateral clearance in **cm**.
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| Bike–bike: **C = 118.02 + 0.224v**; car–bike: **C = 125.16 + 0.612v**; auto–bike: **C = 117.27 + 0.739v** | cm; slope is cm per km/h | Delhi, Guwahati, Kolkata, Bengaluru, Pune, Mumbai; pair n=87, 1,372, 417 respectively; data year NR | Mixed-traffic road stretches during lateral passing/interaction | Budhkar & Maurya, [publisher PDF](https://link.springer.com/content/pdf/10.1007/s40534-017-0130-1.pdf) | Table 4 rows: `Bike–Bike 87 0.224 118.02`; `Car–Bike 1372 0.612 125.16`; `Auto–Bike 417 0.739 117.27` | FACT; fitted relationships | **Yes** |
+
+These are passing clearances, a different manoeuvre from the seepage gap already in hand. **2W–bus clearance and a lateral-shift event rate: NOT FOUND.** The closest shift paper, [Pal et al.](https://doi.org/10.1016/j.trpro.2020.08.153), extracts cumulative displacement from **3,094 trajectories** at Jubilee Hills, Hyderabad; its shift statistic is not a manoeuvre frequency.
+
+### 4. Cattle on roads
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| **7.28** average; site-grid range **0.40–23.58** | visible cattle per surveyed route km | Raipur; 20 sampled 1-km² grids, 141.68 km route, first/third-day headcounts 998/984; data year NR | Urban streets, roads and highways; count includes animals within 10 m of either roadside | Sahu et al., [PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0234594) | Table 2 and Results: “average density … 7.28 km⁻¹”; range in Table 2 | FACT; **Raipur only** | **Yes** |
+| **50 lakh** | stray cattle, national headcount | India; nationwide 20th Livestock Census; **2019** | All locations, **not a road count** | [Government of India census statement](https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=1813802&lang=2&reg=48) | “Total number of Stray Cattle … in 2019 is 50 lakhs” | FACT | **Yes** |
+
+A national animal-involved crash share is **NOT FOUND** in [MoRTH’s 2023 report](https://morth.gov.in/backend/documents/uploaded/Road-Accident-in-India-2023-Publications.pdf). Its published collision table has no animal row; the report mentions animals as one possible reason for a vehicle running off-road. Its blank data-collection template includes “Vehicle to Animal,” which does **not** supply a national count.
+
+### 5. Wrong-way driving
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| **7.583** | wrong-direction vehicles per 5-minute observation bin, mean | Old Neredmet Road, Hyderabad; n=12 bins over one hour, March **2019** | Four-lane **undivided** commercial midblock | Singh & Kumar, [publisher PDF](https://link.springer.com/content/pdf/10.1007/s13369-020-05213-y.pdf) | Table 2(a): `xWD 7.583 3.203 4 13`; methods define `xWD` as wrong-direction vehicles per five minutes | FACT; **one site and hour** | **Yes** |
+| **7,596 crashes; 3,358 deaths** (**5.1%** of NH crashes; **5.3%** of NH deaths) | reported wrong-side crash counts/shares | All Indian national highways; n=150,177 crashes and 63,112 deaths; **2023** | National highways | [MoRTH 2023 report](https://morth.gov.in/backend/documents/uploaded/Road-Accident-in-India-2023-Publications.pdf) | Table 2.9: `Driving on wrong side … 7,596 3,358`; `% Share … 5.1 5.3` | FACT; crash share, **not traffic prevalence** | **Yes** |
+| **25,242 crashes; 9,432 deaths** (**5.25%**, **5.46%**) | reported **combined** wrong-side/lane-indiscipline counts/shares | All India; n=480,583 crashes and 172,890 deaths; **2023** | All road categories | [MoRTH 2023 report](https://morth.gov.in/backend/documents/uploaded/Road-Accident-in-India-2023-Publications.pdf) | Table 3.1: `Driving on wrong side/Lane indiscipline … 25,242 9,432`; `% share … 5.25 5.46` | FACT | **Yes** |
+
+An observed **share of all vehicles** driving wrong-way is **NOT FOUND**. The Hyderabad count supplies an event frequency for one road, not a transferable prevalence.
+
+### 6. Speeds in mixed traffic
+
+The following vehicle figures are **medians**, not free-flow design speeds. Sites were selected for free-moving traffic and include several road classes; “rural” does **not** mean village road.
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| 2W **45 urban / 50 rural** | km/h median | Bengaluru metropolitan region; n=39,626 / 24,978; May–October **2022** | Selected urban/rural NH, state highway, arterial and inner-road sites | [Journal of Road Safety](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Motorcycle 24978 50 … 39626 45` | FACT | **Yes** |
+| Sedan **50 / 68** | km/h median | Same; n=33,832 / 19,575; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Sedan/saloon 19575 68 … 33832 50` | FACT | **Yes** |
+| 3W **38 / 43** | km/h median | Same; n=8,859 / 2,517; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Three-wheeler 2517 43 … 8859 38` | FACT | **Yes** |
+| Bus **41 / 64** | km/h median | Same; n=5,469 / 3,044; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Bus 3044 64 … 5469 41` | FACT | **Yes** |
+| Large truck **44 / 51** | km/h median | Same; n=4,593 / 4,686; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Truck/Large truck 4686 51 … 4593 44` | FACT | **Yes** |
+| **63 urban / 59 rural**, all vehicle classes pooled | km/h median | Same; n=33,870 / 34,787; **2022** | **National-highway sites only** | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `National highway 34787 59 … 33870 63` | FACT; not class-specific | **Yes** |
+| 2W **11.358**, 3W **6.524**, four-wheelers **5.938** | km/h, mean speed in five-minute bins | Old Neredmet Road, Hyderabad; n=12 bins with vehicle-speed sampling; March **2019** | Four-lane undivided commercial midblock with side friction | [Singh & Kumar PDF](https://link.springer.com/content/pdf/10.1007/s13369-020-05213-y.pdf) | Table 2(a): `xTW 11.358`; `xThW 6.524`; `xFW 5.938` | FACT; **one slow site/hour** | **Yes** |
+| Adult **1.22 mean / 0.81 15th percentile**; elderly **0.99 / 0.71** | m/s crossing speed | Six Bhopal/Indore midblock sites; n=2,288 adults and 191 elderly within 2,616 pedestrians; data year NR | Urban midblock crossings | [Eastern Asia Society proceedings PDF](https://easts.info/on-line/proceedings/vol.11/pdf/PP1951_H1.pdf) | Tables 2–3: `Adult … 1.22 … 0.81`; `Elderly … 0.99 … 0.71` | FACT | **Yes** |
+
+### How to use in the sim — JUDGMENT
+
+1. **Pedestrian yielding:** Keep yield propensity site-dependent; do not set a national or vehicle-class prior from the two incomplete studies.
+2. **Critical gaps:** Use Mohan–Chandra Table 10 as a conditional junction-model baseline, then vary conflicting large-vehicle share; keep roundabout parameters separate.
+3. **2W lateral movement:** Calibrate passing clearance against the speed-dependent pair curves; retain the seepage result as a separate manoeuvre.
+4. **Cattle:** Use Raipur’s route density only for a Raipur-like stress scenario; derive encounter rates from your own road observation.
+5. **Wrong-way:** Use the Hyderabad count as a site stress case; crash shares cannot set the fraction of actors spawned wrong-way.
+6. **Speeds:** Use the 2022 Bengaluru distributions as road-class scenario checks, and the Hyderabad values for a slow commercial-road scenario.
+
+### NOT FOUND / UNVERIFIED
+
+- **NOT FOUND:** Indian pedestrian-yield rates by car, bus, 2W and auto with complete site, denominator and data-year metadata. The New Delhi **67.92%** full text is **UNVERIFIED**; Chaudhari’s interaction denominator and fieldwork year are NR.
+- **NOT FOUND:** 2W–bus lateral clearance or lateral-shift manoeuvres per vehicle-km/hour. Pal et al.’s cumulative shift measure is not that rate.
+- **NOT FOUND:** National animal-involved crash share; cattle encounters per road-hour; Indian road-cattle walking speed.
+- **NOT FOUND:** Observed wrong-way vehicles as a defensible share of all traffic across Indian sites.
+- **NOT FOUND:** Verified class-specific speeds for village roads, highway-only 2W/car/auto/bus/truck, tractors alone, or cycles. The Bengaluru “other” category combines tractors, tillers and cranes. Numerical Indo-HCM tables were **UNVERIFIED** from an official full-text copy.
+- Mohan–Chandra, Budhkar–Maurya, the roundabout paper and Raipur cattle study do **not** report a usable fieldwork year; the roundabout paper also omits class-specific sample sizes. Those rows need these metadata before national-round slides.
+
+### Corrections to the ALREADY IN HAND list
+
+The MoRTH **5.5% deaths** figure is correctly labelled as the **combined** “driving on wrong side/lane indiscipline” category; Table 3.1’s exact figure is **5.46%**. MoRTH separately reports **3,358 wrong-side deaths on national highways** in 2023. I did not recheck the other supplied items, as requested.
+tokens used
+4,16,915
+**NR means the source does not report the fieldwork year or denominator.** Publication year is not substituted for data year. Values with NR are leads for checking, not presentation-ready national estimates.
+
+### 1. Pedestrian yield rate
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| 6.58; 12.24 | % driver yielding compliance | Vakola and Bandra, Mumbai; interaction n NR; data year NR | Vakola: marked, eight-lane divided midblock crossing; Bandra: unmarked, four-lane divided midblock crossing | Chaudhari et al., [DOI](https://doi.org/10.1016/j.iatssr.2020.06.001), [author-posted preproof](https://www.researchgate.net/publication/342332408_Exploring_pedestrian_surrogate_safety_measures_by_road_geometry_at_midblock_crosswalks_A_perspective_under_mixed_traffic_conditions) | Table 5, driver column: `I … 6.58`; `VI … 12.24`. Section 6.5 defines a yield as a driver slowing or stopping to give way. | FACT; denominator and fieldwork year NR | **Yes, preproof**; final publisher text not opened |
+| 67.92 | % of pedestrian–vehicle interactions in which driver yielded | New Delhi; n=452 interactions; data year NR | One midblock crossing; geometry NR | Khan et al., [publisher abstract](https://link.springer.com/article/10.1007/s41062-026-02547-8) | “drivers yield in 67.92% of total interactions” | FACT; **UNVERIFIED** study details | **No**—abstract only |
+
+Neither source supplies a verified car/bus/2W/auto yield breakdown. The two rates use different sites and study definitions; they must not be pooled. Chaudhari et al. report that yielding varies with approach speed and geometry, but give no checked yield-by-speed table.
+
+### 2. Critical gaps by vehicle class
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| Right turn **major/minor**: 2W **2.5/3.5**, 3W **2.7/3.7**, small car **2.7/3.8**, bus **3.6/5.5**, truck **3.8/5.7** | s, **fitted base critical gap** | Six unnamed Indian suburban/rural sites; n=1,262 major turns + 1,488 minor turns, class-specific n NR; data year NR | Four T and two four-leg unsignalised junctions; four-lane divided major roads | Mohan & Chandra, *International Journal of Transportation Science and Technology* **10 (2021)**, [DOI](https://doi.org/10.1016/j.ijtst.2021.01.004), [open published-paper copy](https://www.researchgate.net/profile/Mithun-Mohan-2/publication/350907993_Investigating_the_Influence_of_Conflicting_Flow%27s_Composition_on_Critical_Gap_under_Heterogeneous_Traffic_Conditions/links/61ae043529948f41dbcddfab/Investigating-the-Influence-of-Conflicting-Flows-Composition-on-Critical-Gap-under-Heterogeneous-Traffic-Conditions.pdf) | Table 10 rows `2W 2.5 … 3.5`; `3W 2.7 … 3.7`; `CS 2.7 … 3.8`; `BUS 3.6 … 5.5`; `TRUCK 3.8 … 5.7` | FACT | **Yes** |
+| Minor/major: car **4.30/3.80** (n=81/89); 2W **3.50/2.60** (n=325/207); 3W **3.85/3.00** (n=113/76) | s, estimated critical gap | Intersection 1, among four sites in Hyderabad and Thiruvananthapuram; July–August **2006**. Paper does not map site 1 to a city. | Semirural, unsignalised T; two-lane major, one-lane minor | Ashalatha & Chandra, [DOI](https://doi.org/10.1007/s12205-011-1392-5), [author-posted full text](https://www.researchgate.net/publication/257774195_Critical_gap_through_clearing_behavior_of_drivers_at_unsignalised_intersections) | Table 2, intersection 1: `Car 4.30 (81) 3.80 (89)`; `Motorized 2-wheeler 3.50 (325) 2.60 (207)`; `3-wheeler 3.85 (113) 3.00 (76)` | FACT | **Yes** |
+| Jaipur: 2W **1.21**, 3W **1.50**, small car **1.94**; Thiruvananthapuram: **1.45**, **1.74**, **1.78** | s, estimated entry critical gap | Chomu House Circle and Chakka roundabout; class n NR; data year NR | Four-leg roundabouts | Mathew et al., [DOI](https://doi.org/10.1016/j.trpro.2017.12.147), [open paper](https://universalcollegeofengineering.edu.in/wp-content/uploads/2024/04/46.-Roundabout-Capacity-in-Heterogeneous-Traffic-Condition-Modification-of-HCM-Equation-and-Calibration.pdf) | Table 3: `Jaipur 1.21 1.50 1.94`; `Trivandrum 1.45 1.74 1.78` | FACT; **roundabout entries only** | **Yes** |
+| Passenger car right turn, major **4.8**, minor **5.8**, in the code’s 32 km/h example | s, **design critical gap** | IRC:SP:41, **1994** code; empirical n/site/year not supplied | At-grade intersection; two-lane major road | [IRC:SP:41 PDF](https://law.resource.org/pub/in/bis/irc/irc.gov.in.sp.041.1994.pdf) | Table III-2, “Basic Critical Gap … For Passenger Cars”; worked example gives `4.8 (sec)` and `5.8 (sec)` | FACT; code value, not field observation | **Yes** |
+
+Mohan and Chandra’s Table 10 is **not** its observed site table: its model adjusts each base value for the proportion of large vehicles in conflicting flow. It also excludes group and multistage gap acceptances.
+
+### 3. Two-wheeler lateral gaps and shifts
+
+Let \(v\) be the **pair’s average speed in km/h** and \(C\) its modelled lateral clearance in **cm**.
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| Bike–bike: **C = 118.02 + 0.224v**; car–bike: **C = 125.16 + 0.612v**; auto–bike: **C = 117.27 + 0.739v** | cm; slope is cm per km/h | Delhi, Guwahati, Kolkata, Bengaluru, Pune, Mumbai; pair n=87, 1,372, 417 respectively; data year NR | Mixed-traffic road stretches during lateral passing/interaction | Budhkar & Maurya, [publisher PDF](https://link.springer.com/content/pdf/10.1007/s40534-017-0130-1.pdf) | Table 4 rows: `Bike–Bike 87 0.224 118.02`; `Car–Bike 1372 0.612 125.16`; `Auto–Bike 417 0.739 117.27` | FACT; fitted relationships | **Yes** |
+
+These are passing clearances, a different manoeuvre from the seepage gap already in hand. **2W–bus clearance and a lateral-shift event rate: NOT FOUND.** The closest shift paper, [Pal et al.](https://doi.org/10.1016/j.trpro.2020.08.153), extracts cumulative displacement from **3,094 trajectories** at Jubilee Hills, Hyderabad; its shift statistic is not a manoeuvre frequency.
+
+### 4. Cattle on roads
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| **7.28** average; site-grid range **0.40–23.58** | visible cattle per surveyed route km | Raipur; 20 sampled 1-km² grids, 141.68 km route, first/third-day headcounts 998/984; data year NR | Urban streets, roads and highways; count includes animals within 10 m of either roadside | Sahu et al., [PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0234594) | Table 2 and Results: “average density … 7.28 km⁻¹”; range in Table 2 | FACT; **Raipur only** | **Yes** |
+| **50 lakh** | stray cattle, national headcount | India; nationwide 20th Livestock Census; **2019** | All locations, **not a road count** | [Government of India census statement](https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=1813802&lang=2&reg=48) | “Total number of Stray Cattle … in 2019 is 50 lakhs” | FACT | **Yes** |
+
+A national animal-involved crash share is **NOT FOUND** in [MoRTH’s 2023 report](https://morth.gov.in/backend/documents/uploaded/Road-Accident-in-India-2023-Publications.pdf). Its published collision table has no animal row; the report mentions animals as one possible reason for a vehicle running off-road. Its blank data-collection template includes “Vehicle to Animal,” which does **not** supply a national count.
+
+### 5. Wrong-way driving
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| **7.583** | wrong-direction vehicles per 5-minute observation bin, mean | Old Neredmet Road, Hyderabad; n=12 bins over one hour, March **2019** | Four-lane **undivided** commercial midblock | Singh & Kumar, [publisher PDF](https://link.springer.com/content/pdf/10.1007/s13369-020-05213-y.pdf) | Table 2(a): `xWD 7.583 3.203 4 13`; methods define `xWD` as wrong-direction vehicles per five minutes | FACT; **one site and hour** | **Yes** |
+| **7,596 crashes; 3,358 deaths** (**5.1%** of NH crashes; **5.3%** of NH deaths) | reported wrong-side crash counts/shares | All Indian national highways; n=150,177 crashes and 63,112 deaths; **2023** | National highways | [MoRTH 2023 report](https://morth.gov.in/backend/documents/uploaded/Road-Accident-in-India-2023-Publications.pdf) | Table 2.9: `Driving on wrong side … 7,596 3,358`; `% Share … 5.1 5.3` | FACT; crash share, **not traffic prevalence** | **Yes** |
+| **25,242 crashes; 9,432 deaths** (**5.25%**, **5.46%**) | reported **combined** wrong-side/lane-indiscipline counts/shares | All India; n=480,583 crashes and 172,890 deaths; **2023** | All road categories | [MoRTH 2023 report](https://morth.gov.in/backend/documents/uploaded/Road-Accident-in-India-2023-Publications.pdf) | Table 3.1: `Driving on wrong side/Lane indiscipline … 25,242 9,432`; `% share … 5.25 5.46` | FACT | **Yes** |
+
+An observed **share of all vehicles** driving wrong-way is **NOT FOUND**. The Hyderabad count supplies an event frequency for one road, not a transferable prevalence.
+
+### 6. Speeds in mixed traffic
+
+The following vehicle figures are **medians**, not free-flow design speeds. Sites were selected for free-moving traffic and include several road classes; “rural” does **not** mean village road.
+
+| Number | Unit | Site / n / year | Road type | Source (link) | Quote or table ref | FACT/JUDGMENT | Verified full text? |
+|---|---|---|---|---|---|---|---|
+| 2W **45 urban / 50 rural** | km/h median | Bengaluru metropolitan region; n=39,626 / 24,978; May–October **2022** | Selected urban/rural NH, state highway, arterial and inner-road sites | [Journal of Road Safety](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Motorcycle 24978 50 … 39626 45` | FACT | **Yes** |
+| Sedan **50 / 68** | km/h median | Same; n=33,832 / 19,575; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Sedan/saloon 19575 68 … 33832 50` | FACT | **Yes** |
+| 3W **38 / 43** | km/h median | Same; n=8,859 / 2,517; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Three-wheeler 2517 43 … 8859 38` | FACT | **Yes** |
+| Bus **41 / 64** | km/h median | Same; n=5,469 / 3,044; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Bus 3044 64 … 5469 41` | FACT | **Yes** |
+| Large truck **44 / 51** | km/h median | Same; n=4,593 / 4,686; **2022** | Same | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `Truck/Large truck 4686 51 … 4593 44` | FACT | **Yes** |
+| **63 urban / 59 rural**, all vehicle classes pooled | km/h median | Same; n=33,870 / 34,787; **2022** | **National-highway sites only** | [Study](https://journalofroadsafety.org/article/161217-urban-and-rural-differences-in-driver-speeds-and-associated-factors-results-from-a-large-scale-roadside-study-in-india) | Table 2, `National highway 34787 59 … 33870 63` | FACT; not class-specific | **Yes** |
+| 2W **11.358**, 3W **6.524**, four-wheelers **5.938** | km/h, mean speed in five-minute bins | Old Neredmet Road, Hyderabad; n=12 bins with vehicle-speed sampling; March **2019** | Four-lane undivided commercial midblock with side friction | [Singh & Kumar PDF](https://link.springer.com/content/pdf/10.1007/s13369-020-05213-y.pdf) | Table 2(a): `xTW 11.358`; `xThW 6.524`; `xFW 5.938` | FACT; **one slow site/hour** | **Yes** |
+| Adult **1.22 mean / 0.81 15th percentile**; elderly **0.99 / 0.71** | m/s crossing speed | Six Bhopal/Indore midblock sites; n=2,288 adults and 191 elderly within 2,616 pedestrians; data year NR | Urban midblock crossings | [Eastern Asia Society proceedings PDF](https://easts.info/on-line/proceedings/vol.11/pdf/PP1951_H1.pdf) | Tables 2–3: `Adult … 1.22 … 0.81`; `Elderly … 0.99 … 0.71` | FACT | **Yes** |
+
+### How to use in the sim — JUDGMENT
+
+1. **Pedestrian yielding:** Keep yield propensity site-dependent; do not set a national or vehicle-class prior from the two incomplete studies.
+2. **Critical gaps:** Use Mohan–Chandra Table 10 as a conditional junction-model baseline, then vary conflicting large-vehicle share; keep roundabout parameters separate.
+3. **2W lateral movement:** Calibrate passing clearance against the speed-dependent pair curves; retain the seepage result as a separate manoeuvre.
+4. **Cattle:** Use Raipur’s route density only for a Raipur-like stress scenario; derive encounter rates from your own road observation.
+5. **Wrong-way:** Use the Hyderabad count as a site stress case; crash shares cannot set the fraction of actors spawned wrong-way.
+6. **Speeds:** Use the 2022 Bengaluru distributions as road-class scenario checks, and the Hyderabad values for a slow commercial-road scenario.
+
+### NOT FOUND / UNVERIFIED
+
+- **NOT FOUND:** Indian pedestrian-yield rates by car, bus, 2W and auto with complete site, denominator and data-year metadata. The New Delhi **67.92%** full text is **UNVERIFIED**; Chaudhari’s interaction denominator and fieldwork year are NR.
+- **NOT FOUND:** 2W–bus lateral clearance or lateral-shift manoeuvres per vehicle-km/hour. Pal et al.’s cumulative shift measure is not that rate.
+- **NOT FOUND:** National animal-involved crash share; cattle encounters per road-hour; Indian road-cattle walking speed.
+- **NOT FOUND:** Observed wrong-way vehicles as a defensible share of all traffic across Indian sites.
+- **NOT FOUND:** Verified class-specific speeds for village roads, highway-only 2W/car/auto/bus/truck, tractors alone, or cycles. The Bengaluru “other” category combines tractors, tillers and cranes. Numerical Indo-HCM tables were **UNVERIFIED** from an official full-text copy.
+- Mohan–Chandra, Budhkar–Maurya, the roundabout paper and Raipur cattle study do **not** report a usable fieldwork year; the roundabout paper also omits class-specific sample sizes. Those rows need these metadata before national-round slides.
+
+### Corrections to the ALREADY IN HAND list
+
+The MoRTH **5.5% deaths** figure is correctly labelled as the **combined** “driving on wrong side/lane indiscipline” category; Table 3.1’s exact figure is **5.46%**. MoRTH separately reports **3,358 wrong-side deaths on national highways** in 2023. I did not recheck the other supplied items, as requested.

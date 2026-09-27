@@ -1,0 +1,598 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq/research/_codex
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0dea5-73da-7452-bcbe-73d4b4549987
+--------
+user
+You are my research partner on SIH26037 (Smart India Hackathon 2026, MathWorks PS "Adaptive Path Planning
+and Collision Avoidance for Autonomous Vehicles on Unstructured Indian Roads"). Vision: a full self-driving
+system for Indian roads, tested in simulation (MATLAB/Simulink must host the running system; Python allowed
+for training; college has a DGX A100). I (Claude) check every source you give. Rules: live web search,
+every fact with a working URL, UNVERIFIED if unsure, never invent. Concise tables.
+
+PHASES P4 (PREDICTION ML) and P5 (PERCEPTION ML).
+Context - the requirement list (top priorities from our catalogue): no markings/road edge; two-wheeler
+seepage; midblock pedestrian crossing; occluded pedestrians behind buses; informal merge; uncontrolled
+T-junction; wrong-way vehicle; abrupt braking; cut-in; cattle standing/crossing; slow tractor; rolling
+pedestrian crossing; dense overlapping users; potholes; construction diversion; bus pull-out; auto stops;
+rain; fog; unlit night; hairpins; negotiated right of way.
+Our current ML (audit):
+| 2 | **Prediction ML** | LSTM (25k params) + attention model (58k params) over 31 depth-free image-plane features, trained on METEOR (1,251 clips); Platt calibration; ONNX opset 18 with no Gather/Scatter; `predictYield.m` plus the `gateYield` gate | Test set (233 clips): **dangerous-error 2.089%**, CI [1.315, 2.854] vs bar ≤1%; covers 10.5% of GO decisions; ECE 0.0159 | **Weak** | **Fails its own bar, so it drives nothing** (Valid=false). Label is "assert" (took the gap), not true yield; the ego features 28–31 are nearly empty in METEOR; it predicts intent only, not trajectories; no multi-agent joint prediction |
+| 3 | **Perception ML** | YOLOX spotter (IDD, A100); DeepLab v3+ road segmenter; PointPillars (script only) | DeepLab: **drivable IoU 96.0%, mIoU 86.3%**. YOLOX: mAP 29.1% (cow AP 16.3%, auto 38.2%). On rendered frames: **0 detections at the default threshold** | **Weak** | **Offline only**, nothing in the driving loop. Camera not in the loop. PointPillars never trained. Two of the model files are only on Shourya's Windows PC |
+| 4 | **Sensing and tracking** | Simulated lidar, radar and near-field ring → `trackerGNN` (constant-velocity EKF) → S1 TrackList | S1 under sensing: 0.625 m vs 0.618 m ground truth (7 mm change) | **Partial** | Sensor numbers are not from a datasheet; no real ray-cast occlusion; no false alarms; no weather model |
+
+P4 PREDICTION - research:
+1. How Tesla, Waymo (MotionLM, Wayformer, foundation model), NVIDIA, Wayve, Mobileye predict other agents;
+   joint multi-agent vs marginal; intent vs trajectory; occupancy-flow prediction.
+2. SOTA models 2024-2026 (MTR/MTRv3, QCNet, DeMo, SMART/sim-agent tokenisers, diffusion predictors) with
+   benchmark numbers (WOMD/Argoverse2/nuPlan), compute cost, code availability.
+3. Prediction in HETEROGENEOUS/Indian traffic: every paper and dataset (METEOR, IDD-X, IDD-PeD, TIAND, any
+   Indian drone/BEV trajectory dataset). Pedestrian intent models for India. Animal motion prediction.
+4. Ego-conditioned / interactive prediction (predictions that depend on the ego's candidate action).
+5. How to make a predictor SAFE to use: calibration, conformal prediction for trajectories, OOD detection,
+   gating. Our model fails its 1% dangerous-error bar - what published methods fix this class of problem.
+6. Deployability in MATLAB: which architectures import via ONNX (no Gather/Scatter trouble), or run via
+   MATLAB Python co-execution / Deep Learning Toolbox; latency on CPU/GPU.
+P5 PERCEPTION - research:
+1. Leaders: Tesla occupancy networks/vision-only BEV, Waymo camera+lidar+radar fusion, Mobileye.
+2. SOTA: BEV fusion (BEVFusion etc.), 3D occupancy prediction, open-vocabulary detection for rare classes
+   (Grounding DINO, YOLO-World, OWL) - relevant for pushcarts/animals/jugaad vehicles not in datasets.
+3. Drivable-space & road-edge detection without markings; pothole/speed-breaker detection; negative
+   obstacles (drop-offs) from lidar.
+4. Indian perception datasets 2023-2026 (IDD family, IDD-AW adverse weather, DriveIndia, DATS, FGVD,
+   RoadText, pothole datasets) with sizes/licences.
+5. Sim-to-real: making detectors work on simulated camera frames (our YOLOX gives 0 detections on renders):
+   domain randomisation, style transfer, neural rendering / 3D Gaussian splatting / NeRF-based sensor sim
+   (UniSim, NeuRAD, etc.) - what is usable by students.
+6. What MATLAB supports natively (Lidar Toolbox, PointPillars, YOLOX, camera-lidar calibration, Unreal
+   camera sim) and what needs Python.
+End each phase with: 3 concrete options for us (good/better/best) with effort and risk.
+
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+I’ll research P4 and P5 against primary papers, benchmark pages, dataset releases, and MathWorks documentation. I’ll keep reported results separate from what I can verify about deployment in your Simulink loop.
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/SKILL.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, ignore this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action** — including clarifying questions, exploring the codebase, or checking files. If it turns out wrong for the situation, you don't have to use it.
+
+**Before entering plan mode:** if you haven't already brainstormed, invoke the brainstorming skill first.
+
+Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
+
+## Skill Priority
+
+When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Superpowers' most common process skills, but the rule holds for any of them.
+
+- "Let's build X" → superpowers:brainstorming first, then implementation skills.
+- "Fix this bug" → superpowers:systematic-debugging first, then domain skills.
+
+## Red Flags
+
+These thoughts mean STOP—you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
+| "Let me gather information first" | Skills tell you HOW to gather information. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "This doesn't count as a task" | Action = task. Check for skills. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
+| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+
+## Platform Adaptation
+
+If your harness appears here, read its reference file for special instructions:
+
+- Codex: `references/codex-tools.md`
+- Pi: `references/pi-tools.md`
+- Antigravity: `references/antigravity-tools.md`
+
+## User Instructions
+
+User instructions (CLAUDE.md, AGENTS.md, GEMINI.md, etc, direct requests) take precedence over skills, which in turn override default behavior. Only skip skill workflows or instructions when your human partner has explicitly told you to.
+
+codex
+I’m using the applicable research workflow to check source quality and mark uncertain items explicitly. I’ll cite each factual claim where it appears.
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/references/codex-tools.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+## Subagent dispatch requires multi-agent support
+
+Add to your Codex config (`~/.codex/config.toml`):
+
+```toml
+[features]
+multi_agent = true
+```
+
+This enables `spawn_agent`, `wait_agent`, and `close_agent` for skills like `dispatching-parallel-agents` and `subagent-driven-development`. When using subagent-driven-development, close reviewer subagents when their review returns. Keep each implementer subagent open until its task's review passes — the fix loop resumes the implementer — then close it. If your harness cannot send another message to a spawned agent, dispatch each fix round as a fresh implementer carrying the brief, the report file, and the findings.
+
+## Environment Detection
+
+Skills that create worktrees or finish branches should detect their
+environment with read-only git commands before proceeding:
+
+```bash
+GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
+GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+BRANCH=$(git branch --show-current)
+```
+
+- `GIT_DIR != GIT_COMMON` → already in a linked worktree (skip creation)
+- `BRANCH` empty → detached HEAD (cannot branch/push/PR from sandbox)
+
+See `using-git-worktrees` Step 0 and `finishing-a-development-branch`
+Step 1 for how each skill uses these signals.
+
+## Codex App Finishing
+
+When the sandbox blocks branch/push operations (detached HEAD in an
+externally managed worktree), the agent commits all work and informs
+the user to use the App's native controls:
+
+- **"Create branch"** — names the branch, then commit/push/PR via App UI
+- **"Hand off to local"** — transfers work to the user's local checkout
+
+The agent can still run tests, stage files, and output suggested branch
+names, commit messages, and PR descriptions for the user to copy.
+
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/brainstorming/SKILL.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+---
+name: brainstorming
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+---
+
+# Brainstorming Ideas Into Designs
+
+Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+
+<HARD-GATE>
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+</HARD-GATE>
+
+## Anti-Pattern: "This Is Too Simple To Need A Design"
+
+Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Explore project context** — check files, docs, recent commits
+2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
+3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
+9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+
+## Process Flow
+
+```dot
+digraph brainstorming {
+    "Explore project context" [shape=box];
+    "Ask clarifying questions" [shape=box];
+    "Propose 2-3 approaches" [shape=box];
+    "Present design sections" [shape=box];
+    "User approves design?" [shape=diamond];
+    "Write design doc" [shape=box];
+    "Spec self-review\n(fix inline)" [shape=box];
+    "User reviews spec?" [shape=diamond];
+    "Invoke writing-plans skill" [shape=doublecircle];
+
+    "Explore project context" -> "Ask clarifying questions";
+    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Propose 2-3 approaches" -> "Present design sections";
+    "Present design sections" -> "User approves design?";
+    "User approves design?" -> "Present design sections" [label="no, revise"];
+    "User approves design?" -> "Write design doc" [label="yes"];
+    "Write design doc" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "User reviews spec?";
+    "User reviews spec?" -> "Write design doc" [label="changes requested"];
+    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+}
+```
+
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+
+## The Process
+
+**Understanding the idea:**
+
+- Check out the current project state first (files, docs, recent commits)
+- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
+- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- Prefer multiple choice questions when possible, but open-ended is fine too
+- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Focus on understanding: purpose, constraints, success criteria
+
+**Exploring approaches:**
+
+- Propose 2-3 different approaches with trade-offs
+- Present options conversationally with your recommendation and reasoning
+- Lead with your recommended option and explain why
+- YAGNI ruthlessly - remove unnecessary features from every approach and design
+
+**Presenting the design:**
+
+- Once you believe you understand what you're building, present the design
+- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- Ask after each section whether it looks right so far
+- Cover: architecture, components, data flow, error handling, testing
+- Be ready to go back and clarify if something doesn't make sense
+
+**Design for isolation and clarity:**
+
+- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
+- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
+- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
+- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+
+**Working in existing codebases:**
+
+- Explore the current structure before proposing changes. Follow existing patterns.
+- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
+- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## After the Design
+
+**Documentation:**
+
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+  - (User preferences for spec location override this default)
+- Use elements-of-style:writing-clearly-and-concisely skill if available
+- Commit the design document to git
+
+**Spec Self-Review:**
+After writing the spec document, look at it with fresh eyes:
+
+1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
+2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
+3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
+4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+
+Fix any issues inline. No need to re-review — just fix and move on.
+
+**User Review Gate:**
+After the spec review loop passes, ask the user to review the written spec before proceeding:
+
+> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+
+Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+
+**Implementation:**
+
+- Invoke the writing-plans skill to create a detailed implementation plan
+- Do NOT invoke any other skill. writing-plans is the next step.
+
+## Visual Companion
+
+A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+
+**Offering the companion (just-in-time):** Do NOT offer it upfront. Wait until a question would genuinely be clearer shown than told — a real mockup / layout / diagram question, not merely a UI *topic*. The first time that happens, offer it then, as its own message:
+> "This next part might be easier if I show you — I can put together mockups, diagrams, and comparisons in a browser tab as we go. It's still new and can be token-intensive. Want me to? I'll open it for you."
+
+**This offer MUST be its own message.** Only the offer — no clarifying question, summary, or other content. Wait for the user's response. If they accept, start the server with `--open` so their browser opens to the first screen automatically. If they decline, continue text-only and don't offer again unless they raise it.
+
+**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+
+- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
+- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
+
+A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
+
+If they agree to the companion, read the detailed guide before proceeding:
+`skills/brainstorming/visual-companion.md`
+
+web search: 
+web search: site:waymo.com research MotionLM Wayformer EMMA world model joint prediction ...
+web search: 
+web search: Tesla AI Day occupancy network video 2022 official Tesla ...
+web search: 
+web search: MTRv3 motion transformer 2025 Waymo open motion dataset github performance ...
+web search: 
+web search: site:github.com/sshaoshuai/MTR MTR v3 github latency params WOMD ...
+codex
+The papers already show a useful distinction for your audit: trajectory benchmarks reward accurate futures, while the Sim Agents benchmark measures joint scene realism. I’m checking Indian data and safety validation next, since those determine whether either kind of model can help your current gate.
+web search: 
+web search: METEOR dataset Indian traffic driving videos intent 1251 clips official github ...
+web search: 
+web search: METEOR Indian driving dataset 1251 videos traffic 2022 github ...
+web search: 
+web search: "METEOR" "1251" driving clips India ...
+web search: 
+web search: site:insaan.iiit.ac.in/datasets IDD-AW FGVD IDD-3D licence size ...
+web search: 
+web search: BEVFusion official paper camera lidar benchmark nuScenes mAP NDS github 2023 ...
+web search: 
+web search: unstructured road drivable area detection no lane markings India IDD paper road edge ...
+web search: 
+web search: conformal prediction trajectories autonomous driving multi-agent safety coverage 2024 2025 paper ...
+web search: 
+web search: site:mathworks.com/help/deeplearning importNetworkFromONNX supported operators Gather Scatter ...
+web search: 
+web search: site:mathworks.com/help/vision YOLOX MATLAB detector yoloxObjectDetector ...
+web search: 
+web search: UniSim neural sensor simulator autonomous driving official paper github 2023 ...
+web search: 
+web search: site:nvidia.com autonomous vehicle prediction world model surrounding agents Alpamayo 2025 2026 ...
+web search: 
+web search: ego conditioned interactive motion forecasting autonomous driving 2024 2025 model candidate ego trajectory ...
+web search: 
+web search: https://github.com/ZikangZhou/QCNet
+web search: 
+web search: https://cvit.iiit.ac.in/research/projects/cvit-projects/iddped
+web search: 
+web search: site:github.com IDD-PeD pedestrian intention trajectory dataset ...
+web search: 
+web search: '0.4967'
+web search: 
+web search: https://arxiv.org/abs/2409.05904
+web search: 
+web search: 2025 Waymo Interaction Prediction challenge first place technical report score ...
+web search: 
+web search: 'soft mAP'
+web search: 
+web search: SkyEye dataset 4021 tracks Ahmedabad github ...
+web search: 
+web search: site:youtube.com/@Tesla AI Day 2022 occupancy network Tesla official ...
+web search: 
+web search: https://www.tesla.com/AI
+web search: 
+web search: synthetic to real autonomous driving object detection domain randomization paper CVPR 2024 2025 ...
+codex
+I found a source issue worth flagging: the indexed IDD-PeD project page currently opens unrelated gambling content. The authors’ paper and code repository still load, so I’ll cite those and mark the project page as unreliable. I’m also marking dataset licences and inference latency as unverified where the releases do not publish them.
+codex
+## P4 — Prediction ML
+
+**Recommendation:** Keep `gateYield` closed. The **2.089% dangerous-error rate and its CI above the ≤1% bar are from your audit**. A new model, lower ECE, or a strong public leaderboard result does not establish that the gate is safe. The next useful output is a *set of possible agent trajectories* that the planner can check against each ego candidate, with a conservative fallback when tracks or calibration fail. [Waymo’s conditional prediction research](https://waymo.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [NVIDIA’s reachable-set safety monitor](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/).
+
+### What leading systems and research predict
+
+| Approach | Verified finding | Relevance here |
+|---|---|---|
+| Waymo | [Wayformer](https://waymo.com/research/wayformer/) predicts multimodal trajectories from agents and scene context. [MotionLM](https://waymo.com/research/motionlm/) generates **joint** agent futures and can condition on a queried agent trajectory. [Occupancy Flow Fields](https://waymo.com/research/occupancy-flow-fields-for-motion-forecasting-in-autonomous-driving/) also represents future occupancy, flow, and agents that may emerge from occlusion. [EMMA](https://waymo.com/blog/2024/10/introducing-emma/) is multimodal **ego planning** research; Waymo identifies inference time and missing lidar/radar input as limitations. | Joint samples help at merges and crossings; occupancy helps behind buses. Do not treat EMMA as a ready agent predictor. |
+| Tesla | Tesla publicly describes [video-to-BEV networks](https://www.tesla.com/AI) producing road layout, infrastructure, and 3D objects for planning. **UNVERIFIED:** its current production architecture for forecasting *other agents*; the public description does not specify it. | BEV is a useful representation, not evidence for a reproducible prediction model. |
+| NVIDIA | Published work includes [guided conditional diffusion for multi-agent traffic](https://research.nvidia.com/publication/2023-05_guided-conditional-diffusion-controllable-traffic-simulation) and a [trajectory-predictor-based safety monitor](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/). | More useful as research patterns than as a disclosed production stack. |
+| Wayve | [FIERY](https://wayve.ai/wp-content/uploads/2024/04/2104.10490.pdf) forecasts future BEV instances from cameras. [GAIA-2](https://wayve.ai/thinking/gaia-2/) is an ego-action-conditioned *video world model* with controllable agent behaviour; [GAIA-4](https://wayve.ai/thinking/gaia-4/) addresses closed-loop evaluation. | World models can generate tests; they are a much larger project than replacing `predictYield.m`. |
+| Mobileye | Its published [RSS methodology](https://www.mobileye.com/technology/safety-methodology/) uses bounded worst-case assumptions to define safe distances and responses, rather than relying on precise human-behaviour forecasts for its safety argument. | Keep a rule/reachability safety layer even if ML trajectories improve. |
+
+**Marginal vs joint:** Six plausible paths *per agent* can combine into an implausible scene. Joint prediction scores complete scenes, including how a pedestrian and two-wheeler react to each other. Ego-conditioned prediction asks a different question: “what might they do **if ego takes candidate path A**?” Waymo explicitly studies that query interface. [MotionLM](https://waymo.com/research/motionlm/), [conditional behaviour prediction](https://waymo.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [joint-metrics study](https://arxiv.org/abs/2305.06292).
+
+### Models worth benchmarking
+
+Results below are **different tasks and splits; do not rank the numbers against each other**. Compute entries describe published *training* requirements; **CPU/GPU inference latency for your MATLAB loop is UNVERIFIED** until measured there. [Waymo challenge metrics](https://waymo.com/open/terms/), [WOMD format](https://waymo.com/open/data/motion/), [AV2 format](https://www.argoverse.org/av2.html).
+
+| Model | Published result; code and compute | Fit for SIH |
+|---|---|---|
+| [MTR v3](https://storage.googleapis.com/waymo-uploads/files/research/2024%20Technical%20Reports/2024%20WOD%20Motion%20Prediction%20Challenge%20-%201st%20Place%20-%20MTR%20v3.pdf) | 2024 WOMD motion test **0.4967 soft mAP**, using an ensemble; trained on **8 A100s for 30 epochs**. The [public MTR repo](https://github.com/sshaoshuai/MTR) is for the earlier MTR family; an exact v3 reproduction package is **UNVERIFIED**. | Expensive reference, especially its lidar encoder and ensemble. |
+| [QCNet](https://github.com/ZikangZhou/QCNet) | AV2 test **minFDE₆ 1.24 m, minADE₆ 0.64 m, miss rate₆ 0.15**; code and checkpoint published. Repo says training consumes about **160 GB GPU memory**. | Strong reproducible trajectory baseline; map and PyG preprocessing need adaptation. |
+| [DeMo / DeMo++](https://github.com/fudan-zvg/DeMo) | Open code; separates directional modes from evolving states using attention and Mamba. [DeMo++](https://arxiv.org/abs/2507.17342) reports forecasting and planning benchmarks. Comparable deployment latency is **UNVERIFIED**. | Research candidate; Mamba and scatter dependencies raise import work. |
+| [Parallel ModeSeq](https://storage.googleapis.com/waymo-uploads/files/research/2025%20Technical%20Reports/2025%20WOD%20Interaction%20Prediction%20Challenge%20-%201st%20Place%20-%20Parallel%20ModeSeq.pdf) | 2025 WOMD **two-agent interaction** test: **0.2978 soft mAP₆**, **11.2M parameters**, no ensemble in the report. Exact public code/checkpoint: **UNVERIFIED**. | Relevant architecture for negotiated right of way; not a drop-in build. |
+| [SMART](https://github.com/rainmaker22/SMART) / [TrajTok](https://arxiv.org/abs/2506.21618) | Joint next-token simulation. SMART reports **0.7591** for tiny on 2024 WOMD Sim Agents; TrajTok reports **0.7852** on the **2025** challenge. SMART code is open; its repo says the Waymo-trained weights cannot be released under dataset terms. | Good source of reactive background agents for simulation; realism score is not a collision-safety score. |
+| [MotionDiffuser](https://arxiv.org/abs/2306.03083) | Samples joint futures with controllable diffusion. | Useful research comparator; sampling cost and ONNX export in your setup are **UNVERIFIED**. |
+
+### Indian evidence and missing coverage
+
+| Data or paper | What it actually supplies |
+|---|---|
+| [METEOR](https://arxiv.org/abs/2109.07648) | Indian unstructured traffic videos, agent boxes, GPS trajectories, rare-behaviour tags, and 16 agent categories. Its authors report poor transfer from established perception and behaviour models. Your **1,251-clip training count is user-supplied**, not independently established by that paper. |
+| [IDD-PeD paper](https://arxiv.org/abs/2506.22111), [authors’ code/data instructions](https://github.com/Ruthvik9/IDD-PeD) | Crossing intent **and** trajectory baselines for Indian pedestrians, including occlusion and unsignalized interactions. The repo reports **3,284 train and 1,632 test pedestrians**. The linked project page currently serves unrelated content; use the paper and repo. Dataset licence: **UNVERIFIED**. |
+| [IDD-X](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf) | **9K important-object tracks** and ego-relative explanations including cut-in, merging, crossing, obstruction, animals, and potholes. These are useful supervision/context labels; they are **not metric future trajectories**. |
+| [TIAND](https://ieeexplore.ieee.org/document/10588583/) | **150 Hyderabad scenes**, camera/lidar/radar/GPS/IMU, aimed at perception and fusion. Metric trajectory labels suitable for direct forecasting training: **UNVERIFIED**. [Access requires a usage agreement](https://tihan.iith.ac.in/TiAND.html). |
+| [SkyEye paper](https://arxiv.org/abs/1912.04801), [Chennai drone trajectories](https://www.chennaitrafficdata.com/about-our-data) | Overhead mixed-traffic trajectories useful for lateral seepage and junction interaction; Chennai publishes vehicle coordinates, velocity, acceleration, and class fields. Whether either source supplies the ego-camera observations needed for direct in-car inference: **UNVERIFIED**. |
+| [INDRA](https://arxiv.org/abs/2211.07916) | Pedestrian-view Indian road-crossing safety, a different viewpoint and target from ego-camera pedestrian trajectory prediction. |
+
+I found **no verified Indian-road cattle future-trajectory dataset or validated cattle predictor** in this search. Treat standing/crossing cattle as an observed obstacle plus a conservative reachable region, and test sudden-motion cases in simulation; claiming learned animal intent would be unsupported. [IDD-X’s combined person/animal category](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf) illustrates the label limitation.
+
+### Safety and MATLAB deployment
+
+| Decision | Evidence and consequence |
+|---|---|
+| Replace “yield/GO” as the ML output | Predict **top-K metric trajectories or occupied regions over time** from tracked positions, velocities, class, visibility, and ego candidate path. The planner can test each candidate against all plausible occupied regions. [Waymo conditional prediction](https://waymo.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [occupancy flow](https://waymo.com/research/occupancy-flow-fields-for-motion-forecasting-in-autonomous-driving/). |
+| Calibrate *trajectory coverage* | [Multi-agent conformal reachability](https://arxiv.org/abs/2304.00432), [CUQDS under shift](https://ojs.aaai.org/index.php/AAAI/article/view/33915), and [NVIDIA’s calibrated reachable sets](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/) give published methods. Coverage depends on calibration assumptions; **it does not certify your ≤1% dangerous-error bar or cure missed detections**. Measure false GO, coverage, and fallback rate separately on held-out Indian and rendered scenarios. |
+| Gate failures explicitly | Missing/old tracks, occlusion, unknown class, weather degradation, OOD scene, excessive prediction width, or missed runtime deadline should expand the reachable set or trigger conservative behaviour. This is a **proposed SIH policy**, informed by [RSS limited-visibility rules](https://www.mobileye.com/technology/responsibility-sensitive-safety/) and [NVIDIA’s OOD-aware monitor](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/). |
+| Import path | MathWorks [ONNX import](https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html) is release dependent: **Gather** can now map to built-in layers in R2026b, with limitations; unsupported operators can become custom layers/placeholders. “No Gather/Scatter” is a constraint of *your present export*, not a universal MATLAB rule. Start with fixed-size dense tensors and a small MLP/GRU or dense-attention predictor; test import, numerical agreement, and latency before selecting an architecture. |
+| Python path | [Simulink can call Python](https://www.mathworks.com/help/simulink/ug/overview-of-integrating-python-code-with-simulink.html) through MATLAB Function/System blocks for simulation. [Extrinsic calls](https://www.mathworks.com/help/coder/ref/coder.extrinsic.html) execute in the MATLAB engine and are unsuitable as proof of standalone code generation. Use this to compare QCNet/SMART in a MATLAB-hosted run, with deadline and fallback measurements. |
+
+**P4 options — effort/risk are my estimates for a student team:**
+
+| Option | Concrete deliverable | Effort | Main risk |
+|---|---|---:|---|
+| **Good** | Keep `gateYield` closed; add class-specific constant-velocity/braking/turn reachable tubes, occlusion zones, and candidate-path collision checks in Simulink. | 1–2 weeks | Conservative stopping in dense traffic. |
+| **Better — recommended** | Add a compact, fixed-shape **top-K 2–3 s trajectory model** trained on usable Indian tracks plus simulated interactions; conformalize its occupied tubes and retain the deterministic fallback. | 3–6 weeks | Labels and metric-coordinate alignment, not GPU capacity. |
+| **Best** | Benchmark a joint ego-conditioned model such as QCNet/SMART-style decoding in Python co-execution, distil a small model, then verify closed-loop benefit and latency in MATLAB. | 6–10+ weeks | Integration and domain shift; leaderboard gains may not improve safety. |
+
+## P5 — Perception ML
+
+**Recommendation:** First connect an actual camera inference path to the driving loop and diagnose the **zero detections on rendered frames** from your audit. A 96% offline road IoU cannot establish usable road edges or safe traversability in the simulator until camera, labels, coordinate transforms, and deadlines are exercised together. MathWorks supplies [Unreal camera/sensor simulation](https://www.mathworks.com/help/driving/driving-scenario-simulation.html), [YOLOX inference](https://www.mathworks.com/help/vision/ref/yoloxobjectdetector.detect.html), and [lidar generation](https://www.mathworks.com/help/driving/ref/lidarpointcloudgenerator.html).
+
+### Architecture and hazards
+
+| Topic | Verified evidence → practical choice |
+|---|---|
+| Leaders | [Tesla](https://www.tesla.com/AI) describes multicamera video-to-BEV road layout and 3D objects. [Waymo’s sixth-generation Driver](https://waymo.com/blog/2024/08/meet-the-6th-generation-waymo-driver/) combines cameras, lidar, and radar; its [2026 description](https://www.waymo.com/blog/2026/02/ro-on-6th-gen-waymo-driver/) explains weather redundancy. [Mobileye Drive](https://www.mobileye.com/blog/mobileye-drive-self-driving-system/) describes separate camera and radar/lidar perception paths. These are design references, **not published recipes for reproducing their production accuracy**. |
+| BEV and occupancy | [BEVFusion](https://proceedings.neurips.cc/paper_files/paper/2022/file/43d2b7fbee8431f7cef0d0afed51c691-Paper-Conference.pdf) fuses camera and lidar in BEV; [SurroundOcc](https://github.com/weiyithu/SurroundOcc) predicts camera-based 3D occupancy. Their public benchmarks do **not** establish performance on Indian animals, unmarked edges, potholes, or your renderer. Start with a 2D traversability grid plus tracked obstacles; use 3D occupancy as a research comparator. |
+| Rare classes | [Grounding DINO](https://github.com/IDEA-Research/GroundingDINO) and [YOLO-World](https://github.com/AILab-CVC/YOLO-World) accept open-vocabulary prompts. Use them to **mine and label** pushcarts, cattle, and local vehicle types, then evaluate a small fixed-class detector in-loop. A text prompt alone supplies no validated safety recall or distance. |
+| No markings or road edge | Segment road surface, shoulder, sidewalk, barrier, and unknown separately; project the mask using calibrated camera geometry, compare against lidar ground/height, then erode by localization uncertainty and vehicle footprint. This is a **proposed fusion design** supported by [IDD’s unstructured-road labels](https://insaan.iiit.ac.in/datasets/) and MathWorks’ [ground/obstacle lidar workflows](https://www.mathworks.com/help/driving/detection-and-tracking.html). **Drivable colour ≠ safe geometry** at a drop-off, water-filled pothole, or diversion. |
+| Potholes and drop-offs | [IDD-X](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf) labels damaged road and speed breakers as important objects. Lidar negative-obstacle methods reason about **missing ground returns and depth discontinuity**; absence of returns alone can also mean occlusion, so keep unknown cells non-drivable. [Negative-obstacle study](https://www.patternrecognition.asia/perception/negative2015a.pdf). |
+
+### Indian perception data
+
+“Size” means the units published by the source; **licence is UNVERIFIED where the distributor shows it only at sign-in or under a data agreement**.
+
+| Dataset | Verified size/use | Access or licence |
+|---|---|---|
+| [IDD segmentation/detection, IDD-117K](https://insaan.iiit.ac.in/datasets/) | Segmentation **20K images**; IDD-117K combines detection releases for about **117K images**. Road surface and local traffic classes. | [Licence displayed before download](https://idd.insaan.iiit.ac.in/accounts/login/); terms **UNVERIFIED** here. |
+| [IDD-AW, IDD-3D, FGVD](https://insaan.iiit.ac.in/datasets/) | **19 GB** paired RGB/NIR rain, fog, low light and snow; **12K annotated lidar frames** in IDD-3D ([paper](https://arxiv.org/abs/2210.12878)); **5,502 images / 210 fine vehicle labels** in FGVD. | Distributor terms **UNVERIFIED**. |
+| [IDD-X](https://insaan.iiit.ac.in/datasets/) | **1,140 videos**, **697K important-object boxes**, including damaged road and animals ([paper](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf)). | Distributor terms **UNVERIFIED**. |
+| [DriveIndia](https://arxiv.org/abs/2507.19912) | **66,986 images / 24 classes**, reported fog, rain, and mixed traffic; authors report **78.7% mAP50** for their best baseline, which is **not comparable** to your YOLOX mAP without the same test and metric. | [TiHAN access requires a usage agreement](https://tihan.iith.ac.in/TiAND.html); exact licence **UNVERIFIED**. |
+| [TIAND](https://ieeexplore.ieee.org/document/10588583/) | **150 multimodal scenes**, 2–4 minutes each, Hyderabad. | [Request and agreement](https://tihan.iith.ac.in/TiAND.html). |
+| [DATS_2022](https://www.sciencedirect.com/science/article/pii/S2352340922006643) | **>10K images / 45 classes**; the article says **>7K annotations** at submission. | Article is open access under Creative Commons; **the dataset’s exact reuse terms are UNVERIFIED**. |
+| [RoadText-1K](https://arxiv.org/abs/2005.09496) | Driving-video text detection/recognition, useful for signs and shopfront context, **not** road-edge or obstacle training. | Dataset licence **UNVERIFIED**. |
+
+### Fixing simulation transfer and running in MATLAB
+
+| Step | Evidence and test |
+|---|---|
+| Diagnose before retraining | On identical rendered frames, log image dimensions/colour order, resize and normalization, class mapping, raw pre-threshold scores, NMS output, and boxes at several thresholds. Then manually label a stratified render set and report **per-class recall and false positives**. A threshold change is a diagnostic, not a safety fix. The [MATLAB YOLOX API](https://www.mathworks.com/help/vision/ref/yoloxobjectdetector.detect.html) exposes detection threshold; [SimROD](https://openaccess.thecvf.com/content/ICCV2021/papers/Ramamonjison_SimROD_A_Simple_Adaptation_Method_for_Robust_Object_Detection_ICCV_2021_paper.pdf) documents synthetic-to-real detector shifts. |
+| Adapt to renders | Fine-tune on labelled renders mixed with real IDD/DriveIndia images; vary camera height/FOV, exposure, shadows, textures, actor shapes, occlusion, rain and fog. Hold out **entire render styles and real scenes** for validation. Domain randomization and adaptation have published support, but their effect on *your* YOLOX is **UNVERIFIED**. [Domain-randomization study](https://openaccess.thecvf.com/content_cvpr_2018_workshops/papers/w14/Tremblay_Training_Deep_Networks_CVPR_2018_paper.pdf), [SimROD](https://openaccess.thecvf.com/content/ICCV2021/papers/Ramamonjison_SimROD_A_Simple_Adaptation_Method_for_Robust_Object_Detection_ICCV_2021_paper.pdf). |
+| Rendering choice | MathWorks’ [Unreal scene configuration](https://www.mathworks.com/help/driving/ref/simulation3dsceneconfiguration.html) directly controls sun, fog, rain, snow and lens raindrops. [UniSim](https://arxiv.org/abs/2308.01898) uses recorded logs for neural closed-loop sensor simulation; [NeuRAD/SplatAD code](https://github.com/georghess/neurad-studio) requires a substantial Python/CUDA reconstruction pipeline. **Inference:** Unreal variations are the student-ready first step; neural rendering is an optional research track, not a quick fix for zero boxes. |
+| Native tools | MathWorks documents [YOLOX train/detect](https://www.mathworks.com/help/vision/ref/yoloxobjectdetector.html), [PointPillars train/detect](https://www.mathworks.com/help/lidar/ug/object-detection-using-pointpillars-network.html), [lidar-camera calibration](https://www.mathworks.com/help/pointcloud/gs/get-started-lidar-camera-calibrator.html), [Simulink Predict block](https://www.mathworks.com/help/deeplearning/ref/predict.html), and [Unreal sensor simulation](https://www.mathworks.com/help/driving/driving-scenario-simulation.html). Python is the practical path for Grounding DINO, YOLO-World, BEVFusion and neural renderers; use [Simulink’s Python interface](https://www.mathworks.com/help/simulink/ug/overview-of-integrating-python-code-with-simulink.html) only after measuring simulation latency and fallback. |
+
+**P5 options — effort/risk are my estimates:**
+
+| Option | Concrete deliverable | Effort | Main risk |
+|---|---|---:|---|
+| **Good** | Put camera and existing YOLOX/DeepLab inference in Simulink; fix preprocessing/threshold issues; fuse road mask with geometric obstacles; report rendered per-class recall. | 1–3 weeks | Detector may still miss rare classes. |
+| **Better — recommended** | Fine-tune on labelled, randomized renders plus Indian images; add road-edge/unknown and pothole/negative-obstacle checks; feed detections and uncertainty into `trackerGNN`. | 4–7 weeks | Annotation and calibration quality; weather/occlusion misses. |
+| **Best** | Train Indian-domain camera–lidar BEV perception with temporal occupancy, using open-vocabulary models for label mining; run a distilled detector/fusion model inside the MATLAB-hosted loop. | 8–12+ weeks | High integration cost and insufficient rare-event validation. |
+
+**Order of work:** P5’s camera-to-track path must produce measured detections before P4 can learn from realistic observations. Keep ground-truth tracks as a separate diagnostic input while comparing predictors; otherwise a prediction score can conceal perception failures. This sequencing is my recommendation based on your audit and the published separation of [perception, forecasting and planning benchmarks](https://waymo.com/open/challenges/).
+tokens used
+1,99,850
+## P4 — Prediction ML
+
+**Recommendation:** Keep `gateYield` closed. The **2.089% dangerous-error rate and its CI above the ≤1% bar are from your audit**. A new model, lower ECE, or a strong public leaderboard result does not establish that the gate is safe. The next useful output is a *set of possible agent trajectories* that the planner can check against each ego candidate, with a conservative fallback when tracks or calibration fail. [Waymo’s conditional prediction research](https://waymo.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [NVIDIA’s reachable-set safety monitor](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/).
+
+### What leading systems and research predict
+
+| Approach | Verified finding | Relevance here |
+|---|---|---|
+| Waymo | [Wayformer](https://waymo.com/research/wayformer/) predicts multimodal trajectories from agents and scene context. [MotionLM](https://waymo.com/research/motionlm/) generates **joint** agent futures and can condition on a queried agent trajectory. [Occupancy Flow Fields](https://waymo.com/research/occupancy-flow-fields-for-motion-forecasting-in-autonomous-driving/) also represents future occupancy, flow, and agents that may emerge from occlusion. [EMMA](https://waymo.com/blog/2024/10/introducing-emma/) is multimodal **ego planning** research; Waymo identifies inference time and missing lidar/radar input as limitations. | Joint samples help at merges and crossings; occupancy helps behind buses. Do not treat EMMA as a ready agent predictor. |
+| Tesla | Tesla publicly describes [video-to-BEV networks](https://www.tesla.com/AI) producing road layout, infrastructure, and 3D objects for planning. **UNVERIFIED:** its current production architecture for forecasting *other agents*; the public description does not specify it. | BEV is a useful representation, not evidence for a reproducible prediction model. |
+| NVIDIA | Published work includes [guided conditional diffusion for multi-agent traffic](https://research.nvidia.com/publication/2023-05_guided-conditional-diffusion-controllable-traffic-simulation) and a [trajectory-predictor-based safety monitor](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/). | More useful as research patterns than as a disclosed production stack. |
+| Wayve | [FIERY](https://wayve.ai/wp-content/uploads/2024/04/2104.10490.pdf) forecasts future BEV instances from cameras. [GAIA-2](https://wayve.ai/thinking/gaia-2/) is an ego-action-conditioned *video world model* with controllable agent behaviour; [GAIA-4](https://wayve.ai/thinking/gaia-4/) addresses closed-loop evaluation. | World models can generate tests; they are a much larger project than replacing `predictYield.m`. |
+| Mobileye | Its published [RSS methodology](https://www.mobileye.com/technology/safety-methodology/) uses bounded worst-case assumptions to define safe distances and responses, rather than relying on precise human-behaviour forecasts for its safety argument. | Keep a rule/reachability safety layer even if ML trajectories improve. |
+
+**Marginal vs joint:** Six plausible paths *per agent* can combine into an implausible scene. Joint prediction scores complete scenes, including how a pedestrian and two-wheeler react to each other. Ego-conditioned prediction asks a different question: “what might they do **if ego takes candidate path A**?” Waymo explicitly studies that query interface. [MotionLM](https://waymo.com/research/motionlm/), [conditional behaviour prediction](https://waymo.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [joint-metrics study](https://arxiv.org/abs/2305.06292).
+
+### Models worth benchmarking
+
+Results below are **different tasks and splits; do not rank the numbers against each other**. Compute entries describe published *training* requirements; **CPU/GPU inference latency for your MATLAB loop is UNVERIFIED** until measured there. [Waymo challenge metrics](https://waymo.com/open/terms/), [WOMD format](https://waymo.com/open/data/motion/), [AV2 format](https://www.argoverse.org/av2.html).
+
+| Model | Published result; code and compute | Fit for SIH |
+|---|---|---|
+| [MTR v3](https://storage.googleapis.com/waymo-uploads/files/research/2024%20Technical%20Reports/2024%20WOD%20Motion%20Prediction%20Challenge%20-%201st%20Place%20-%20MTR%20v3.pdf) | 2024 WOMD motion test **0.4967 soft mAP**, using an ensemble; trained on **8 A100s for 30 epochs**. The [public MTR repo](https://github.com/sshaoshuai/MTR) is for the earlier MTR family; an exact v3 reproduction package is **UNVERIFIED**. | Expensive reference, especially its lidar encoder and ensemble. |
+| [QCNet](https://github.com/ZikangZhou/QCNet) | AV2 test **minFDE₆ 1.24 m, minADE₆ 0.64 m, miss rate₆ 0.15**; code and checkpoint published. Repo says training consumes about **160 GB GPU memory**. | Strong reproducible trajectory baseline; map and PyG preprocessing need adaptation. |
+| [DeMo / DeMo++](https://github.com/fudan-zvg/DeMo) | Open code; separates directional modes from evolving states using attention and Mamba. [DeMo++](https://arxiv.org/abs/2507.17342) reports forecasting and planning benchmarks. Comparable deployment latency is **UNVERIFIED**. | Research candidate; Mamba and scatter dependencies raise import work. |
+| [Parallel ModeSeq](https://storage.googleapis.com/waymo-uploads/files/research/2025%20Technical%20Reports/2025%20WOD%20Interaction%20Prediction%20Challenge%20-%201st%20Place%20-%20Parallel%20ModeSeq.pdf) | 2025 WOMD **two-agent interaction** test: **0.2978 soft mAP₆**, **11.2M parameters**, no ensemble in the report. Exact public code/checkpoint: **UNVERIFIED**. | Relevant architecture for negotiated right of way; not a drop-in build. |
+| [SMART](https://github.com/rainmaker22/SMART) / [TrajTok](https://arxiv.org/abs/2506.21618) | Joint next-token simulation. SMART reports **0.7591** for tiny on 2024 WOMD Sim Agents; TrajTok reports **0.7852** on the **2025** challenge. SMART code is open; its repo says the Waymo-trained weights cannot be released under dataset terms. | Good source of reactive background agents for simulation; realism score is not a collision-safety score. |
+| [MotionDiffuser](https://arxiv.org/abs/2306.03083) | Samples joint futures with controllable diffusion. | Useful research comparator; sampling cost and ONNX export in your setup are **UNVERIFIED**. |
+
+### Indian evidence and missing coverage
+
+| Data or paper | What it actually supplies |
+|---|---|
+| [METEOR](https://arxiv.org/abs/2109.07648) | Indian unstructured traffic videos, agent boxes, GPS trajectories, rare-behaviour tags, and 16 agent categories. Its authors report poor transfer from established perception and behaviour models. Your **1,251-clip training count is user-supplied**, not independently established by that paper. |
+| [IDD-PeD paper](https://arxiv.org/abs/2506.22111), [authors’ code/data instructions](https://github.com/Ruthvik9/IDD-PeD) | Crossing intent **and** trajectory baselines for Indian pedestrians, including occlusion and unsignalized interactions. The repo reports **3,284 train and 1,632 test pedestrians**. The linked project page currently serves unrelated content; use the paper and repo. Dataset licence: **UNVERIFIED**. |
+| [IDD-X](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf) | **9K important-object tracks** and ego-relative explanations including cut-in, merging, crossing, obstruction, animals, and potholes. These are useful supervision/context labels; they are **not metric future trajectories**. |
+| [TIAND](https://ieeexplore.ieee.org/document/10588583/) | **150 Hyderabad scenes**, camera/lidar/radar/GPS/IMU, aimed at perception and fusion. Metric trajectory labels suitable for direct forecasting training: **UNVERIFIED**. [Access requires a usage agreement](https://tihan.iith.ac.in/TiAND.html). |
+| [SkyEye paper](https://arxiv.org/abs/1912.04801), [Chennai drone trajectories](https://www.chennaitrafficdata.com/about-our-data) | Overhead mixed-traffic trajectories useful for lateral seepage and junction interaction; Chennai publishes vehicle coordinates, velocity, acceleration, and class fields. Whether either source supplies the ego-camera observations needed for direct in-car inference: **UNVERIFIED**. |
+| [INDRA](https://arxiv.org/abs/2211.07916) | Pedestrian-view Indian road-crossing safety, a different viewpoint and target from ego-camera pedestrian trajectory prediction. |
+
+I found **no verified Indian-road cattle future-trajectory dataset or validated cattle predictor** in this search. Treat standing/crossing cattle as an observed obstacle plus a conservative reachable region, and test sudden-motion cases in simulation; claiming learned animal intent would be unsupported. [IDD-X’s combined person/animal category](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf) illustrates the label limitation.
+
+### Safety and MATLAB deployment
+
+| Decision | Evidence and consequence |
+|---|---|
+| Replace “yield/GO” as the ML output | Predict **top-K metric trajectories or occupied regions over time** from tracked positions, velocities, class, visibility, and ego candidate path. The planner can test each candidate against all plausible occupied regions. [Waymo conditional prediction](https://waymo.com/research/identifying-driver-interactions-via-conditional-behavior-prediction/), [occupancy flow](https://waymo.com/research/occupancy-flow-fields-for-motion-forecasting-in-autonomous-driving/). |
+| Calibrate *trajectory coverage* | [Multi-agent conformal reachability](https://arxiv.org/abs/2304.00432), [CUQDS under shift](https://ojs.aaai.org/index.php/AAAI/article/view/33915), and [NVIDIA’s calibrated reachable sets](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/) give published methods. Coverage depends on calibration assumptions; **it does not certify your ≤1% dangerous-error bar or cure missed detections**. Measure false GO, coverage, and fallback rate separately on held-out Indian and rendered scenarios. |
+| Gate failures explicitly | Missing/old tracks, occlusion, unknown class, weather degradation, OOD scene, excessive prediction width, or missed runtime deadline should expand the reachable set or trigger conservative behaviour. This is a **proposed SIH policy**, informed by [RSS limited-visibility rules](https://www.mobileye.com/technology/responsibility-sensitive-safety/) and [NVIDIA’s OOD-aware monitor](https://research.nvidia.com/labs/aspire/publication/chakraborty.feng.etal.arxiv2025/). |
+| Import path | MathWorks [ONNX import](https://www.mathworks.com/help/deeplearning/ref/importnetworkfromonnx.html) is release dependent: **Gather** can now map to built-in layers in R2026b, with limitations; unsupported operators can become custom layers/placeholders. “No Gather/Scatter” is a constraint of *your present export*, not a universal MATLAB rule. Start with fixed-size dense tensors and a small MLP/GRU or dense-attention predictor; test import, numerical agreement, and latency before selecting an architecture. |
+| Python path | [Simulink can call Python](https://www.mathworks.com/help/simulink/ug/overview-of-integrating-python-code-with-simulink.html) through MATLAB Function/System blocks for simulation. [Extrinsic calls](https://www.mathworks.com/help/coder/ref/coder.extrinsic.html) execute in the MATLAB engine and are unsuitable as proof of standalone code generation. Use this to compare QCNet/SMART in a MATLAB-hosted run, with deadline and fallback measurements. |
+
+**P4 options — effort/risk are my estimates for a student team:**
+
+| Option | Concrete deliverable | Effort | Main risk |
+|---|---|---:|---|
+| **Good** | Keep `gateYield` closed; add class-specific constant-velocity/braking/turn reachable tubes, occlusion zones, and candidate-path collision checks in Simulink. | 1–2 weeks | Conservative stopping in dense traffic. |
+| **Better — recommended** | Add a compact, fixed-shape **top-K 2–3 s trajectory model** trained on usable Indian tracks plus simulated interactions; conformalize its occupied tubes and retain the deterministic fallback. | 3–6 weeks | Labels and metric-coordinate alignment, not GPU capacity. |
+| **Best** | Benchmark a joint ego-conditioned model such as QCNet/SMART-style decoding in Python co-execution, distil a small model, then verify closed-loop benefit and latency in MATLAB. | 6–10+ weeks | Integration and domain shift; leaderboard gains may not improve safety. |
+
+## P5 — Perception ML
+
+**Recommendation:** First connect an actual camera inference path to the driving loop and diagnose the **zero detections on rendered frames** from your audit. A 96% offline road IoU cannot establish usable road edges or safe traversability in the simulator until camera, labels, coordinate transforms, and deadlines are exercised together. MathWorks supplies [Unreal camera/sensor simulation](https://www.mathworks.com/help/driving/driving-scenario-simulation.html), [YOLOX inference](https://www.mathworks.com/help/vision/ref/yoloxobjectdetector.detect.html), and [lidar generation](https://www.mathworks.com/help/driving/ref/lidarpointcloudgenerator.html).
+
+### Architecture and hazards
+
+| Topic | Verified evidence → practical choice |
+|---|---|
+| Leaders | [Tesla](https://www.tesla.com/AI) describes multicamera video-to-BEV road layout and 3D objects. [Waymo’s sixth-generation Driver](https://waymo.com/blog/2024/08/meet-the-6th-generation-waymo-driver/) combines cameras, lidar, and radar; its [2026 description](https://www.waymo.com/blog/2026/02/ro-on-6th-gen-waymo-driver/) explains weather redundancy. [Mobileye Drive](https://www.mobileye.com/blog/mobileye-drive-self-driving-system/) describes separate camera and radar/lidar perception paths. These are design references, **not published recipes for reproducing their production accuracy**. |
+| BEV and occupancy | [BEVFusion](https://proceedings.neurips.cc/paper_files/paper/2022/file/43d2b7fbee8431f7cef0d0afed51c691-Paper-Conference.pdf) fuses camera and lidar in BEV; [SurroundOcc](https://github.com/weiyithu/SurroundOcc) predicts camera-based 3D occupancy. Their public benchmarks do **not** establish performance on Indian animals, unmarked edges, potholes, or your renderer. Start with a 2D traversability grid plus tracked obstacles; use 3D occupancy as a research comparator. |
+| Rare classes | [Grounding DINO](https://github.com/IDEA-Research/GroundingDINO) and [YOLO-World](https://github.com/AILab-CVC/YOLO-World) accept open-vocabulary prompts. Use them to **mine and label** pushcarts, cattle, and local vehicle types, then evaluate a small fixed-class detector in-loop. A text prompt alone supplies no validated safety recall or distance. |
+| No markings or road edge | Segment road surface, shoulder, sidewalk, barrier, and unknown separately; project the mask using calibrated camera geometry, compare against lidar ground/height, then erode by localization uncertainty and vehicle footprint. This is a **proposed fusion design** supported by [IDD’s unstructured-road labels](https://insaan.iiit.ac.in/datasets/) and MathWorks’ [ground/obstacle lidar workflows](https://www.mathworks.com/help/driving/detection-and-tracking.html). **Drivable colour ≠ safe geometry** at a drop-off, water-filled pothole, or diversion. |
+| Potholes and drop-offs | [IDD-X](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf) labels damaged road and speed breakers as important objects. Lidar negative-obstacle methods reason about **missing ground returns and depth discontinuity**; absence of returns alone can also mean occlusion, so keep unknown cells non-drivable. [Negative-obstacle study](https://www.patternrecognition.asia/perception/negative2015a.pdf). |
+
+### Indian perception data
+
+“Size” means the units published by the source; **licence is UNVERIFIED where the distributor shows it only at sign-in or under a data agreement**.
+
+| Dataset | Verified size/use | Access or licence |
+|---|---|---|
+| [IDD segmentation/detection, IDD-117K](https://insaan.iiit.ac.in/datasets/) | Segmentation **20K images**; IDD-117K combines detection releases for about **117K images**. Road surface and local traffic classes. | [Licence displayed before download](https://idd.insaan.iiit.ac.in/accounts/login/); terms **UNVERIFIED** here. |
+| [IDD-AW, IDD-3D, FGVD](https://insaan.iiit.ac.in/datasets/) | **19 GB** paired RGB/NIR rain, fog, low light and snow; **12K annotated lidar frames** in IDD-3D ([paper](https://arxiv.org/abs/2210.12878)); **5,502 images / 210 fine vehicle labels** in FGVD. | Distributor terms **UNVERIFIED**. |
+| [IDD-X](https://insaan.iiit.ac.in/datasets/) | **1,140 videos**, **697K important-object boxes**, including damaged road and animals ([paper](https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/images/ConferencePapers/2024/IDDX_2024.pdf)). | Distributor terms **UNVERIFIED**. |
+| [DriveIndia](https://arxiv.org/abs/2507.19912) | **66,986 images / 24 classes**, reported fog, rain, and mixed traffic; authors report **78.7% mAP50** for their best baseline, which is **not comparable** to your YOLOX mAP without the same test and metric. | [TiHAN access requires a usage agreement](https://tihan.iith.ac.in/TiAND.html); exact licence **UNVERIFIED**. |
+| [TIAND](https://ieeexplore.ieee.org/document/10588583/) | **150 multimodal scenes**, 2–4 minutes each, Hyderabad. | [Request and agreement](https://tihan.iith.ac.in/TiAND.html). |
+| [DATS_2022](https://www.sciencedirect.com/science/article/pii/S2352340922006643) | **>10K images / 45 classes**; the article says **>7K annotations** at submission. | Article is open access under Creative Commons; **the dataset’s exact reuse terms are UNVERIFIED**. |
+| [RoadText-1K](https://arxiv.org/abs/2005.09496) | Driving-video text detection/recognition, useful for signs and shopfront context, **not** road-edge or obstacle training. | Dataset licence **UNVERIFIED**. |
+
+### Fixing simulation transfer and running in MATLAB
+
+| Step | Evidence and test |
+|---|---|
+| Diagnose before retraining | On identical rendered frames, log image dimensions/colour order, resize and normalization, class mapping, raw pre-threshold scores, NMS output, and boxes at several thresholds. Then manually label a stratified render set and report **per-class recall and false positives**. A threshold change is a diagnostic, not a safety fix. The [MATLAB YOLOX API](https://www.mathworks.com/help/vision/ref/yoloxobjectdetector.detect.html) exposes detection threshold; [SimROD](https://openaccess.thecvf.com/content/ICCV2021/papers/Ramamonjison_SimROD_A_Simple_Adaptation_Method_for_Robust_Object_Detection_ICCV_2021_paper.pdf) documents synthetic-to-real detector shifts. |
+| Adapt to renders | Fine-tune on labelled renders mixed with real IDD/DriveIndia images; vary camera height/FOV, exposure, shadows, textures, actor shapes, occlusion, rain and fog. Hold out **entire render styles and real scenes** for validation. Domain randomization and adaptation have published support, but their effect on *your* YOLOX is **UNVERIFIED**. [Domain-randomization study](https://openaccess.thecvf.com/content_cvpr_2018_workshops/papers/w14/Tremblay_Training_Deep_Networks_CVPR_2018_paper.pdf), [SimROD](https://openaccess.thecvf.com/content/ICCV2021/papers/Ramamonjison_SimROD_A_Simple_Adaptation_Method_for_Robust_Object_Detection_ICCV_2021_paper.pdf). |
+| Rendering choice | MathWorks’ [Unreal scene configuration](https://www.mathworks.com/help/driving/ref/simulation3dsceneconfiguration.html) directly controls sun, fog, rain, snow and lens raindrops. [UniSim](https://arxiv.org/abs/2308.01898) uses recorded logs for neural closed-loop sensor simulation; [NeuRAD/SplatAD code](https://github.com/georghess/neurad-studio) requires a substantial Python/CUDA reconstruction pipeline. **Inference:** Unreal variations are the student-ready first step; neural rendering is an optional research track, not a quick fix for zero boxes. |
+| Native tools | MathWorks documents [YOLOX train/detect](https://www.mathworks.com/help/vision/ref/yoloxobjectdetector.html), [PointPillars train/detect](https://www.mathworks.com/help/lidar/ug/object-detection-using-pointpillars-network.html), [lidar-camera calibration](https://www.mathworks.com/help/pointcloud/gs/get-started-lidar-camera-calibrator.html), [Simulink Predict block](https://www.mathworks.com/help/deeplearning/ref/predict.html), and [Unreal sensor simulation](https://www.mathworks.com/help/driving/driving-scenario-simulation.html). Python is the practical path for Grounding DINO, YOLO-World, BEVFusion and neural renderers; use [Simulink’s Python interface](https://www.mathworks.com/help/simulink/ug/overview-of-integrating-python-code-with-simulink.html) only after measuring simulation latency and fallback. |
+
+**P5 options — effort/risk are my estimates:**
+
+| Option | Concrete deliverable | Effort | Main risk |
+|---|---|---:|---|
+| **Good** | Put camera and existing YOLOX/DeepLab inference in Simulink; fix preprocessing/threshold issues; fuse road mask with geometric obstacles; report rendered per-class recall. | 1–3 weeks | Detector may still miss rare classes. |
+| **Better — recommended** | Fine-tune on labelled, randomized renders plus Indian images; add road-edge/unknown and pothole/negative-obstacle checks; feed detections and uncertainty into `trackerGNN`. | 4–7 weeks | Annotation and calibration quality; weather/occlusion misses. |
+| **Best** | Train Indian-domain camera–lidar BEV perception with temporal occupancy, using open-vocabulary models for label mining; run a distilled detector/fusion model inside the MATLAB-hosted loop. | 8–12+ weeks | High integration cost and insufficient rare-event validation. |
+
+**Order of work:** P5’s camera-to-track path must produce measured detections before P4 can learn from realistic observations. Keep ground-truth tracks as a separate diagnostic input while comparing predictors; otherwise a prediction score can conceal perception failures. This sequencing is my recommendation based on your audit and the published separation of [perception, forecasting and planning benchmarks](https://waymo.com/open/challenges/).

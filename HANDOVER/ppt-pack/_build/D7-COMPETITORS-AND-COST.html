@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D7 · Competitor comparison + cost</title>
+<style>
+@page { size: A3 landscape; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D7 · Competitor comparison + cost</h1><div class="sub">Pie = planned effort split. Tables = competitor ticks (verified only) and real cash cost.</div>
+<pre class="mermaid">pie showData
+title Planned effort split — 20 builder-weeks (2 builders × 10 weeks)
+&quot;Brain + safety checker (A W1–W3, W6)&quot; : 4
+&quot;Control + driver screen (A W4)&quot; : 1
+&quot;Prediction + belief + scorer (A W5, W7)&quot; : 2
+&quot;Testing, metrics, baselines (A W8–W10)&quot; : 3
+&quot;CARLA world + Indian assets (S W1–W3, W6–W7)&quot; : 5
+&quot;Perception ML + real-video test (S W4–W5, W9)&quot; : 3
+&quot;Weather/potholes + final package (S W8, W10)&quot; : 2
+</pre>
+
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">COMPETITOR TABLE  (✓ = verified public evidence · ✗ = verified absent · ? = not found · (P) = planned by us, not built yet)
+Feature                                   | Ours     | The Syndicate (same PS) | ARAI scenario repo | WMG Safety Pool India | Swaayatt Robots | Minus Zero
+Indian actors (cattle, autos, pushcarts)  | ✓ (P)    | ✗ stock Western CARLA   | ✓ Indian scenarios | ✓ crowdsourced         | ✓ real roads     | ✓ real roads
+Hand-signal reading                       | ✓ (P)    | ?                       | ?                  | ?                      | ?                | ?
+Reactive traffic (reacts to our car)      | ✓ (P)    | ?                       | ?                  | ✗ (tool can&#x27;t model stop/restart) | n/a      | n/a
+Independent safety checker (no ML)        | ✓ (P)    | ?                       | n/a (not a planner)| n/a                    | ?                | ? (claims &quot;safety mechanisms&quot;)
+Published measured results / metrics      | ✓ (P)    | ✗ (no numbers shown)    | ?                  | ?                      | ✗ (no papers)    | ✗ (blog only)
+MATLAB/Simulink end-to-end (PS toolchain) | ✓ (P)    | ?                       | ?                  | ✗ (OpenSCENARIO export)| ✗                | ✗
+Drives on real public roads               | ✗ (sim)  | ✗                       | test track         | ✗                      | ✓                | ✓ (Bengaluru, safety driver, ≤25 km/h)
+Sources: P1 competitor check, P3 (Swaayatt sparse maps, Minus Zero May 2025 demo), idea-phase notes (Syndicate).
+
+CASH COST (what we actually pay)
+Item                                   | Cost          | Basis
+MATLAB + Simulink + toolboxes (R2026a) | ₹0            | KIET campus licence
+CARLA 0.9.15 · SUMO                    | ₹0            | open source
+Indian datasets (IDD family, METEOR…)  | ₹0            | academic use; some need sign-up / agreement
+Training compute                       | ₹0            | KIET DGX A100
+Backup cloud A100 (if DGX busy)        | ~$0.43–1.09 per GPU-hour → 200 h ≈ $86–218 | getdeploying.com/gpus/nvidia-a100, thundercompute.com (Sep 2026)
+Windows lab PC (8 GB GPU) for CARLA    | ₹0            | existing KIET lab
+Real dashcam clip                      | ₹0            | phone camera
+=&gt; Real cost is builder time + compute hours, not money. The pie shows the planned effort split (a plan, not a measurement).</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">pie showData
+title Planned effort split — 20 builder-weeks (2 builders × 10 weeks)
+&quot;Brain + safety checker (A W1–W3, W6)&quot; : 4
+&quot;Control + driver screen (A W4)&quot; : 1
+&quot;Prediction + belief + scorer (A W5, W7)&quot; : 2
+&quot;Testing, metrics, baselines (A W8–W10)&quot; : 3
+&quot;CARLA world + Indian assets (S W1–W3, W6–W7)&quot; : 5
+&quot;Perception ML + real-video test (S W4–W5, W9)&quot; : 3
+&quot;Weather/potholes + final package (S W8, W10)&quot; : 2
+</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>

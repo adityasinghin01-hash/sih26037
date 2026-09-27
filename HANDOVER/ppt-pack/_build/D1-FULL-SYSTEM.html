@@ -1,0 +1,431 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D1 · Full system — end to end</title>
+<style>
+@page { size: A1 landscape; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D1 · Full system — end to end</h1><div class="sub">1 idea → 5 layers (SENSE · UNDERSTAND · DECIDE · ACT · PROVE) → 13 parts → components. Red = safety (only the checker can say &#x27;go&#x27;). Dashed = test/comparison paths.</div>
+<pre class="mermaid">flowchart LR
+  subgraph L5W[&quot;LAYER 5 · PROVE — World (simulation)&quot;]
+    W_carla[&quot;CARLA 0.9.15 scenes&lt;br/&gt;(unmarked village, unsignalled junction)&lt;br/&gt;— replaces RoadRunner, disclosed&quot;]
+    W_assets[&quot;Indian 3D actors &amp; props&lt;br/&gt;cattle · auto · e-rickshaw · tractor-trolley&lt;br/&gt;pushcart · overloaded 2W · stalls · potholes&quot;]
+    W_sumo[&quot;SUMO reactive traffic&lt;br/&gt;(official R2026a Simulink Client/Reader/Writer)&lt;br/&gt;calibrated with Indian numbers (P16)&quot;]
+    W_agents[&quot;Learned traffic agents&lt;br/&gt;(Indian-calibrated, react to our car)&quot;]
+    W_weather[&quot;Weather &amp; light&lt;br/&gt;rain · fog · night · glare&quot;]
+  end
+  subgraph L1[&quot;LAYER 1 · SENSE — Sensors (timestamped, CAN-style bus)&quot;]
+    S_cam[&quot;Cameras&lt;br/&gt;front · rear · left · right&quot;]
+    S_lidar[&quot;LiDAR&lt;br/&gt;32 beams · 100 m · 10 Hz&quot;]
+    S_radar[&quot;Radar&lt;br/&gt;front 150 m + 2 corner · 20 Hz&quot;]
+    S_us[&quot;Ultrasonic ×8&lt;br/&gt;0.2–5 m&quot;]
+    S_loc[&quot;GNSS 10 Hz + IMU 100 Hz&lt;br/&gt;+ wheel speed + steering angle&quot;]
+    S_mic[&quot;Microphone array&lt;br/&gt;(siren / horn events)&quot;]
+    S_dcam[&quot;Driver camera&quot;]
+    S_env[&quot;Rain &amp; light sensors&quot;]
+  end
+  subgraph L2[&quot;LAYER 2 · UNDERSTAND — AI perception, hearing, tracking, prediction&quot;]
+    subgraph P[&quot;Perception ML&quot;]
+      M_det[&quot;Object detector (YOLOX)&lt;br/&gt;autos · pushcarts · people · cattle · 2W · buses&quot;]
+      M_road[&quot;Road / edge / pothole mask&lt;br/&gt;(DeepLab v3+)&quot;]
+      M_lidar3d[&quot;LiDAR 3D detector&quot;]
+      M_bev[&quot;Bird&#x27;s-eye free-space map&lt;br/&gt;(free / occupied / UNKNOWN)&quot;]
+      M_sign[&quot;Sign &amp; Indian-text reader&lt;br/&gt;(Hindi / regional)&quot;]
+      M_vis[&quot;Visibility estimator&lt;br/&gt;(how far can we see)&quot;]
+    end
+    subgraph H[&quot;Hearing&quot;]
+      M_audio[&quot;Siren / horn recogniser&lt;br/&gt;+ direction&quot;]
+    end
+    subgraph G[&quot;Gesture reader&quot;]
+      M_pose[&quot;Pose model (pretrained)&quot;]
+      M_gest[&quot;Hand-signal reader&lt;br/&gt;ped stop · police stop/go · rider turn&quot;]
+    end
+    subgraph T[&quot;Tracker&quot;]
+      T_fuse[&quot;Sensor fusion + tracker&lt;br/&gt;(trackerGNN, EKF) → TrackList&quot;]
+      T_loc[&quot;Localisation&lt;br/&gt;GNSS + IMU + wheels&quot;]
+    end
+    subgraph PR[&quot;Prediction ML&quot;]
+      M_pred[&quot;Motion predictor&lt;br/&gt;top-K paths, conditioned on OUR move&lt;br/&gt;(conformal safety margin)&quot;]
+      M_intent[&quot;Crossing-intent model&quot;]
+      B_belief[&quot;Cooperation belief&lt;br/&gt;intent × response (group / cover merge)&lt;br/&gt;Bayes update from what they actually do&quot;]
+    end
+  end
+  subgraph L3[&quot;LAYER 3 · DECIDE — Brain + independent safety&quot;]
+    D_plan[&quot;Planner&lt;br/&gt;route + rules → 8–16 candidate moves&quot;]
+    D_score[&quot;Move scorer (small learned model)&lt;br/&gt;ranks: progress · comfort · options&quot;]
+    D_rl[&quot;RL policy&lt;br/&gt;(shadow only, never drives)&quot;]
+    D_check[&quot;SAFETY CHECKER (no ML)&lt;br/&gt;swept footprint · stopping distance&lt;br/&gt;worst-case non-cooperation · uncertainty&lt;br/&gt;= the ONLY &#x27;go&#x27; permission&quot;]
+    D_mon[&quot;Safety monitor&lt;br/&gt;stale data · faults · deadline 100 ms&lt;br/&gt;safe stop · BLOCKED state · takeover&quot;]
+  end
+  subgraph L4[&quot;LAYER 4 · ACT — Drive the car, talk to others&quot;]
+    A_ctrl[&quot;Control&lt;br/&gt;lateral: Stanley / MPC · speed: PI&lt;br/&gt;50 Hz&quot;]
+    A_act[&quot;Actuators&lt;br/&gt;steer · throttle · brake · gear P/N/D/R&quot;]
+    A_veh[&quot;Vehicle model&lt;br/&gt;3DOF (all runs) · 14DOF (potholes)&quot;]
+    A_sig[&quot;Signals&lt;br/&gt;indicators · hazards · beams · brake light · horn&quot;]
+    A_hmi[&quot;Driver screen + takeover&lt;br/&gt;+ driver watcher&quot;]
+  end
+  subgraph L5T[&quot;LAYER 5 · PROVE — Test &amp; learn loop&quot;]
+    E_log[&quot;Run recorder&lt;br/&gt;every message + ground truth&quot;]
+    E_metrics[&quot;PS metrics&lt;br/&gt;replanning latency p50/p95/p99 · path smoothness (jerk, curvature)&lt;br/&gt;scenario completion rate · contacts · false stalls&quot;]
+    E_scen[&quot;5 PS scenarios + 10 test families (F1–F10)&lt;br/&gt;90 Indian road difficulties&quot;]
+    E_mine[&quot;Failure mining → replay by seed&lt;br/&gt;→ regression test → frozen holdout&quot;]
+    E_real[&quot;Real Indian dashcam video replay&lt;br/&gt;(sim-vs-real accuracy gap)&quot;]
+    E_base[&quot;Baselines&lt;br/&gt;MathWorks example · always-yield · rule planner&quot;]
+  end
+  W_carla --&gt;|&quot;rendered pixels&quot;| S_cam
+  W_carla --&gt;|&quot;ray-cast&quot;| S_lidar
+  W_carla --&gt;|&quot;detections&quot;| S_radar
+  W_carla --&gt;|&quot;near range&quot;| S_us
+  W_carla --&gt;|&quot;ego motion&quot;| S_loc
+  W_sumo --&gt;|&quot;siren/horn events&quot;| S_mic
+  W_weather --&gt;|&quot;rain/light&quot;| S_env
+  W_assets --&gt;|&quot;spawned actors&quot;| W_carla
+  W_sumo --&gt;|&quot;actor states mirrored&quot;| W_carla
+  W_agents --&gt;|&quot;behaviour&quot;| W_sumo
+  W_weather --&gt;|&quot;conditions&quot;| W_carla
+  S_cam --&gt;|&quot;front image&quot;| M_det
+  S_cam --&gt;|&quot;front image&quot;| M_road
+  S_cam --&gt; M_sign
+  S_cam --&gt; M_pose
+  S_cam --&gt; M_vis
+  S_env --&gt; M_vis
+  S_lidar --&gt;|&quot;point cloud&quot;| M_lidar3d
+  S_lidar --&gt; M_bev
+  S_cam --&gt; M_bev
+  S_radar --&gt;|&quot;range + speed&quot;| T_fuse
+  S_us --&gt;|&quot;near obstacles&quot;| T_fuse
+  S_loc --&gt; T_loc
+  S_mic --&gt; M_audio
+  S_dcam --&gt;|&quot;driver state&quot;| A_hmi
+  M_det --&gt;|&quot;2D boxes&quot;| T_fuse
+  M_lidar3d --&gt;|&quot;3D boxes&quot;| T_fuse
+  M_road --&gt;|&quot;road / pothole pixels&quot;| M_bev
+  M_pose --&gt;|&quot;body keypoints&quot;| M_gest
+  T_loc --&gt;|&quot;ego pose&quot;| T_fuse
+  T_fuse --&gt;|&quot;TrackList 10 Hz&quot;| M_pred
+  T_fuse --&gt;|&quot;pedestrian tracks&quot;| M_intent
+  T_fuse --&gt;|&quot;observed motion&quot;| B_belief
+  M_intent --&gt;|&quot;cross?&quot;| B_belief
+  M_gest --&gt;|&quot;gesture (caution only)&quot;| B_belief
+  M_audio --&gt;|&quot;siren direction&quot;| B_belief
+  B_belief --&gt;|&quot;who yields / who asserts&quot;| M_pred
+  M_bev --&gt;|&quot;free space&quot;| D_plan
+  M_sign --&gt;|&quot;rules&quot;| D_plan
+  T_loc --&gt;|&quot;where we are&quot;| D_plan
+  D_plan --&gt;|&quot;8–16 candidates&quot;| D_score
+  M_pred --&gt;|&quot;futures per candidate&quot;| D_score
+  B_belief --&gt; D_score
+  D_rl -.-&gt;|&quot;comparison only&quot;| D_score
+  D_score --&gt;|&quot;ranked moves&quot;| D_check
+  M_pred --&gt;|&quot;occupied regions&quot;| D_check
+  M_bev --&gt;|&quot;free / unknown space&quot;| D_check
+  M_vis --&gt;|&quot;sight distance&quot;| D_check
+  D_check --&gt;|&quot;PASS: certificate&quot;| A_ctrl
+  D_check --&gt;|&quot;FAIL: no safe move&quot;| D_mon
+  D_mon --&gt;|&quot;veto / safe stop&quot;| A_ctrl
+  M_audio --&gt;|&quot;emergency vehicle&quot;| D_mon
+  A_hmi --&gt;|&quot;takeover ack&quot;| D_mon
+  A_ctrl --&gt;|&quot;commands 50 Hz&quot;| A_act
+  A_act --&gt; A_veh
+  A_veh --&gt;|&quot;wheel speed, steering feedback&quot;| S_loc
+  A_veh --&gt;|&quot;our car moves → world reacts&quot;| W_carla
+  A_veh --&gt;|&quot;ego state (Writer block)&quot;| W_sumo
+  D_check --&gt;|&quot;planned turn&quot;| A_sig
+  D_mon --&gt;|&quot;hazards&quot;| A_sig
+  D_mon --&gt;|&quot;mode, fault, takeover request&quot;| A_hmi
+  A_sig --&gt;|&quot;others see our signals&quot;| W_sumo
+  T_fuse --&gt; E_log
+  D_check --&gt; E_log
+  A_veh --&gt; E_log
+  W_carla -.-&gt;|&quot;ground truth (tests only)&quot;| E_log
+  E_log --&gt; E_metrics
+  E_log --&gt;|&quot;near-misses, disagreements&quot;| E_mine
+  E_mine --&gt;|&quot;new test cases&quot;| E_scen
+  E_scen --&gt;|&quot;scenario + seed&quot;| W_carla
+  E_scen --&gt;|&quot;traffic setup&quot;| W_sumo
+  E_real -.-&gt;|&quot;real frames (open loop)&quot;| M_det
+  E_base --&gt;|&quot;same seeds&quot;| E_metrics
+  classDef safety fill:#ffd6d6,stroke:#b00000,stroke-width:3px
+  class D_check,D_mon safety</pre>
+
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">BOXES (grouped exactly as drawn):
+■ LAYER 5 · PROVE — World (simulation)
+  - [W_carla] CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed
+  - [W_assets] Indian 3D actors &amp; props cattle · auto · e-rickshaw · tractor-trolley pushcart · overloaded 2W · stalls · potholes
+  - [W_sumo] SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)
+  - [W_agents] Learned traffic agents (Indian-calibrated, react to our car)
+  - [W_weather] Weather &amp; light rain · fog · night · glare
+■ LAYER 1 · SENSE — Sensors (timestamped, CAN-style bus)
+  - [S_cam] Cameras front · rear · left · right
+  - [S_lidar] LiDAR 32 beams · 100 m · 10 Hz
+  - [S_radar] Radar front 150 m + 2 corner · 20 Hz
+  - [S_us] Ultrasonic ×8 0.2–5 m
+  - [S_loc] GNSS 10 Hz + IMU 100 Hz + wheel speed + steering angle
+  - [S_mic] Microphone array (siren / horn events)
+  - [S_dcam] Driver camera
+  - [S_env] Rain &amp; light sensors
+■ LAYER 2 · UNDERSTAND — AI perception, hearing, tracking, prediction
+  ■ Perception ML
+    - [M_det] Object detector (YOLOX) autos · pushcarts · people · cattle · 2W · buses
+    - [M_road] Road / edge / pothole mask (DeepLab v3+)
+    - [M_lidar3d] LiDAR 3D detector
+    - [M_bev] Bird&#x27;s-eye free-space map (free / occupied / UNKNOWN)
+    - [M_sign] Sign &amp; Indian-text reader (Hindi / regional)
+    - [M_vis] Visibility estimator (how far can we see)
+  ■ Hearing
+    - [M_audio] Siren / horn recogniser + direction
+  ■ Gesture reader
+    - [M_pose] Pose model (pretrained)
+    - [M_gest] Hand-signal reader ped stop · police stop/go · rider turn
+  ■ Tracker
+    - [T_fuse] Sensor fusion + tracker (trackerGNN, EKF) → TrackList
+    - [T_loc] Localisation GNSS + IMU + wheels
+  ■ Prediction ML
+    - [M_pred] Motion predictor top-K paths, conditioned on OUR move (conformal safety margin)
+    - [M_intent] Crossing-intent model
+    - [B_belief] Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do
+■ LAYER 3 · DECIDE — Brain + independent safety
+  - [D_plan] Planner route + rules → 8–16 candidate moves
+  - [D_score] Move scorer (small learned model) ranks: progress · comfort · options
+  - [D_rl] RL policy (shadow only, never drives)
+  - [D_check] SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission
+  - [D_mon] Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover
+■ LAYER 4 · ACT — Drive the car, talk to others
+  - [A_ctrl] Control lateral: Stanley / MPC · speed: PI 50 Hz
+  - [A_act] Actuators steer · throttle · brake · gear P/N/D/R
+  - [A_veh] Vehicle model 3DOF (all runs) · 14DOF (potholes)
+  - [A_sig] Signals indicators · hazards · beams · brake light · horn
+  - [A_hmi] Driver screen + takeover + driver watcher
+■ LAYER 5 · PROVE — Test &amp; learn loop
+  - [E_log] Run recorder every message + ground truth
+  - [E_metrics] PS metrics replanning latency p50/p95/p99 · path smoothness (jerk, curvature) scenario completion rate · contacts · false stalls
+  - [E_scen] 5 PS scenarios + 10 test families (F1–F10) 90 Indian road difficulties
+  - [E_mine] Failure mining → replay by seed → regression test → frozen holdout
+  - [E_real] Real Indian dashcam video replay (sim-vs-real accuracy gap)
+  - [E_base] Baselines MathWorks example · always-yield · rule planner
+
+CONNECTIONS (73 arrows, from → to : what flows):
+  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed  →  Cameras front · rear · left · right   : rendered pixels
+  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed  →  LiDAR 32 beams · 100 m · 10 Hz   : ray-cast
+  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed  →  Radar front 150 m + 2 corner · 20 Hz   : detections
+  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed  →  Ultrasonic ×8 0.2–5 m   : near range
+  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed  →  GNSS 10 Hz + IMU 100 Hz + wheel speed + steering angle   : ego motion
+  SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)  →  Microphone array (siren / horn events)   : siren/horn events
+  Weather &amp; light rain · fog · night · glare  →  Rain &amp; light sensors   : rain/light
+  Indian 3D actors &amp; props cattle · auto · e-rickshaw · tractor-trolley pushcart · overloaded 2W · stalls · potholes  →  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed   : spawned actors
+  SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)  →  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed   : actor states mirrored
+  Learned traffic agents (Indian-calibrated, react to our car)  →  SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)   : behaviour
+  Weather &amp; light rain · fog · night · glare  →  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed   : conditions
+  Cameras front · rear · left · right  →  Object detector (YOLOX) autos · pushcarts · people · cattle · 2W · buses   : front image
+  Cameras front · rear · left · right  →  Road / edge / pothole mask (DeepLab v3+)   : front image
+  Cameras front · rear · left · right  →  Sign &amp; Indian-text reader (Hindi / regional)
+  Cameras front · rear · left · right  →  Pose model (pretrained)
+  Cameras front · rear · left · right  →  Visibility estimator (how far can we see)
+  Rain &amp; light sensors  →  Visibility estimator (how far can we see)
+  LiDAR 32 beams · 100 m · 10 Hz  →  LiDAR 3D detector   : point cloud
+  LiDAR 32 beams · 100 m · 10 Hz  →  Bird&#x27;s-eye free-space map (free / occupied / UNKNOWN)
+  Cameras front · rear · left · right  →  Bird&#x27;s-eye free-space map (free / occupied / UNKNOWN)
+  Radar front 150 m + 2 corner · 20 Hz  →  Sensor fusion + tracker (trackerGNN, EKF) → TrackList   : range + speed
+  Ultrasonic ×8 0.2–5 m  →  Sensor fusion + tracker (trackerGNN, EKF) → TrackList   : near obstacles
+  GNSS 10 Hz + IMU 100 Hz + wheel speed + steering angle  →  Localisation GNSS + IMU + wheels
+  Microphone array (siren / horn events)  →  Siren / horn recogniser + direction
+  Driver camera  →  Driver screen + takeover + driver watcher   : driver state
+  Object detector (YOLOX) autos · pushcarts · people · cattle · 2W · buses  →  Sensor fusion + tracker (trackerGNN, EKF) → TrackList   : 2D boxes
+  LiDAR 3D detector  →  Sensor fusion + tracker (trackerGNN, EKF) → TrackList   : 3D boxes
+  Road / edge / pothole mask (DeepLab v3+)  →  Bird&#x27;s-eye free-space map (free / occupied / UNKNOWN)   : road / pothole pixels
+  Pose model (pretrained)  →  Hand-signal reader ped stop · police stop/go · rider turn   : body keypoints
+  Localisation GNSS + IMU + wheels  →  Sensor fusion + tracker (trackerGNN, EKF) → TrackList   : ego pose
+  Sensor fusion + tracker (trackerGNN, EKF) → TrackList  →  Motion predictor top-K paths, conditioned on OUR move (conformal safety margin)   : TrackList 10 Hz
+  Sensor fusion + tracker (trackerGNN, EKF) → TrackList  →  Crossing-intent model   : pedestrian tracks
+  Sensor fusion + tracker (trackerGNN, EKF) → TrackList  →  Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do   : observed motion
+  Crossing-intent model  →  Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do   : cross?
+  Hand-signal reader ped stop · police stop/go · rider turn  →  Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do   : gesture (caution only)
+  Siren / horn recogniser + direction  →  Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do   : siren direction
+  Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do  →  Motion predictor top-K paths, conditioned on OUR move (conformal safety margin)   : who yields / who asserts
+  Bird&#x27;s-eye free-space map (free / occupied / UNKNOWN)  →  Planner route + rules → 8–16 candidate moves   : free space
+  Sign &amp; Indian-text reader (Hindi / regional)  →  Planner route + rules → 8–16 candidate moves   : rules
+  Localisation GNSS + IMU + wheels  →  Planner route + rules → 8–16 candidate moves   : where we are
+  Planner route + rules → 8–16 candidate moves  →  Move scorer (small learned model) ranks: progress · comfort · options   : 8–16 candidates
+  Motion predictor top-K paths, conditioned on OUR move (conformal safety margin)  →  Move scorer (small learned model) ranks: progress · comfort · options   : futures per candidate
+  Cooperation belief intent × response (group / cover merge) Bayes update from what they actually do  →  Move scorer (small learned model) ranks: progress · comfort · options
+  RL policy (shadow only, never drives)  →  Move scorer (small learned model) ranks: progress · comfort · options   : comparison only
+  Move scorer (small learned model) ranks: progress · comfort · options  →  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission   : ranked moves
+  Motion predictor top-K paths, conditioned on OUR move (conformal safety margin)  →  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission   : occupied regions
+  Bird&#x27;s-eye free-space map (free / occupied / UNKNOWN)  →  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission   : free / unknown space
+  Visibility estimator (how far can we see)  →  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission   : sight distance
+  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission  →  Control lateral: Stanley / MPC · speed: PI 50 Hz   : PASS: certificate
+  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission  →  Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover   : FAIL: no safe move
+  Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover  →  Control lateral: Stanley / MPC · speed: PI 50 Hz   : veto / safe stop
+  Siren / horn recogniser + direction  →  Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover   : emergency vehicle
+  Driver screen + takeover + driver watcher  →  Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover   : takeover ack
+  Control lateral: Stanley / MPC · speed: PI 50 Hz  →  Actuators steer · throttle · brake · gear P/N/D/R   : commands 50 Hz
+  Actuators steer · throttle · brake · gear P/N/D/R  →  Vehicle model 3DOF (all runs) · 14DOF (potholes)
+  Vehicle model 3DOF (all runs) · 14DOF (potholes)  →  GNSS 10 Hz + IMU 100 Hz + wheel speed + steering angle   : wheel speed, steering feedback
+  Vehicle model 3DOF (all runs) · 14DOF (potholes)  →  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed   : our car moves → world reacts
+  Vehicle model 3DOF (all runs) · 14DOF (potholes)  →  SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)   : ego state (Writer block)
+  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission  →  Signals indicators · hazards · beams · brake light · horn   : planned turn
+  Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover  →  Signals indicators · hazards · beams · brake light · horn   : hazards
+  Safety monitor stale data · faults · deadline 100 ms safe stop · BLOCKED state · takeover  →  Driver screen + takeover + driver watcher   : mode, fault, takeover request
+  Signals indicators · hazards · beams · brake light · horn  →  SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)   : others see our signals
+  Sensor fusion + tracker (trackerGNN, EKF) → TrackList  →  Run recorder every message + ground truth
+  SAFETY CHECKER (no ML) swept footprint · stopping distance worst-case non-cooperation · uncertainty = the ONLY &#x27;go&#x27; permission  →  Run recorder every message + ground truth
+  Vehicle model 3DOF (all runs) · 14DOF (potholes)  →  Run recorder every message + ground truth
+  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed  →  Run recorder every message + ground truth   : ground truth (tests only)
+  Run recorder every message + ground truth  →  PS metrics replanning latency p50/p95/p99 · path smoothness (jerk, curvature) scenario completion rate · contacts · false stalls
+  Run recorder every message + ground truth  →  Failure mining → replay by seed → regression test → frozen holdout   : near-misses, disagreements
+  Failure mining → replay by seed → regression test → frozen holdout  →  5 PS scenarios + 10 test families (F1–F10) 90 Indian road difficulties   : new test cases
+  5 PS scenarios + 10 test families (F1–F10) 90 Indian road difficulties  →  CARLA 0.9.15 scenes (unmarked village, unsignalled junction) — replaces RoadRunner, disclosed   : scenario + seed
+  5 PS scenarios + 10 test families (F1–F10) 90 Indian road difficulties  →  SUMO reactive traffic (official R2026a Simulink Client/Reader/Writer) calibrated with Indian numbers (P16)   : traffic setup
+  Real Indian dashcam video replay (sim-vs-real accuracy gap)  →  Object detector (YOLOX) autos · pushcarts · people · cattle · 2W · buses   : real frames (open loop)
+  Baselines MathWorks example · always-yield · rule planner  →  PS metrics replanning latency p50/p95/p99 · path smoothness (jerk, curvature) scenario completion rate · contacts · false stalls   : same seeds</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">flowchart LR
+  subgraph L5W[&quot;LAYER 5 · PROVE — World (simulation)&quot;]
+    W_carla[&quot;CARLA 0.9.15 scenes&lt;br/&gt;(unmarked village, unsignalled junction)&lt;br/&gt;— replaces RoadRunner, disclosed&quot;]
+    W_assets[&quot;Indian 3D actors &amp; props&lt;br/&gt;cattle · auto · e-rickshaw · tractor-trolley&lt;br/&gt;pushcart · overloaded 2W · stalls · potholes&quot;]
+    W_sumo[&quot;SUMO reactive traffic&lt;br/&gt;(official R2026a Simulink Client/Reader/Writer)&lt;br/&gt;calibrated with Indian numbers (P16)&quot;]
+    W_agents[&quot;Learned traffic agents&lt;br/&gt;(Indian-calibrated, react to our car)&quot;]
+    W_weather[&quot;Weather &amp; light&lt;br/&gt;rain · fog · night · glare&quot;]
+  end
+  subgraph L1[&quot;LAYER 1 · SENSE — Sensors (timestamped, CAN-style bus)&quot;]
+    S_cam[&quot;Cameras&lt;br/&gt;front · rear · left · right&quot;]
+    S_lidar[&quot;LiDAR&lt;br/&gt;32 beams · 100 m · 10 Hz&quot;]
+    S_radar[&quot;Radar&lt;br/&gt;front 150 m + 2 corner · 20 Hz&quot;]
+    S_us[&quot;Ultrasonic ×8&lt;br/&gt;0.2–5 m&quot;]
+    S_loc[&quot;GNSS 10 Hz + IMU 100 Hz&lt;br/&gt;+ wheel speed + steering angle&quot;]
+    S_mic[&quot;Microphone array&lt;br/&gt;(siren / horn events)&quot;]
+    S_dcam[&quot;Driver camera&quot;]
+    S_env[&quot;Rain &amp; light sensors&quot;]
+  end
+  subgraph L2[&quot;LAYER 2 · UNDERSTAND — AI perception, hearing, tracking, prediction&quot;]
+    subgraph P[&quot;Perception ML&quot;]
+      M_det[&quot;Object detector (YOLOX)&lt;br/&gt;autos · pushcarts · people · cattle · 2W · buses&quot;]
+      M_road[&quot;Road / edge / pothole mask&lt;br/&gt;(DeepLab v3+)&quot;]
+      M_lidar3d[&quot;LiDAR 3D detector&quot;]
+      M_bev[&quot;Bird&#x27;s-eye free-space map&lt;br/&gt;(free / occupied / UNKNOWN)&quot;]
+      M_sign[&quot;Sign &amp; Indian-text reader&lt;br/&gt;(Hindi / regional)&quot;]
+      M_vis[&quot;Visibility estimator&lt;br/&gt;(how far can we see)&quot;]
+    end
+    subgraph H[&quot;Hearing&quot;]
+      M_audio[&quot;Siren / horn recogniser&lt;br/&gt;+ direction&quot;]
+    end
+    subgraph G[&quot;Gesture reader&quot;]
+      M_pose[&quot;Pose model (pretrained)&quot;]
+      M_gest[&quot;Hand-signal reader&lt;br/&gt;ped stop · police stop/go · rider turn&quot;]
+    end
+    subgraph T[&quot;Tracker&quot;]
+      T_fuse[&quot;Sensor fusion + tracker&lt;br/&gt;(trackerGNN, EKF) → TrackList&quot;]
+      T_loc[&quot;Localisation&lt;br/&gt;GNSS + IMU + wheels&quot;]
+    end
+    subgraph PR[&quot;Prediction ML&quot;]
+      M_pred[&quot;Motion predictor&lt;br/&gt;top-K paths, conditioned on OUR move&lt;br/&gt;(conformal safety margin)&quot;]
+      M_intent[&quot;Crossing-intent model&quot;]
+      B_belief[&quot;Cooperation belief&lt;br/&gt;intent × response (group / cover merge)&lt;br/&gt;Bayes update from what they actually do&quot;]
+    end
+  end
+  subgraph L3[&quot;LAYER 3 · DECIDE — Brain + independent safety&quot;]
+    D_plan[&quot;Planner&lt;br/&gt;route + rules → 8–16 candidate moves&quot;]
+    D_score[&quot;Move scorer (small learned model)&lt;br/&gt;ranks: progress · comfort · options&quot;]
+    D_rl[&quot;RL policy&lt;br/&gt;(shadow only, never drives)&quot;]
+    D_check[&quot;SAFETY CHECKER (no ML)&lt;br/&gt;swept footprint · stopping distance&lt;br/&gt;worst-case non-cooperation · uncertainty&lt;br/&gt;= the ONLY &#x27;go&#x27; permission&quot;]
+    D_mon[&quot;Safety monitor&lt;br/&gt;stale data · faults · deadline 100 ms&lt;br/&gt;safe stop · BLOCKED state · takeover&quot;]
+  end
+  subgraph L4[&quot;LAYER 4 · ACT — Drive the car, talk to others&quot;]
+    A_ctrl[&quot;Control&lt;br/&gt;lateral: Stanley / MPC · speed: PI&lt;br/&gt;50 Hz&quot;]
+    A_act[&quot;Actuators&lt;br/&gt;steer · throttle · brake · gear P/N/D/R&quot;]
+    A_veh[&quot;Vehicle model&lt;br/&gt;3DOF (all runs) · 14DOF (potholes)&quot;]
+    A_sig[&quot;Signals&lt;br/&gt;indicators · hazards · beams · brake light · horn&quot;]
+    A_hmi[&quot;Driver screen + takeover&lt;br/&gt;+ driver watcher&quot;]
+  end
+  subgraph L5T[&quot;LAYER 5 · PROVE — Test &amp; learn loop&quot;]
+    E_log[&quot;Run recorder&lt;br/&gt;every message + ground truth&quot;]
+    E_metrics[&quot;PS metrics&lt;br/&gt;replanning latency p50/p95/p99 · path smoothness (jerk, curvature)&lt;br/&gt;scenario completion rate · contacts · false stalls&quot;]
+    E_scen[&quot;5 PS scenarios + 10 test families (F1–F10)&lt;br/&gt;90 Indian road difficulties&quot;]
+    E_mine[&quot;Failure mining → replay by seed&lt;br/&gt;→ regression test → frozen holdout&quot;]
+    E_real[&quot;Real Indian dashcam video replay&lt;br/&gt;(sim-vs-real accuracy gap)&quot;]
+    E_base[&quot;Baselines&lt;br/&gt;MathWorks example · always-yield · rule planner&quot;]
+  end
+  W_carla --&gt;|&quot;rendered pixels&quot;| S_cam
+  W_carla --&gt;|&quot;ray-cast&quot;| S_lidar
+  W_carla --&gt;|&quot;detections&quot;| S_radar
+  W_carla --&gt;|&quot;near range&quot;| S_us
+  W_carla --&gt;|&quot;ego motion&quot;| S_loc
+  W_sumo --&gt;|&quot;siren/horn events&quot;| S_mic
+  W_weather --&gt;|&quot;rain/light&quot;| S_env
+  W_assets --&gt;|&quot;spawned actors&quot;| W_carla
+  W_sumo --&gt;|&quot;actor states mirrored&quot;| W_carla
+  W_agents --&gt;|&quot;behaviour&quot;| W_sumo
+  W_weather --&gt;|&quot;conditions&quot;| W_carla
+  S_cam --&gt;|&quot;front image&quot;| M_det
+  S_cam --&gt;|&quot;front image&quot;| M_road
+  S_cam --&gt; M_sign
+  S_cam --&gt; M_pose
+  S_cam --&gt; M_vis
+  S_env --&gt; M_vis
+  S_lidar --&gt;|&quot;point cloud&quot;| M_lidar3d
+  S_lidar --&gt; M_bev
+  S_cam --&gt; M_bev
+  S_radar --&gt;|&quot;range + speed&quot;| T_fuse
+  S_us --&gt;|&quot;near obstacles&quot;| T_fuse
+  S_loc --&gt; T_loc
+  S_mic --&gt; M_audio
+  S_dcam --&gt;|&quot;driver state&quot;| A_hmi
+  M_det --&gt;|&quot;2D boxes&quot;| T_fuse
+  M_lidar3d --&gt;|&quot;3D boxes&quot;| T_fuse
+  M_road --&gt;|&quot;road / pothole pixels&quot;| M_bev
+  M_pose --&gt;|&quot;body keypoints&quot;| M_gest
+  T_loc --&gt;|&quot;ego pose&quot;| T_fuse
+  T_fuse --&gt;|&quot;TrackList 10 Hz&quot;| M_pred
+  T_fuse --&gt;|&quot;pedestrian tracks&quot;| M_intent
+  T_fuse --&gt;|&quot;observed motion&quot;| B_belief
+  M_intent --&gt;|&quot;cross?&quot;| B_belief
+  M_gest --&gt;|&quot;gesture (caution only)&quot;| B_belief
+  M_audio --&gt;|&quot;siren direction&quot;| B_belief
+  B_belief --&gt;|&quot;who yields / who asserts&quot;| M_pred
+  M_bev --&gt;|&quot;free space&quot;| D_plan
+  M_sign --&gt;|&quot;rules&quot;| D_plan
+  T_loc --&gt;|&quot;where we are&quot;| D_plan
+  D_plan --&gt;|&quot;8–16 candidates&quot;| D_score
+  M_pred --&gt;|&quot;futures per candidate&quot;| D_score
+  B_belief --&gt; D_score
+  D_rl -.-&gt;|&quot;comparison only&quot;| D_score
+  D_score --&gt;|&quot;ranked moves&quot;| D_check
+  M_pred --&gt;|&quot;occupied regions&quot;| D_check
+  M_bev --&gt;|&quot;free / unknown space&quot;| D_check
+  M_vis --&gt;|&quot;sight distance&quot;| D_check
+  D_check --&gt;|&quot;PASS: certificate&quot;| A_ctrl
+  D_check --&gt;|&quot;FAIL: no safe move&quot;| D_mon
+  D_mon --&gt;|&quot;veto / safe stop&quot;| A_ctrl
+  M_audio --&gt;|&quot;emergency vehicle&quot;| D_mon
+  A_hmi --&gt;|&quot;takeover ack&quot;| D_mon
+  A_ctrl --&gt;|&quot;commands 50 Hz&quot;| A_act
+  A_act --&gt; A_veh
+  A_veh --&gt;|&quot;wheel speed, steering feedback&quot;| S_loc
+  A_veh --&gt;|&quot;our car moves → world reacts&quot;| W_carla
+  A_veh --&gt;|&quot;ego state (Writer block)&quot;| W_sumo
+  D_check --&gt;|&quot;planned turn&quot;| A_sig
+  D_mon --&gt;|&quot;hazards&quot;| A_sig
+  D_mon --&gt;|&quot;mode, fault, takeover request&quot;| A_hmi
+  A_sig --&gt;|&quot;others see our signals&quot;| W_sumo
+  T_fuse --&gt; E_log
+  D_check --&gt; E_log
+  A_veh --&gt; E_log
+  W_carla -.-&gt;|&quot;ground truth (tests only)&quot;| E_log
+  E_log --&gt; E_metrics
+  E_log --&gt;|&quot;near-misses, disagreements&quot;| E_mine
+  E_mine --&gt;|&quot;new test cases&quot;| E_scen
+  E_scen --&gt;|&quot;scenario + seed&quot;| W_carla
+  E_scen --&gt;|&quot;traffic setup&quot;| W_sumo
+  E_real -.-&gt;|&quot;real frames (open loop)&quot;| M_det
+  E_base --&gt;|&quot;same seeds&quot;| E_metrics
+  classDef safety fill:#ffd6d6,stroke:#b00000,stroke-width:3px
+  class D_check,D_mon safety</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>

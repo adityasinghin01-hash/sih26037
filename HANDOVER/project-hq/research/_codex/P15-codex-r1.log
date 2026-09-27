@@ -1,0 +1,1015 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 01a0dee0-a4f1-7243-96ac-fee432545b4a
+--------
+user
+P14 accepted (saved as research/P14-PS-COMPLIANCE.md; Reader/Writer now VERIFIED by Claude). Scorecard
+today: 1 MEETS / 22 PARTIAL / 15 NOT YET / 2 DEVIATION.
+
+NEXT: PHASE P15 — THE BUILD PLAN to the Dec 2026 finale. Synthesis, xhigh. PLAN ONLY — nothing gets built
+until Aditya confirms it.
+
+Aditya's requirements (his words, paraphrased):
+- Every part must CONNECT seamlessly: one running system, not separate demos.
+- The final build must solve the real problem as a WHOLE system, with no gaps — every P14 row and every
+  P1 top-25 difficulty must be traceable to a build step and a test.
+- It must USE EVERYTHING A REAL CAR HAS, and show it in MATLAB/Simulink. Think: cameras (front, rear,
+  surround), lidar, radar (front + corner), ultrasonic parking sensors, GNSS + IMU, wheel speed/odometry,
+  steering-angle sensor, the vehicle bus (CAN-style signals), actuators (steer, throttle, brake, gear incl.
+  reverse), and the car's outputs to other road users: horn, indicators, headlights/high beam, hazard
+  lights, and a driver display (HMI) with takeover request. Decide which are real value vs decoration and
+  say so; do not pad.
+- Add other sensible specs yourself (e.g. timing budget per layer, fault/degraded modes, ODD statement,
+  logging/replay, minimal-risk manoeuvre, driver takeover, map/localisation).
+
+CONSTRAINTS (facts): 2 builders (Aditya + Shourya), ~10 weeks from 1 Oct 2026 to an early-Dec finale
+(exact date UNVERIFIED). Mac M1 (MATLAB R2026a, no CARLA), Windows lab PC (8 GB GPU → CARLA 0.9.x),
+DGX A100 (training only, no RT cores). No RoadRunner. Repo ~/dev/sih2026 branch integration/dense-planner
+(8 commits, not pushed; 348 tests). Known bugs: S2 collides+stalls, dense S3 stalls at 81.4 m, 736 ms/step,
+camera not in loop, YOLOX zero boxes on renders, PYield unused by planner, futures fixed-heading.
+
+Brutal honesty: "no flaws, no gaps" is impossible for any AV. Say so in one line, then define what
+"no gaps" MEANS measurably for us (e.g. every requirement traced to a test; every failure has a
+declared fallback). If 10 weeks cannot fit everything, give a MUST / SHOULD / STRETCH cut and say what
+falls out.
+
+DELIVERABLE (markdown, tight):
+1. One-line honest verdict on feasibility.
+2. The INTERFACE CONTRACT: the fixed messages between layers (name, fields, rate, units, frame) so parts
+   plug together. This is what makes it "seamless".
+3. The CAR SPEC: every sensor, actuator and signalling output: model/parameters, MATLAB block/object that
+   simulates it, what the stack uses it for, MUST/SHOULD/STRETCH.
+4. The BUILD PHASES: week-by-week, each phase = goal | tasks | owner (A/S) | exit test (a measurable
+   gate) | which P14 rows and P1 IDs it closes. Fix-the-bugs and the 10 Hz gate come first. Integration
+   is continuous, not a final week.
+5. The TRACEABILITY check: list any P14 row or P1 top-25 ID with no phase/test. Should be empty or
+   explained.
+6. Degraded modes and fallbacks table: failure → detection → response.
+7. The finale demo script (what the judges see, in order, ~8 min).
+8. Top risks + the cut-line if a phase slips.
+Cite file paths. FACT vs JUDGMENT where it matters.
+
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+I’ll use the accepted P14 scorecard as the coverage gate and the existing frozen interfaces as the starting contract. I’ll first check the saved P14, P1 top-25 list, and current system audit, then produce a ten-week plan with measurable exits and an explicit cut line.
+exec
+/bin/zsh -lc 'wc -l research/P14-PS-COMPLIANCE.md research/P13-SYSTEM-DESIGN.md research/P1-DIFFICULTY-CATALOGUE.md research/P2-AUDIT-OUR-SYSTEM.md research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md /Users/aditya/.agents/skills/writing-plans/SKILL.md' in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+     106 research/P14-PS-COMPLIANCE.md
+     127 research/P13-SYSTEM-DESIGN.md
+     244 research/P1-DIFFICULTY-CATALOGUE.md
+      40 research/P2-AUDIT-OUR-SYSTEM.md
+     135 research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md
+     168 /Users/aditya/.agents/skills/writing-plans/SKILL.md
+     820 total
+
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/writing-plans/SKILL.md' in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+---
+name: writing-plans
+description: Use when you have a spec or requirements for a multi-step task, before touching code
+---
+
+# Writing Plans
+
+## Overview
+
+Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
+
+Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
+
+**Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
+
+**Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
+
+**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+- (User preferences for plan location override this default)
+
+## Scope Check
+
+If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+
+## File Structure
+
+Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
+
+- Design units with clear boundaries and well-defined interfaces. Each file should have one clear responsibility.
+- You reason best about code you can hold in context at once, and your edits are more reliable when files are focused. Prefer smaller, focused files over large ones that do too much.
+- Files that change together should live together. Split by responsibility, not by technical layer.
+- In existing codebases, follow established patterns. If the codebase uses large files, don't unilaterally restructure - but if a file you're modifying has grown unwieldy, including a split in the plan is reasonable.
+
+This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
+
+## Task Right-Sizing
+
+A task is the smallest unit that carries its own test cycle and is worth a
+fresh reviewer's gate. When drawing task boundaries: fold setup,
+configuration, scaffolding, and documentation steps into the task whose
+deliverable needs them; split only where a reviewer could meaningfully
+reject one task while approving its neighbor. Each task ends with an
+independently testable deliverable.
+
+## Bite-Sized Task Granularity
+
+**Each step is one action (2-5 minutes):**
+- "Write the failing test" - step
+- "Run it to make sure it fails" - step
+- "Implement the minimal code to make the test pass" - step
+- "Run the tests and make sure they pass" - step
+- "Commit" - step
+
+## Plan Document Header
+
+**Every plan MUST start with this header:**
+
+```markdown
+# [Feature Name] Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** [One sentence describing what this builds]
+
+**Architecture:** [2-3 sentences about approach]
+
+**Tech Stack:** [Key technologies/libraries]
+
+## Global Constraints
+
+[The spec's project-wide requirements — version floors, dependency limits,
+naming and copy rules, platform requirements — one line each, with exact
+values copied verbatim from the spec. Every task's requirements implicitly
+include this section.]
+
+---
+```
+
+## Task Structure
+
+````markdown
+### Task N: [Component Name]
+
+**Files:**
+- Create: `exact/path/to/file.py`
+- Modify: `exact/path/to/existing.py:123-145`
+- Test: `tests/exact/path/to/test.py`
+
+**Interfaces:**
+- Consumes: [what this task uses from earlier tasks — exact signatures]
+- Produces: [what later tasks rely on — exact function names, parameter
+  and return types. A task's implementer sees only their own task; this
+  block is how they learn the names and types neighboring tasks use.]
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+def test_specific_behavior():
+    result = function(input)
+    assert result == expected
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `pytest tests/path/test.py::test_name -v`
+Expected: FAIL with "function not defined"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+def function(input):
+    return expected
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `pytest tests/path/test.py::test_name -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add tests/path/test.py src/path/file.py
+git commit -m "feat: add specific feature"
+```
+````
+
+## No Placeholders
+
+Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
+- "TBD", "TODO", "implement later", "fill in details"
+- "Add appropriate error handling" / "add validation" / "handle edge cases"
+- "Write tests for the above" (without actual test code)
+- "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
+- Steps that describe what to do without showing how (code blocks required for code steps)
+- References to types, functions, or methods not defined in any task
+
+## Self-Review
+
+After writing the complete plan, look at the spec with fresh eyes and check the plan against it. This is a checklist you run yourself — not a subagent dispatch.
+
+**1. Spec coverage:** Skim each section/requirement in the spec. Can you point to a task that implements it? List any gaps.
+
+**2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
+
+**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+
+## Execution Handoff
+
+After saving the plan, offer execution choice:
+
+**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
+
+**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+
+**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
+
+**Which approach?"**
+
+**If Subagent-Driven chosen:**
+- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
+- Fresh subagent per task + two-stage review
+
+**If Inline Execution chosen:**
+- **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
+- Batch execution with checkpoints for review
+
+exec
+/bin/zsh -lc "rg --files -g 'AGENTS.md' -g '*CONTRACT*' -g '*INTERFACE*' -g 'PRD.md'" in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+05-ASSETS/PRD.md
+
+codex
+I’m using the writing-plans skill to structure the build as testable weekly gates. Since this workspace is read-only and you asked for a plan only, I’ll deliver the plan here without changing files or starting implementation.
+exec
+/bin/zsh -lc "sed -n '200,340p' 05-ASSETS/PRD.md" in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+### S1 · TrackList — Perception (B) → everyone downstream
+
+Sensor-agnostic by design. Lidar and radar are fused *before* this struct, so nothing downstream
+knows which sensor saw what. Adding a sensor never changes this interface.
+
+| Field | Type | Units | Meaning |
+|---|---|---|---|
+| `TrackID` | `uint32` | — | Stable across frames. Never reused within a run |
+| `ClassID` | `uint8` | — | See S5. `0` = unknown |
+| `Position` | `1x3 double` | m | Ego frame: x forward, y left, z up |
+| `Velocity` | `1x3 double` | m/s | Same frame |
+| `Extent` | `1x3 double` | m | Length, width, height of the fitted box |
+| `Yaw` | `double` | rad | Heading in the ego frame |
+| `Existence` | `double` | 0–1 | Tracker confidence |
+| `Age` | `uint32` | frames | How long this track has lived |
+| `SensorMask` | `uint8` | bitfield | bit0 lidar, bit1 radar, bit2 camera |
+
+**Four guarantees B must uphold:**
+1. Sorted by ascending `TrackID`
+2. Never contains the ego vehicle
+3. **May be empty** (`0x1 struct`) — every consumer must handle that without erroring
+4. `Position` is finite. No `NaN`, no `Inf`. Drop the track instead
+
+### S2 · FeatureFrame — Features (C) → Predictor (C)
+
+31 dimensions, **depth-free by construction**, so the same builder works on METEOR video and on
+simulated tracks projected through a virtual camera.
+
+| Idx | Name | Meaning |
+|---|---|---|
+| 1–2 | `u_c`, `v_c` | box centre ÷ image size |
+| 3 | `v_bottom` | box foot ÷ image height — range proxy on flat road |
+| 4–5 | `w`, `h` | box size ÷ image size |
+| 6 | `log_aspect` | `log(w/h)` — separates a bus from a scooter without distance |
+| 7–9 | `du`, `dv`, `dh` | per-second rates |
+| 10 | **`tau`** | **`h / (dh/dt)`** — time-to-contact from pure 2-D expansion. **The feature that makes image-plane learning legitimate.** Clamp to ±100 |
+| 11 | `lat_closure` | `d(u − u_ego)/dt` |
+| 12–27 | `class_onehot` | 16-way, S5 |
+| 28–30 | `ego_speed`, `ego_yawrate`, `ego_accel` | our own state |
+| 31 | `cand_action` | the manoeuvre being scored, S6 |
+
+```
+FeatureFrame
+  .Data       [N x 31 single]   row order matches TrackList
+  .Adjacency  [N x N single]    symmetric, 1 if pair within 15 m, diagonal 0
+  .TrackIDs   [N x 1 uint32]
+  .Timestamp  double            seconds
+```
+
+**`Adjacency` is emitted from day one even though the LSTM ignores it.** It makes the
+graph-network upgrade a ~60-line change instead of a rewrite. Do not remove it.
+
+**Sequence form:** `[T x 31]` per agent, `T = 20` frames at 10 Hz = 2.0 s. Front-pad with the
+earliest frame when a track is younger than T.
+
+### S3 · YieldPrediction — Predictor (C) → Planner (D)
+
+```
+.TrackIDs  [N x 1 uint32]
+.PYield    [N x 1 double]   probability in [0,1] that this agent yields to us
+.Valid     [N x 1 logical]  false when the track is younger than T frames
+```
+
+**When `Valid(i)` is false, the planner falls back to the geometric role alone.** It must never
+treat an invalid prediction as 0.5.
+
+### S4 · Role and EgoCommand — Planner (D)
+
+```
+Role                          EgoCommand
+  .TrackID  uint32              .Accel      double  m/s²,  [-6, +3]
+  .Role     uint8  (S7)         .SteerAngle double  rad,   [-0.6, +0.6]
+  .Beta     double  rad         .Mode       uint8   (S8)
+  .Lambda   double  rad         .Reason     string  one short line, for the log
+  .TCPA     double  s
+```
+
+`Beta` and `Lambda` are the velocity-obstacle quantities: `β = asin(dMin/d)`,
+`λ = acos((vᵣ·r)/(‖vᵣ‖d))`. **Collision iff `λ < β`.** Log both every step — `h = λ − β` is our
+barrier function and our safety evidence.
+
+### S5 · ClassID — the one table everybody uses
+
+**Never renumber.**
+
+| ID | Class | | ID | Class |
+|---|---|---|---|---|
+| 0 | unknown | | 8 | pedestrian |
+| 1 | car | | 9 | bicycle |
+| 2 | truck | | 10 | **cow / cattle** |
+| 3 | bus | | 11 | dog |
+| 4 | **auto-rickshaw** | | 12 | **pushcart** |
+| 5 | motorbike | | 13 | **animal-drawn cart** |
+| 6 | scooter | | 14 | tractor |
+| 7 | van | | 15 | static obstacle |
+
+MATLAB's `drivingScenario` reserves its own ClassIDs 1–6. Use `sih.util.toSimClassID()`.
+**Never hardcode either numbering** — a literal class number anywhere in the code is a bug.
+
+### S6 · Candidate actions (feature 31)
+
+| Value | Meaning |
+|---|---|
+| 0.0 | hold speed |
+| 1.0 | accelerate / commit to cross |
+| −1.0 | decelerate / give way |
+| 0.5 | creep forward (the probe manoeuvre) |
+
+### S7 · Role codes
+
+| Value | Role | Duty |
+|---|---|---|
+| 0 | `SAFE` | no action; `tCPA < 0`, opening |
+| 1 | `GIVE_WAY` | early, substantial action. Pass astern |
+| 2 | `STAND_ON` | **hold course and speed** |
+| 3 | `HEAD_ON` | both alter to the same side |
+| 4 | `OVERTAKING` | keep clear of the overtaken agent |
+
+Sector boundaries are **22.5°, 90°, 112.5°**. The sign of `tCPA` disambiguates closing from opening.
+
+### S8 · Planner mode
+
+| Value | Mode | When |
+|---|---|---|
+| 0 | `STRUCTURED` | lane markings detected — defer to baseline-style planning |
+| 1 | `UNSTRUCTURED` | no usable lane structure — our negotiation planner |
+| 2 | `EMERGENCY` | barrier violated, `h < 0` |
+
+Mode 0 exists because **we do not claim a win on the highway merge.**
+*"Our planner knows when it isn't needed."*
+
+### File formats — frozen
+
+| What | Path | Format |
+|---|---|---|
+| Trajectories for Blender | `results/<run>/trajectories.csv` | `t,actor_id,class_id,x,y,z,yaw` — SI units, header row |
+| Metrics per run | `results/<run>/metrics.json` | keys are metric IDs `M1`–`M10` |
+| Run config | `results/<run>/config.json` | **a copy of the inputs. A number without its config is not a result** |
+| Model | `python/export/yield_lstm_opset<N>.onnx` | input `sequence` `[1,20,31]`, output `yield_logits` `[1,2]` |
+
+### Contract change log
+
+exec
+/bin/zsh -lc 'cat research/P14-PS-COMPLIANCE.md' in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+# P14 — PS compliance and beyond
+
+Status: ROUND 1, 27 Sep 2026. Codex (gpt-6-sol, xhigh, P13 session) synthesis; Claude checked against P2 audit.
+
+## Claude's check
+- Every "today" number matches P2-AUDIT (610 m, 382 m, −0.001 m, 735.8 ms, 2.089%, AP 38.2/16.3%, 348/348, 35 reactions).
+- Fixed: SUMO Reader/Writer are now VERIFIED (were marked unverified).
+- **Scorecard today, 40 rows:** MEETS 1 (only a tool-use row) · PARTIAL 22 · NOT YET 15 · DEVIATION 2 (RoadRunner). **Zero PS outcome requirements are met today.**
+
+---
+# P14 — PS compliance and beyond
+
+**FACT:** This is an audit of the design, not a claim that the finale system exists. “Today” means the [26 September system audit](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md). `MEETS`, `PARTIAL`, `NOT YET` and `DEVIATION` describe **today’s evidence**; the finale column is a target. The clauses come from the [verbatim PS](/Users/aditya/dev/sih2026-hq/research/PS-SIH26037-verbatim.md) and [P0 checklist](/Users/aditya/dev/sih2026-hq/research/P0-RULES.md). The proposed layers are in [P13](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md).
+
+## 1. Compliance table
+
+| PS clause, short quote | How P13 addresses it | Status today | Planned for finale | Evidence to show | Gap or risk |
+|---|---|---|---|---|---|
+| “adaptive path planning” on unstructured roads | Belief → manoeuvre scorer → verifier → control | **PARTIAL:** S1 completes 610 m; S2 and dense S3 stall | Five closed-loop Indian scenarios | Paired route films and run logs | Progress and safety both unproven |
+| “mixed traffic” with diverse users | CARLA Indian actors; reactive SUMO traffic | **PARTIAL:** scripted actors; 50/51 density actors off road | Ego-responsive mixed traffic | Actor-response plots; films | Simulator realism |
+| “perception, prediction, path planning, decision logic, and vehicle motion in MATLAB and Simulink” | Simulink hosts all ego blocks and harness | **PARTIAL:** MATLAB loop; Simulink bicycle side model; camera offline | One running Simulink model | `.slx`, signal traces, closed-loop film | Major integration task |
+| “multi-sensor … camera, LiDAR, and radar” | Timestamped camera, lidar and radar → fusion | **PARTIAL:** lidar/radar → `trackerGNN`; camera outside loop | All three in selected CARLA runs | Sensor topics, detections, fault runs | Calibration and timing |
+| “auto-rickshaws” | YOLOX class + tracked occupied region | **PARTIAL:** offline auto AP **38.2%**; zero boxes on renders at default threshold | In-loop auto recall measured | Labelled render set; recall table | Render transfer |
+| “pushcarts” | Mine labels, train detector; obstacle envelope | **NOT YET:** no pushcart training data | In-loop pushcart detection | Annotated images; recall; film | Rare-class data |
+| “pedestrians” | Detector, tracker, crossing modes | **PARTIAL:** simulated tracks; camera model offline | In-loop crossing and occlusion tests | Recall, track loss, crossing film | Hidden people |
+| “animals” | Cattle detector + conservative reachable region | **PARTIAL:** offline cow AP **16.3%**; zero render boxes at default threshold | Cattle stop/cross runs | Recall; occupied-region and braking plots | No validated animal-motion dataset |
+| “predict short-term motion” | Top-K metric paths or occupied regions | **PARTIAL:** two fixed-heading speed futures | Candidate-conditioned 2–3 s futures | Coverage and miss-rate plots | Indian metric tracks |
+| “non-lane-based and irregular movement” | Lateral/turn modes plus reachable fallback | **NOT YET:** fixed-heading futures cannot bracket lateral moves | Cut-in, seepage and turn coverage | Held-out trajectory coverage | Model shift |
+| “safe, collision-free path” and “collision-free performance” | Independent swept-footprint and stop check | **PARTIAL:** worst randomized clearance **−0.001 m: contact** | No contacts on declared test set; report failures | Contact log, margin, impact speed | No universal guarantee |
+| “replanned in real time” / “timely replanning” | 10 Hz gate and stale-plan brake | **NOT YET:** **735.8 ms/step**, 7.4× the 100 ms budget | Measured 100 ms cycle gate | p50/p95/p99, deadline misses, full-loop trace | 88% capsule-list hotspot |
+| “missing lane markings” | Road/shoulder/unknown grid; verifier uses free space | **NOT YET:** road model is outside a rendered camera loop | Unmarked village route | Road-edge error and route film | Surface colour is not safe geometry |
+| “informal merging” | Response belief; candidate-conditioned forecasts | **PARTIAL:** scripted response; S2 stalls | Reactive merge with non-yield variants | Gap use, contacts, stall rate | Courtesy bias |
+| “sudden pedestrian movement” | Crossing tubes, occlusion region, stop check | **NOT YET:** no audited in-loop camera case | Delayed-start crossing tests | Onset-to-brake trace; film | Detection may arrive too late |
+| “unexpected obstacles” | Unknown occupancy, safety veto, stop | **PARTIAL:** live obstacle injection and fallback films | Debris, stopped vehicle and roadblock tests | Detection-to-stop trace | Visible stopping distance |
+| Background: wrong-way travel and unmarked crossings | F5 and F3/F4 stress cases | **NOT YET:** no audited named pass | Seeded counterflow and midblock crossings | Contact/progress by family | Rare-event rate unknown |
+| Background: unclear edges and potholes | Traversability fusion; 14DOF rough-road subset | **NOT YET:** no in-loop surface sensing or 14DOF run | Edge refusal; pothole slow/avoid tests | Clearance and vertical-acceleration traces | Depth and friction uncertainty |
+| “unmarked village road” | F1 + F7 + F9; detailed CARLA scene | **NOT YET:** no verified named end-to-end run | Driven route | Scene file, seed, film, result | Needs genuine unmarked geometry |
+| “busy urban intersection without signals” | F4 + F2/F3; detailed CARLA scene | **NOT YET:** S2 stalls, but audit does not establish it as this PS scene | Driven reactive junction | Scene file, gap and stall plots | Deadlock and collision |
+| “highway merge involving slow-moving vehicles” | F5 + F4/F9 | **NOT YET:** no verified named end-to-end run | Slow-vehicle merge route | Film, gap and TTC logs | Speed mismatch |
+| “dense market area with mixed traffic” | F2 + F3/F9 | **NOT YET:** dense S3 stalls; PS-scene mapping unaudited | Driven market route | Film, contact and blocked-state log | Occlusion and over-conservatism |
+| “sudden cattle-crossing event” | F6 + F1/F7 | **NOT YET:** no verified named end-to-end run | Delayed cattle onset and safe stop | Film; onset, detection, stop trace | Low cattle recall |
+| “at least two detailed RoadRunner scenes” | Two detailed **CARLA 0.9.x** scenes: village and urban junction | **DEVIATION:** zero RoadRunner scenes; no licence | **DEVIATION remains:** deliver CARLA substitutes | CARLA assets, scenario files and films | Literal PS requirement unmet |
+| “use them to test … all five” | Shared scenario IDs across fast and rendered tiers | **NOT YET:** two working 2D demos; S4/S5 lack planner routes | Five named routes; selected rendered repeats | Five-row result matrix | Scene portability |
+| “simulation model” | One Simulink ego stack and harness | **PARTIAL:** `sih_planner.slx` is a side model | Reproducible running `.slx` | Model and one-command run | Main-demo steering not executed today |
+| “designed scenarios” | Five named cases plus F1–F10 parameters | **PARTIAL:** S1–S3 2D; S4/S5 density layers lack routes | Versioned scenario package | Scenario manifest, seeds and assets | CARLA/SUMO synchronization |
+| “performance results” | Paired baselines and frozen holdout | **PARTIAL:** M1–M10, **348/348** tests; no shared-seed head-to-head | Stratified results and intervals | Results tables and raw logs | Current tests do not prove PS outcomes |
+| “replanning latency” | Snapshot → validated replacement time | **PARTIAL:** profiler gives 735.8 ms/step; PS metric not reported | p50/p95/p99 and misses over 100 ms | Timing CSV and profiler trace | Transfer time must be included |
+| “path smoothness” / “smooth path generation” | Realized jerk and curvature change, separately | **PARTIAL:** M10 wobble is only a proxy | Declared jerk and curvature formulas | Per-run traces and summary | Brake events can hide in one score |
+| “scenario completion rate” | Reached on time, no disqualifying contact, stayed drivable | **PARTIAL:** S1/S3 finish; only **2/5** working demos | Rate by scenario and family | Outcome table with failure reasons | Stall versus true blockage |
+| “short technical report” | Architecture, assumptions, formulas, limits | **NOT YET:** no final report in audit | Versioned report | PDF and claim-to-evidence table | Must disclose RoadRunner deviation |
+| “demonstration video” | Five closed-loop runs, including failure handling | **PARTIAL:** S1/S3 films; S2 withheld | Narrated five-scene video | Video and matching run IDs | Film alone does not prove robustness |
+| “closed-loop validation … mixed traffic” | Ego command affects reactive actors and next sensor frame | **PARTIAL:** `reactStep` made **35** speed-only reactions per S1 run; density largely scenery | At least two independently specified actor policies | Ego-action/actor-response traces | Fixed scripts can flatter planner |
+| Encouraged: “RoadRunner for scenario design” | CARLA 0.9.x substitutes | **DEVIATION:** no licence or scenes | **DEVIATION:** two CARLA scenes | Asset and scene package | Do not imply a MathWorks waiver |
+| Encouraged: “Automated Driving Toolbox” | Sensor/scenario workflow | **PARTIAL:** simulated sensing exists; exact toolbox use not audited | Use documented sensor/scenario blocks | `.slx` block inventory | Installed products and integration |
+| Encouraged: “Navigation Toolbox” | Candidate geometry and collision checks | **MEETS tool use:** `dynamicCapsuleList` is in current checker | Replace slow repeated calls where needed | Model/code and profile | Present use costs 88% of step |
+| Encouraged: “Stateflow” | Persistent blocked and fallback states | **NOT YET:** no audited Stateflow decision logic | Stateflow decision chart | Chart and state-transition logs | Timeout must not grant passage |
+| Encouraged: “Vehicle Dynamics Blockset or a Simulink bicycle model” | Bicycle baseline; 3DOF/14DOF tests | **PARTIAL:** bicycle side model; main demo uses an integrator | Executed plant; 14DOF pothole subset | Model, tracking and ride plots | Steering path not closed today |
+| Encouraged: “Deep Learning Toolbox” | Detector, road mask and compact prediction/scorer | **PARTIAL:** YOLOX/DeepLab offline; ML gate disabled | In-loop inference with measured age | Model files, inference logs | Import, recall and deadline |
+
+**Judge-facing RoadRunner wording:** “The PS specifies two detailed RoadRunner scenes. RoadRunner is unavailable under our licence, so we will provide two detailed CARLA 0.9.x scenes—an unmarked village road and an unsignalled urban junction—with the ego stack and evaluation in MATLAB/Simulink. This is a substitution, not literal compliance.” P13’s correction pins **CARLA 0.9.x (UE4)** for the 8 GB lab GPU; its documented minimum is 6 GB and recommendation is 8 GB. [P13 correction](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md), [CARLA 0.9.15 requirements](https://carla.readthedocs.io/en/0.9.15/start_quickstart/)
+
+## 2. Beyond-the-PS table
+
+**JUDGMENT:** Effort is incremental, rough builder time; items overlap with the required stack and cannot simply be added into a schedule. “Measured contribution” remains **unproven** until paired held-out results exist.
+
+| Beyond-PS item | Why a judge cares | Novelty status and closest prior art | Effort | Status |
+|---|---|---|---|---|
+| Response-propensity belief with group/cover modes | Tests negotiation without assuming every driver yields | **Prior-art mechanism; India-specific modes proposed.** Continuous cooperation belief: [Kruse et al.](https://arxiv.org/abs/2207.05228); dense belief planning: [LeTS-Drive](https://arxiv.org/abs/2101.03834). Chennai mode shares are site-specific. | 2–4 weeks | **PLANNED** |
+| Independent verifier and persistent blocked state | Makes the source of permission and the reason for stopping inspectable | **Prior art**, including learned/rule verification in [Mosaic](https://arxiv.org/abs/2604.13853) and the [frozen-robot problem](https://las.inf.ethz.ch/files/trautman10unfreezing.pdf). India-specific measured benefit unproven. | 2–4 weeks | Current barriers **PARTIAL**; independent check **PLANNED** |
+| India-calibrated reactive traffic | Prevents a showcase where other users conveniently clear the path | **India-specific application**, with prior sublane simulation. Parameterize the **0.906 m** measured squeeze gap, class gap/speed ranges and group/cover modes; **sweep** pedestrian yielding, whose site studies disagree. [P16](/Users/aditya/dev/sih2026-hq/research/P16-INDIAN-TRAFFIC-NUMBERS.md), [SUMO sublanes](https://sumo.dlr.de/docs/Simulation/SublaneModel.html) | 3–5 weeks | **PLANNED**; speed-only scripts today |
+| F1–F10 over 90 difficulties | Makes coverage and missing cases visible | **Prior-art scenario collection; India-specific closed-loop use proposed.** ARAI already lists an [Indian ADAS repository](https://www.araiindia.com/departments-laboratories/technology-group/intelligent-vehicle-technology); [P1](/Users/aditya/dev/sih2026-hq/research/P1-DIFFICULTY-CATALOGUE.md) maps 90 IDs to ten families. | 2–3 weeks fast tier; rendered subset extra | Catalogue **BUILT**; executable family suite **PLANNED** |
+| Simulation shadow-mode data engine | Turns one found failure into a replayable regression | **Prior art** in [AIDE](https://openaccess.thecvf.com/content/CVPR2024/html/Liang_AIDE_An_Automatic_Data_Engine_for_Object_Detection_in_Autonomous_CVPR_2024_paper.html) and [Waymo’s described loop](https://waymo.com/blog/2026/08/10ailessons/); measured benefit unproven. | 3–5 weeks | **NOT YET** |
+| Stratified evaluation, baselines and 299-run statistic | Exposes hidden stalls and limits safety claims | **Prior-art evaluation practice; measured Indian contribution possible.** **299 independent zero-failure runs** put a one-sided 95% bound below 1% for **one specified distribution**, not “Indian roads.” Compare current planner, MathWorks example, always-yield and PDM-like rule baseline on shared seeds. [P9–P12](/Users/aditya/dev/sih2026-hq/research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md), [nuPlan](https://arxiv.org/abs/2403.04133) | 3–5 weeks | Current metrics **PARTIAL**; paired holdout **PLANNED** |
+| Sensor-degradation curves | Shows when the system stops safely as sensing worsens | **Prior art** in [RoboBEV](https://github.com/worldbench/robobev) and [Robo3D](https://github.com/worldbench/Robo3D); India-scene curves proposed. Report measured dropout/visibility, not a weather-slider setting. | 3–6 weeks | **NOT YET**; current sensors lack weather/miss models |
+| 14DOF pothole tests | A planar car cannot measure ride response to a hole | **Established vehicle modeling**, applied to Indian defects. MathWorks’ [14DOF model](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) includes vertical, pitch, roll and wheel motion. | 1–2 weeks after plant setup | **NOT YET** |
+| 10 Hz timing gate and stale-plan response | Makes “real time” a falsifiable result | **Standard engineering practice; measured contribution only if demonstrated.** Current **735.8 ms/step** requires redesign, not a smaller label on the slide. [P3 timing analysis](/Users/aditya/dev/sih2026-hq/research/P3-PLANNER.md), [P9–P12](/Users/aditya/dev/sih2026-hq/research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md) | 3–5 weeks | **NOT YET** |
+
+The official **R2026a SUMO Client, Reader and Writer** blocks are documented (Reader/Writer verified by Claude 27 Sep). Their installed-version behaviour and the single-SUMO, CARLA, Simulink loop still need an integration test. [Client documentation](https://www.mathworks.com/help/driving/ref/client.html), [P13 correction](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md)
+
+## 3. PPT claims ledger
+
+| One-line slide claim | Tag | Reason |
+|---|---|---|
+| “A MATLAB 2D planner currently completes S1 and sparse S3.” | **SAFE NOW** | Audited runs: S1 **610 m**; S3 **382 m**. |
+| “We have simulated lidar/radar tracking and offline Indian-road perception models.” | **SAFE NOW** | `trackerGNN`, YOLOX and DeepLab exist; camera inference is outside the driving loop. |
+| “Our proposed Simulink stack joins sensing, prediction, planning, safety and vehicle motion.” | **SAFE ONLY AS ‘PLANNED’** | Today’s Simulink model is a side model. |
+| “We plan two detailed CARLA 0.9.x Indian scenes in place of the specified RoadRunner scenes.” | **SAFE ONLY AS ‘PLANNED’** | Honest substitution; literal PS gap remains. |
+| “A small learned scorer will rank manoeuvres; a separate check will grant motion.” | **SAFE ONLY AS ‘PLANNED’** | Current planner is hand-tuned; independent verifier is not built. |
+| “We will test five PS scenarios and F1–F10 with paired baselines and a 10 Hz gate.” | **SAFE ONLY AS ‘PLANNED’** | Only two demos work; 736 ms/step today. |
+| “This is the first Indian autonomous-driving test suite.” | **DO NOT CLAIM** | ARAI, Warwick/Safety Pool and others already work on Indian scenarios. [P1](/Users/aditya/dev/sih2026-hq/research/P1-DIFFICULTY-CATALOGUE.md) |
+| “The planner is real-time today.” | **DO NOT CLAIM** | **735.8 ms/step** versus a 100 ms target. |
+| “ML drives the car today.” | **DO NOT CLAIM** | Yield model has **2.089%** dangerous error and is gated off; perception is offline. |
+| “We have two RoadRunner scenes.” | **DO NOT CLAIM** | There are **zero**; the proposed scenes use CARLA. |
+
+Current numbers and limitations in this ledger are from [P2](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md). Neither the proposed verifier nor zero-contact simulated runs justify a claim of certified safety on public Indian roads.
+
+## 4. Five hostile questions and honest answers
+
+1. **“The PS says RoadRunner. Where are your two scenes?”** — “We cannot meet that literal tool requirement; without the licence we will deliver two detailed CARLA scenes and disclose the substitution on the slide and in the report.”
+
+2. **“How is this real-time when your loop takes 736 ms?”** — “It is not real-time today; we must replace the 88% collision-check hotspot and publish full-loop p50/p95/p99 and deadline misses before claiming 10 Hz.”
+
+3. **“Does your camera system even see a cow or auto in the simulator?”** — “Not reliably yet: the detector produced zero boxes at its default render threshold; in-loop labelled-render recall is a required gate, and the ML yield output stays disabled.”
+
+4. **“Won’t your safety layer just freeze at an intersection?”** — “It does stall today in S2 and dense S3. We will fix the WAIT logic, record when a feasible gap appeared, and allow a creep only when the independent stop check passes.”
+
+5. **“What is novel here if Mosaic, Kruse and Indian scenario libraries already exist?”** — “The mechanisms and scenario collection are prior art. Our proposed contribution is a **measured**, India-calibrated Simulink closed loop that reduces contacts and false stalls on held-out reactive scenes; we cannot claim that result yet.” [P3 prior-art audit](/Users/aditya/dev/sih2026-hq/research/P3-PLANNER.md), [P1 competitor audit](/Users/aditya/dev/sih2026-hq/research/P1-DIFFICULTY-CATALOGUE.md)
+exec
+/bin/zsh -lc 'cat research/P2-AUDIT-OUR-SYSTEM.md' in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+# P2 — Audit of our own system (what exists on 26 Sep 2026)
+
+Source: the repo `~/dev/sih2026`, branch `integration/dense-planner` (8 commits, **NOT pushed**),
+plus `~/dev/sih2026-hq`. Every number comes from a run recorded 16–17 Sep 2026, except where marked.
+Grades: **Strong** / **Partial** / **Weak** / **Missing**.
+
+| # | Layer | What we have (real, runs) | Measured | Grade | Main weakness |
+|---|---|---|---|---|---|
+| 1 | **Planner — the brain** | `+sih/+planner` (18 functions): velocity-obstacle barrier `h=λ−β`; COLREGs-style roles adapted to Indian law (keep left, RRR 1989 reg.2/9); **contingency planner**: a fan of 35 paths × 2 futures per agent (yield/assert), commit only the trunk that is safe under both, plus a brake-to-stop terminal check (trunk mode B); pure-pursuit follower; turn classification; escape memory; point of no return. Plus the `+sc/planSeat` layer: D9 ladder (creep → WAIT → go-around), track hysteresis, sanity reject | S1 completes 610 m, 0 plan failures, min clearance **0.618 m** sparse / **0.135 m** dense; 8 randomised runs: mean 0.143, 95% CI [0.093, 0.193], **worst −0.001 m (contact)**. S3 sparse completes, 0.293 m | **Partial** | **Permanent stall** in circulating/dense traffic (S2 at s≈116–121 m, dense S3 at 81.4 m). Root cause found by Codex (the clearance gate drops the longitudinal station; WAIT commits on one frame; the timeout re-arms). Not fixed. Tie-break prefers standing still or small offsets. Hand-tuned, not learned |
+| 2 | **Prediction ML** | LSTM (25k params) + attention model (58k params) over 31 depth-free image-plane features, trained on METEOR (1,251 clips); Platt calibration; ONNX opset 18 with no Gather/Scatter; `predictYield.m` plus the `gateYield` gate | Test set (233 clips): **dangerous-error 2.089%**, CI [1.315, 2.854] vs bar ≤1%; covers 10.5% of GO decisions; ECE 0.0159 | **Weak** | **Fails its own bar, so it drives nothing** (Valid=false). Label is "assert" (took the gap), not true yield; the ego features 28–31 are nearly empty in METEOR; it predicts intent only, not trajectories; no multi-agent joint prediction |
+| 3 | **Perception ML** | YOLOX spotter (IDD, A100); DeepLab v3+ road segmenter; PointPillars (script only) | DeepLab: **drivable IoU 96.0%, mIoU 86.3%**. YOLOX: mAP 29.1% (cow AP 16.3%, auto 38.2%). On rendered frames: **0 detections at the default threshold** | **Weak** | **Offline only**, nothing in the driving loop. Camera not in the loop. PointPillars never trained. Two of the model files are only on Shourya's Windows PC |
+| 4 | **Sensing and tracking** | Simulated lidar, radar and near-field ring → `trackerGNN` (constant-velocity EKF) → S1 TrackList | S1 under sensing: 0.625 m vs 0.618 m ground truth (7 mm change) | **Partial** | Sensor numbers are not from a datasheet; no real ray-cast occlusion; no false alarms; no weather model |
+| 5 | **Safety layer** | Two barriers (`h_agent`, `h_road`), a speed law limited by sight, a terminal-stop guarantee | 0 "imminent" barrier violations on S1/S3 runs | **Partial** | No formal proof; the raw barrier fires falsely (387 raw vs 0 imminent); no independent watchdog; RSS not implemented |
+| 6 | **Sim world** | Real Najibabad OSM roads imported into MATLAB (1.05 m median agreement); 2D worlds for S1/S2/S3 + density layers for S1/S3/S4/S5; Blender 3D city (~7,800 buildings) | S1 610 m, S3 382 m, S2 244 m | **Partial** | S4/S5 have no planner route. **No RoadRunner** (a hard PS requirement). The 3D city is not in the loop |
+| 7 | **Traffic behaviour** | Scripted actors; `reactStep` (per-class yield authority, speed-only) | 35 reactions per S1 run | **Weak** | Replays a script, not learned Indian behaviour; the density layer is scenery (50 of 51 actors are off the road) |
+| 8 | **Control and vehicle** | Frenet target speed/lateral + an accel-limited integrator (`lateralStep`); a Simulink bicycle model in `sih_planner.slx` | — | **Weak** | No real vehicle dynamics (Vehicle Dynamics Blockset unused); the steering command is not executed in the main demo |
+| 9 | **Data loop** | none | — | **Missing** | No shadow mode, no scenario mining, no retraining loop |
+| 10 | **Evaluation** | `writeDemoResults` M1–M10; `benchRuns` CIs; `whoDidWeHit`; **MathWorks baseline run unmodified: fails at 19.7 s, 0/120** | 348/348 tests | **Partial** | No head-to-head on a shared scenario; ORCA and always-yield baselines are not built; PS metrics only partly covered (replanning latency is not reported as the PS asks) |
+| 11 | **Real-time** | profiler | **735.8 ms/step** (10 Hz budget = 100 ms → **7.4× too slow**); 88% of the time is spent in MathWorks' `dynamicCapsuleList` | **Weak** | Plays back a precomputed run; the only lever left is the candidate grid (35 → fewer), which costs plan quality |
+| 12 | **Demo** | `sihDemo` one command; HUD with a live ML-gate row; live obstacle injection; fallback films | S1 + S3 play | **Partial** | S2 refused on purpose |
+
+## Problem-statement compliance today (P0 checklist)
+| PS requirement | Status |
+|---|---|
+| Full pipeline perception→prediction→planning→decision→motion in MATLAB/Simulink | Partial — MATLAB yes; Simulink only as a side model; perception is simulated tracks |
+| Camera + LiDAR + radar | Lidar + radar yes; **camera offline** |
+| Identify autos, pushcarts, pedestrians, animals | Offline YOLOX only; **pushcart has no training data** |
+| Predict irregular motion | Intent model gated off; constant-velocity futures used in practice |
+| Real-time replanning | **Not real-time** (7.4× over) |
+| 5 scenarios | **2 working** (S1, S3); S2 broken; S4/S5 not driven |
+| 2 RoadRunner scenes | **None** (no licence) |
+| Metrics: latency, smoothness, completion | Partly (M10 wobble ≈ smoothness; latency is profiled, not reported per the PS) |
+| Report + video + closed-loop validation | Films exist; closed loop is partial (scripted agents) |
+
+## Assets worth keeping whatever we redesign
+- the frozen interface contract (S1–S10), which lets any planner plug in
+- the honest evidence machinery (results folder, CIs, the claim ledger)
+- the real-map pipeline
+- 348 tests
+- the finding that MathWorks' baseline fails
+
+exec
+/bin/zsh -lc "sed -n '205,245p' research/P1-DIFFICULTY-CATALOGUE.md" in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+| 8 | 6 | Abrupt lead-vehicle braking | Keep a safe stopping margin despite uncertain road friction. |
+| 9 | 1 | Close cut-in | Predict the cut-in before the vehicle enters ego’s path. |
+| 10 | 31 | Cattle standing or lying on road | Detect the animal’s full occupied space at distance. |
+| 11 | 32 | Sudden cattle crossing | Handle abrupt motion when intent cues are weak. |
+| 12 | 11 | Slow tractor-trolley | Decide whether passing is safe with limited opposing-road visibility. |
+| 13 | 21 | Rolling or paused pedestrian crossing | Predict the next stop–go phase. |
+| 14 | 76 | Dense, overlapping road users | Preserve tracks and free-space estimates through occlusion. |
+| 15 | 39 | Pothole | Estimate whether its depth requires braking or avoidance. |
+| 16 | 45 | Construction diversion | Identify the temporary drivable corridor. |
+| 17 | 10 | Bus stop and pull-out | Predict bus re-entry while watching for people it hides. |
+| 18 | 9 | Auto-rickshaw stopping for pickup | Detect stopping intent before hard braking begins. |
+| 19 | 67 | Heavy rain | Estimate both visibility and grip for the same manoeuvre. |
+| 20 | 68 | Fog | Set speed from the reliably visible stopping distance. |
+| 21 | 70 | Unlit road at night | Detect vulnerable users within the effective headlamp range. |
+| 22 | 46 | Sharp curve or hairpin | Couple limited sight distance to a feasible speed profile. |
+| 23 | 61 | Negotiated right of way | Yield or proceed without unsafe assertion or indefinite deadlock. |
+| 24 | 25 | Pedestrian walking in road | Separate continued roadside walking from a turn into ego’s path. |
+| 25 | 52 | Service-road re-entry | Judge a closing mainline gap while controlling acceleration. |
+
+The pedestrian priorities also have direct Indian observational support: the [Patna study](https://www.nature.com/articles/s41598-026-55112-9) documents rolling and group crossings; the [signalised-crossing study](https://www.sciencedirect.com/science/article/abs/pii/S0925753521004446) documents red-phase violations. Neither study establishes a national frequency for every item above.
+
+## 4. Ten composable simulation families covering IDs 1–90
+
+**PS key:** V = unmarked village road; U = unsignalled urban intersection; H = highway merge with slow vehicles; M = dense market; C = sudden cattle crossing. These are the [five situations named in SIH26037](https://www.sih.gov.in/sih2026PS). Each row below is a **proposed test template**: vary actor speed, starting position, intent, visibility, and timing within the listed base road and weather.
+
+| Family | Catalogue IDs covered | Base road + parameterised actors + weather | PS use |
+|---|---|---|---|
+| **F1 Village mixed traffic** | 11–15, 31, 33, 34, 38, 43, 49 | Unmarked village road; tractors, carts, cycles, roadside cattle; dry/rain | V, C |
+| **F2 Market seepage** | 1–4, 9, 26, 28, 29, 76, 77 | Narrow market street; bikes, autos, vendors and crowd; daylight/night/rain | M, U |
+| **F3 Pedestrian and bus corridor** | 10, 17, 20–25, 27, 30, 75 | Urban bus-stop road; buses, walkers and crossing groups; dusk/rain | M, U |
+| **F4 Junction negotiation** | 7, 8, 16, 53–61, 63–65 | Uncontrolled junction; cross traffic, turners and informal signals; day/night | U, H |
+| **F5 Highway approach and merge** | 5, 6, 18, 19, 52, 66 | Highway plus service-road entry; slow trucks, wrong-way and merging vehicles; clear/fog | H |
+| **F6 Animal movement** | 32, 35–37 | Village or peri-urban road; cattle, dogs and other animals with varied onset; day/dusk/rain | C, V |
+| **F7 Surface and terrain** | 39–42, 46–48, 51 | Rural road or ghat curve; oncoming traffic, holes and edge defects; dry/wet/fog | V, C |
+| **F8 Disrupted road layout** | 44, 45, 50, 79–81 | Construction or crossing approach; workers, queues, temporary signs and barriers; clear/rain/night | V, U, H |
+| **F9 Visibility and sensing** | 67–74, 78, 82 | Reusable overlay on a village, market, junction or highway base; rain, fog, dust, glare, darkness or flooding | V, U, H, M, C |
+| **F10 Acute incident** | 62, 83–90 | Two-lane approach; stopped vehicle, fallen load, tyre event or road blockage; clear/storm/dusk | V, U, H |
+
+The ID sets assign **all 90 previous items once**. Cross-family tests should combine them—for example, **F2 + F3 + F9** creates a rainy market with bike seepage and a pedestrian emerging from behind a bus. That composition is a proposed design method; its value must be shown with coverage and outcome metrics.
+
+**Still unverified:** Safety Pool’s India-only scenario count; a current public download of Studio’s Indian exports; the exact version of a real Studio export; any ARAI/iCAT partnership with the Warwick India work; ARAI repository count, access and formats; an iCAT AV scenario library; SimDaaS Indian scenario count and price; and whether any existing public resource already matches the complete proposed closed-loop benchmark.
+exec
+/bin/zsh -lc "sed -n '195,225p' research/P1-DIFFICULTY-CATALOGUE.md" in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+
+| Rank | ID | Difficulty | Hardest technical sub-problem |
+|---:|---:|---|---|
+| 1 | 38 | No markings or clear road edge | Infer a safe drivable boundary without lane geometry. |
+| 2 | 2 | Two-wheeler seepage | Predict a rider’s lateral gap choice before overlap. |
+| 3 | 20 | Midblock pedestrian crossing | Estimate crossing commitment from uncertain body motion. |
+| 4 | 75 | Pedestrian or rider hidden by a bus/truck | Maintain a useful belief about an unseen road user. |
+| 5 | 16 | Informal merge | Predict whether another driver will yield or close the gap. |
+| 6 | 53 | Uncontrolled T-junction | Select a safe crossing gap without a signal or agreed priority. |
+| 7 | 5 | Wrong-way vehicle | Detect counterflow early enough to preserve an escape path. |
+| 8 | 6 | Abrupt lead-vehicle braking | Keep a safe stopping margin despite uncertain road friction. |
+| 9 | 1 | Close cut-in | Predict the cut-in before the vehicle enters ego’s path. |
+| 10 | 31 | Cattle standing or lying on road | Detect the animal’s full occupied space at distance. |
+| 11 | 32 | Sudden cattle crossing | Handle abrupt motion when intent cues are weak. |
+| 12 | 11 | Slow tractor-trolley | Decide whether passing is safe with limited opposing-road visibility. |
+| 13 | 21 | Rolling or paused pedestrian crossing | Predict the next stop–go phase. |
+| 14 | 76 | Dense, overlapping road users | Preserve tracks and free-space estimates through occlusion. |
+| 15 | 39 | Pothole | Estimate whether its depth requires braking or avoidance. |
+| 16 | 45 | Construction diversion | Identify the temporary drivable corridor. |
+| 17 | 10 | Bus stop and pull-out | Predict bus re-entry while watching for people it hides. |
+| 18 | 9 | Auto-rickshaw stopping for pickup | Detect stopping intent before hard braking begins. |
+| 19 | 67 | Heavy rain | Estimate both visibility and grip for the same manoeuvre. |
+| 20 | 68 | Fog | Set speed from the reliably visible stopping distance. |
+| 21 | 70 | Unlit road at night | Detect vulnerable users within the effective headlamp range. |
+| 22 | 46 | Sharp curve or hairpin | Couple limited sight distance to a feasible speed profile. |
+| 23 | 61 | Negotiated right of way | Yield or proceed without unsafe assertion or indefinite deadlock. |
+| 24 | 25 | Pedestrian walking in road | Separate continued roadside walking from a turn into ego’s path. |
+| 25 | 52 | Service-road re-entry | Judge a closing mainline gap while controlling acceleration. |
+
+The pedestrian priorities also have direct Indian observational support: the [Patna study](https://www.nature.com/articles/s41598-026-55112-9) documents rolling and group crossings; the [signalised-crossing study](https://www.sciencedirect.com/science/article/abs/pii/S0925753521004446) documents red-phase violations. Neither study establishes a national frequency for every item above.
+
+
+exec
+/bin/zsh -lc "rg -n 'S9|S10|frozen|contract|interface' 05-ASSETS/PRD.md | head -65" in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+194:**This section is frozen.** Five people build against it in parallel. Changing anything here
+203:knows which sensor saw what. Adding a sensor never changes this interface.
+331:### File formats — frozen
+364:frozen car. **It does.** But:
+448:| ~~"No standard metric punishes a frozen car"~~ | **Wrong.** CARLA does — but at **180 s**, which is ~an order of magnitude too coarse for us. Say that instead |
+475:| 2 · Architecture + contract | ✅ complete |
+498:Five streams, plus Aditya on visuals. Deliberately independent, because §7 is frozen.
+
+web search: 
+web search: site:mathworks.com/help/driving/ref/visiondetectiongenerator-system-object.html visionDetectionGenerator ...
+web search: 
+web search: site:mathworks.com/help/nav/ref/gpssensor-system-object.html gpsSensor MATLAB ...
+exec
+/bin/zsh -lc "python3 -c 'from pathlib import Path; s=Path(\"research/P14-PS-COMPLIANCE.md\").read_text(); a=s.split(\"## 1. Compliance table\",1)[1].split(\"**Judge-facing RoadRunner wording:**\",1)[0]; rows=[x for x in a.splitlines() if x.startswith(\"|\")][2:]; print(\"\\n\".join(f\"C{i:02d} {x.split(chr(124))[1].strip()}\" for i,x in enumerate(rows,1)))'" in /Users/aditya/dev/sih2026-hq
+ succeeded in 0ms:
+python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+python3: error: couldn't create cache file '/tmp/xcrun_db-4aR38Af6' (errno=Operation not permitted)
+python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+python3: error: couldn't create cache file '/tmp/xcrun_db-sz9Dr0Ql' (errno=Operation not permitted)
+C01 “adaptive path planning” on unstructured roads
+C02 “mixed traffic” with diverse users
+C03 “perception, prediction, path planning, decision logic, and vehicle motion in MATLAB and Simulink”
+C04 “multi-sensor … camera, LiDAR, and radar”
+C05 “auto-rickshaws”
+C06 “pushcarts”
+C07 “pedestrians”
+C08 “animals”
+C09 “predict short-term motion”
+C10 “non-lane-based and irregular movement”
+C11 “safe, collision-free path” and “collision-free performance”
+C12 “replanned in real time” / “timely replanning”
+C13 “missing lane markings”
+C14 “informal merging”
+C15 “sudden pedestrian movement”
+C16 “unexpected obstacles”
+C17 Background: wrong-way travel and unmarked crossings
+C18 Background: unclear edges and potholes
+C19 “unmarked village road”
+C20 “busy urban intersection without signals”
+C21 “highway merge involving slow-moving vehicles”
+C22 “dense market area with mixed traffic”
+C23 “sudden cattle-crossing event”
+C24 “at least two detailed RoadRunner scenes”
+C25 “use them to test … all five”
+C26 “simulation model”
+C27 “designed scenarios”
+C28 “performance results”
+C29 “replanning latency”
+C30 “path smoothness” / “smooth path generation”
+C31 “scenario completion rate”
+C32 “short technical report”
+C33 “demonstration video”
+C34 “closed-loop validation … mixed traffic”
+C35 Encouraged: “RoadRunner for scenario design”
+C36 Encouraged: “Automated Driving Toolbox”
+C37 Encouraged: “Navigation Toolbox”
+C38 Encouraged: “Stateflow”
+C39 Encouraged: “Vehicle Dynamics Blockset or a Simulink bicycle model”
+C40 Encouraged: “Deep Learning Toolbox”
+
+web search: 
+web search: site:carla.readthedocs.io/en/0.9.15/python_api/ VehicleLightState LeftBlinker RightBlinker HighBeam Brake ...
+codex
+The frozen S1 TrackList and S4 EgoCommand are usable anchors. I’ll leave their field layouts and class IDs intact, then add versioned messages around them for raw sensors, local free space, metric predictions, certificates and vehicle commands. That keeps the existing code and tests connectable while the new stack is built.
+codex
+# P15 — build plan to the December 2026 finale
+
+**Verdict — JUDGMENT:** Two builders can produce a credible **simulation-only, integrated** system in roughly ten weeks if the current stalls and timing failure are fixed first. A flawless car for all Indian roads is impossible; here, “no gaps” means **40/40 P14 rows and 25/25 top difficulties have an owner, executable test, recorded result and declared fallback**. The two RoadRunner rows remain disclosed deviations. The finale date is unverified, so the core demonstration must be ready by **late November**, with December as buffer. [P14 scorecard](/Users/aditya/dev/sih2026-hq/research/P14-PS-COMPLIANCE.md), [P2 audit](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md)
+
+**Scope cut:** **MUST** is one Simulink ego stack, front camera + lidar + front radar, vehicle-state sensors and actuator feedback, all five PS scenarios, four required object classes, irregular-motion fallback, independent movement check, 10 Hz measurement and stale-plan response, PS metrics, report and video. **SHOULD** adds the remaining car sensors, detailed degradation curves, 14DOF pothole runs, automated shadow mining and broad F1–F10 sweeps. **STRETCH** adds a learned joint traffic model, a horn-response study and strong statistical claims. Every listed car signal has an interface even if its higher-fidelity model is cut.
+
+## 1. Interface contract: one running stack
+
+**JUDGMENT — fixed conventions:** Every message carries `run_id`, monotonically increasing `seq`, `t_sim_s`, `source`, `valid` and `age_s`. Position uses metres, speed m/s, angles radians. Canonical world coordinates are **ENU** (east, north, up); ego coordinates are **FLU** (forward, left, up). The CARLA adapter reverses its right-positive lateral axis; the Vehicle Dynamics Blockset adapter also converts its right/down-positive vehicle axes. Simulator ground truth goes to evaluation only. A timestamp, frame or transform mismatch is a fault, never silently corrected. [CARLA sensor frames](https://carla.readthedocs.io/en/0.9.15/ref_sensors/), [Vehicle Body 3DOF axes](https://www.mathworks.com/help/vdynblks/ref/vehiclebody3dof.html)
+
+| Message and producer → consumer | Fixed fields beyond the common header | Target rate; frame |
+|---|---|---|
+| `ScenarioTickV1`: world adapter → harness | `scenario_id`, seed, backend, actor-policy version, fixed step, route ID | 10 Hz; world ENU |
+| `SensorPacketV1`: CARLA/fast-tier adapter → perception | modality, sensor ID, calibration ID, extrinsic pose, payload, measurement covariance, dropout flag | RGB/lidar 10 Hz; radar 20 Hz; ultrasonic 10 Hz; GNSS 10 Hz; IMU 100 Hz; native sensor frame |
+| `VehicleStateV1`: localization → all ego blocks | ENU pose and covariance, FLU velocity/acceleration, yaw rate, wheel speeds, measured steer, gear, friction estimate, quality flag | 50 Hz; stated per field |
+| **Frozen `S1 TrackList`**: tracker → downstream | Existing `TrackID`, `ClassID`, ego-frame position/velocity/extent/yaw, existence, age, `SensorMask` | 10 Hz; ego FLU |
+| `FreeSpaceV1`: perception → proposer/verifier | local-grid origin, resolution, traversable/occupied/**unknown** cells, edge confidence, visible range, localization margin | 10 Hz; ego FLU |
+| `MotionSetV1`: prediction → proposer/verifier | track IDs; top-K metric paths and time-indexed occupied regions for each ego candidate; coverage, unmodelled flag | 10 Hz; ego FLU; 2–3 s horizon |
+| `BeliefV1`: belief update → prediction/proposer | track IDs; probabilities for continue, cross, brake/turn, group/cover; five response values; unmodelled mass | 10 Hz; ego FLU |
+| `CandidateSetV1`: proposer → verifier | 8–16 IDs, sampled pose/speed/curvature, executed prefix, planned stop, route progress | 10 Hz; ego FLU; SI units |
+| `CertificateV1`: verifier → control/monitor | accepted candidate ID **and trajectory hash**, pass/veto reason, last valid time, worst clearance, stopping margin, assumed sensor ages | 10 Hz; ego FLU |
+| `ActuatorBusV1`: control/monitor → plant/CARLA | steering angle rad, throttle/brake 0–1, gear P/N/D/R, command counter, applied-feedback counter | 50 Hz; vehicle frame |
+| `SignalHMIV1`: decision/monitor → vehicle/driver display | left/right indicator, hazards, low/high beam, brake/reverse light, horn request, mode, fault reason, takeover request/ack/deadline | On change; heartbeat 10 Hz |
+| `RunRecordV1`: harness → replay/evaluation | all message hashes, scenario/config/seed/model versions, separate simulator truth, contacts, timing and outcome | Every tick; files under `results/<run>/` |
+
+**Compatibility rule:** The [frozen S1–S8 contract](/Users/aditya/dev/sih2026-hq/05-ASSETS/PRD.md:192) stays unchanged. In particular, S3 `PYield` remains invalid and cannot authorize movement; S4 `EgoCommand` is adapted into `ActuatorBusV1`. Do not renumber S5 classes. An e-rickshaw uses the existing three-wheeler class plus subtype metadata keyed by `TrackID`; an overloaded two-wheeler carries its measured **extent**, not a new class ID.
+
+**JUDGMENT — timing allocation:** The target from a synchronized sensor snapshot to a validated command is **100 ms**: transport/sync 10, perception 30, localization/tracking 10, belief/prediction 15, candidates/scorer 10, verifier 15, control/monitor 5, slack 5 ms. Measure each stage and the separate sensor-to-actuation age on the Windows PC. These are budgets to test, **not current performance**; today’s planner alone takes **735.8 ms/step**. [P9–P12](/Users/aditya/dev/sih2026-hq/research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md), [P2](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md)
+
+**Declared simulated ODD:** Five named road layouts; speed caps chosen for testing of 30 km/h in market/junction, 40 km/h on village roads and 60 km/h on the highway merge. Heavy rain, dense fog, darkness beyond reliable headlamp range, lost localization and blocked roads are **degraded-mode tests**: safe slowing or a minimal-risk stop counts as correct handling, not route completion. The controller never depends on a driver accepting takeover. These limits are design choices to validate, not public-road operating claims.
+
+## 2. Car specification
+
+Parameters below are **proposed simulation settings**, not measured specifications of a production car. The same Simulink ports receive fast-tier sensor models or CARLA 0.9.x messages. `visionDetectionGenerator` supplies detections for fast sweeps; it does **not** test YOLOX on pixels. CARLA’s ROS bridge exposes RGB, lidar, radar, GNSS and IMU. [MathWorks sensor models](/Users/aditya/dev/sih2026-hq/research/P6-P7-P8-SIM-TRAFFIC-SENSORS.md), [CARLA ROS bridge](https://carla.readthedocs.io/en/0.9.15/ros_documentation/)
+
+| Car part | Model/parameters; MATLAB/Simulink or CARLA source | Actual use | Priority |
+|---|---|---|---|
+| Front RGB camera | CARLA `sensor.camera.rgb`, ~800×450, 90° field, 10 Hz; fast tier `visionDetectionGenerator` | Road mask and auto/pushcart/person/cattle detection | **MUST** |
+| Rear RGB camera | CARLA RGB, ~640×360, wide field, 5–10 Hz | Reverse clearance and rear approach | **SHOULD** |
+| Left/right surround cameras | Two CARLA RGB views, ~640×360, 5–10 Hz | Merge-side and near-corner occlusion; measured value must justify GPU cost | **SHOULD** |
+| Lidar | CARLA ray-cast or MATLAB `lidarSensor`; ~32 beams, 100 m, 10 Hz, dropout sweep | Metric obstacles, edge height, unknown space | **MUST** |
+| Front radar | CARLA radar or `radarDetectionGenerator`; ~150 m, 20 Hz | Closing speed and fog redundancy | **MUST** |
+| Corner radars | Two CARLA radar cones or radar-generator instances; ~80 m, 20 Hz | Cross traffic and side approach at junctions | **SHOULD** |
+| Ultrasonic ring | 8 short-range channels, ~0.2–5 m, 10 Hz; `ultrasonicDetectionGenerator` plus miss/ghost injection | Low-speed clearance and reverse; not a long-range safety sensor | **SHOULD** |
+| GNSS | CARLA GNSS or MATLAB `gnssSensor`, 10 Hz; drift/dropout injection | Coarse route position; never the sole road-edge source | **MUST** |
+| IMU | CARLA IMU or MATLAB `imuSensor`, 100 Hz | Yaw, acceleration and GNSS-loss propagation | **MUST** |
+| Wheel speed/odometry | Plant wheel rotation or speed/radius with slip and quantization; MATLAB Function block, 50 Hz | Speed, distance and GNSS-loss support | **MUST** |
+| Steering-angle sensor | Measured steering-system output with delay/noise, 50 Hz | Detect tracking or actuator mismatch | **MUST** |
+| CAN-style vehicle bus | `Simulink.Bus` + rate transitions; counter, delay, stale and dropped-frame injection, 50 Hz | One timed path for sensors, commands and feedback; **simulation**, not a physical CAN claim | **MUST** |
+| Steer, throttle, brake | Simulink bicycle/3DOF plant and CARLA `VehicleControl`; steer bounded by existing ±0.6 rad contract, throttle/brake 0–1; feedback at 50 Hz | Execute and verify accepted motion | **MUST** |
+| Gear including reverse | P/N/D/R command and applied gear; CARLA vehicle control; zero-speed interlock | Forward drive and tested reverse command; a full three-point turn is additional work | **MUST** interface; manoeuvre **SHOULD** |
+| Indicators, brake/reverse lights, hazards | `SignalHMIV1`; CARLA `VehicleLightState` where supported; event log | Show intended turn and minimal-risk stop | **MUST** |
+| Low beam and high beam | CARLA light state plus recorded illumination setting | Low beam supports night tests; high beam is evaluated for glare and has **no assumed effect on other drivers** | Low beam **MUST**; high beam **SHOULD** |
+| Horn | Boolean request, event/audio overlay; no assumed actor response | Judge-visible communication only until a response model is validated | **STRETCH** |
+| Driver display and takeover input | Simulink Dashboard/Stateflow mode, reason, request timer and simulated acknowledgment | Explain degraded state; no acknowledgment leads to minimal-risk stop | **MUST** |
+
+The 3DOF plant is the broad test model; the 14DOF model is reserved for pothole and speed-breaker ride checks because it includes vertical, pitch, roll and wheel motion. [MathWorks vehicle-model comparison](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) CARLA 0.9.x is pinned for the 8 GB lab GPU; 0.9.15 documents a 6 GB minimum and 8 GB recommendation. The exact 0.9.x release and ROS bridge pair is frozen only after a lab smoke test. [P13 correction](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md), [CARLA requirements](https://carla.readthedocs.io/en/0.9.15/start_quickstart/)
+
+## 3. Ten weekly build gates
+
+**Global exit rule:** Every week ends with the **same Simulink ego model** running an end-to-end seed, all applicable existing **348 tests**, schema/units checks and a saved `config.json` plus timing/contact log. Fast-tier ground-truth input is an explicit test mode, never silently mixed with sensor-in-loop results. A phase is unfinished if its gate fails. **A = Aditya; S = Shourya.** Dates assume a 1 October start; move the freeze forward when the official finale date is known. [Existing tests and artifacts](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md)
+
+| Week | Goal and tasks | Owner | Measurable exit gate | P14 rows; P1 top-25 IDs |
+|---|---|---|---|---|
+| **W1, 1–7 Oct** | Reproduce S2 contact/stall and dense S3 stall; fix lost longitudinal station, one-frame WAIT, rearming timeout and tie-break; preserve traces. Inventory and safeguard the eight unpushed commits and model files. | A; S reproduces | On ≥3 fixed seeds each, S2 and dense S3 have **0 contact** and no >10 s stall when an oracle-labelled gap exists; before/after logs retained. | C01, C11, C14; **16, 53, 61** |
+| **W2, 8–14 Oct** | Replace per-candidate capsule construction with broad-phase then exact swept check; use 8–16 candidates; add independent stop check, persistent blocked state and stale-plan brake. | A; S profiles | Fast-tier state-input run: **p99 validated-plan time ≤100 ms** across ≥1,000 ticks; 100 deliberately unsafe candidates all vetoed; late output triggers brake, never GO. | C11–12, C29, C37–38; **5, 6, 38** |
+| **W3, 15–21 Oct** | Establish versioned buses, frame adapters, map/localization and 50 Hz plant/control/actuator feedback inside one `.slx`; Stanley+PI baseline; gear and HMI fault path. | A; S connects sensor adapter | One 5-minute S1 run in the unified model with steering executed, no unit/frame assertion, measured feedback, and a stop on injected command loss. | C03, C26, C30, C39; **46, 52** |
+| **W4, 22–28 Oct** | Put CARLA front RGB → YOLOX/DeepLab → lidar/radar fusion → frozen S1 tracks in the loop. Diagnose zero render boxes before retraining; label auto, pushcart, person and cattle renders. | S; A integrates verifier input | Held-out labelled render set reports per-class recall at the **visible stopping distance**; all four PS classes produce checked in-loop detections, and missed/unknown cells reduce permission. Recheck 100 ms budget. | C04–08, C13, C18, C36, C40; **31, 38, 75, 76** |
+| **W5, 29 Oct–4 Nov** | Add top-K metric occupancy and conservative tubes; belief over intent × response, including group/cover; small learned scorer. Keep S3 `PYield` disabled. | S prediction; A belief/scorer/verifier | Held-out trajectory coverage and fallback rate reported by class; lateral cut-in and rolling-crossing tests included; a unit test proves changing ML scores alone cannot bypass the verifier. | C01, C09–10, C14–15; **1, 2, 16, 20, 21, 32, 61** |
+| **W6, 5–11 Nov** | Pin CARLA 0.9.x; build detailed unmarked village and unsignalled junction scenes; connect the verified R2026a SUMO blocks to reactive traffic and CARLA actor mirroring. | S worlds/assets; A synchronization | ≥1,000 synchronized ticks with actor ID/pose and timestamp assertions, no 8 GB GPU exhaustion; a changed ego action produces a changed actor response. Both scenes run the **same** Simulink model. | C02, C19–20, C24, C27, C34–35; **11, 53, 61** |
+| **W7, 12–18 Nov** | Finish the five PS routes and a seeded probe for each top-25 difficulty; include F1–F10 templates, wrong-way users, bus pull-out, auto stop, diversion and service-road entry. | A routes/tests; S actors | **5 × 10 predeclared seeds**: report completion, contact and false-blocked rates per scene; target ≥9/10 completion and zero disqualifying contacts per scene. All 25 probes have a result and fallback trace. | C01–02, C14–25, C27, C31, C34; **all 25** |
+| **W8, 19–25 Nov** | Inject sensor delay/dropout, rain/fog/night and friction loss; test minimal-risk stop and takeover timeout. Compare 3DOF with 14DOF on a small pothole set if plant access permits. Add shadow disagreement/replay queue. | A safety/control; S faults/data | Every declared fault produces either continued certified motion or a logged stop; no fault silently yields a GO. Rain/fog/night curves and replay of one mined failure exist. **Core demo freezes by 25 Nov.** | C04, C16–18, C30, C38–39; **39, 45, 67, 68, 70, 75** |
+| **W9, 26 Nov–2 Dec** | Run frozen holdout and shared-seed baselines; profile the **full camera-in-loop** model on Windows; calculate exact PS metrics, confidence intervals and claim ledger. Prepare report and film from matched run IDs. | A evaluation/timing; S perception/results | Five-scene results, baseline table, p50/p95/p99 and deadline misses published. Run **299 independent predeclared fast-tier seeds** if ready; claim a <1% bound only if all 299 have zero failures for that specified distribution. | C11–12, C25, C28–34; all top-25 outcome summaries |
+| **W10, 3–9 Dec, contingent buffer** | Fix only release-blocking regressions; rehearse the eight-minute demo; package model, scenarios, logs, report and video. Move this work earlier if the finale is earlier. | A + S | Fresh-machine one-command replay matches recorded run IDs and metrics; every P14 row has evidence, failure or explicit deviation; RoadRunner substitution is visible. | C24, C32–35; final 40-row audit |
+
+The week estimates compress work that [P3](/Users/aditya/dev/sih2026-hq/research/P3-PLANNER.md), [P6–P8](/Users/aditya/dev/sih2026-hq/research/P6-P7-P8-SIM-TRAFFIC-SENSORS.md) and [P9–P12](/Users/aditya/dev/sih2026-hq/research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md) individually rate at several weeks. **W2, W4 and W6 are schedule gates:** failure there forces the cut line below, not an unlabelled claim of completion.
+
+## 4. Traceability check
+
+`C01–C40` are the rows of the [accepted P14 table](/Users/aditya/dev/sih2026-hq/research/P14-PS-COMPLIANCE.md), in order. Coverage: **C01–C03** W1/3/7; **C04–C08** W4/7; **C09–C10** W5; **C11–C12** W2/7/9; **C13–C18** W4/5/7/8; **C19–C23** W6/7; **C24 and C35** W6/10 as **permanent RoadRunner deviations**; **C25–C27** W3/6/7; **C28–C31** W9; **C32–C34** W6/9/10; **C36–C40** W2–5/8. Thus no P14 row lacks a phase; **C24 and C35 cannot be closed as MEETS** under the locked licence decision.
+
+Each top-25 ID gets one named regression probe, with the phase that supplies its mechanism and the W7 suite that records its result. A “pass” means the ego either completes within its declared ODD **or reaches a justified minimal-risk stop**; a false stall where a feasible gap existed fails.
+
+| P1 ID | Required probe | Phase |
+|---:|---|---|
+| **38** | Unmarked edge versus unsafe shoulder | W4/7 |
+| **2** | Two-wheeler seeps through a narrow lateral gap | W5/7 |
+| **20** | Pedestrian starts a midblock crossing | W5/7 |
+| **75** | Person emerges from behind a bus | W4/7/8 |
+| **16** | Informal merge with yielding **and** non-yielding actor | W1/5/7 |
+| **53** | Uncontrolled T-junction crossing gap | W1/6/7 |
+| **5** | Wrong-way oncoming vehicle | W2/7 |
+| **6** | Abrupt lead-vehicle brake and stop margin | W2/7 |
+| **1** | Close lateral cut-in | W5/7 |
+| **31** | Standing and low-lying cattle envelope | W4/7 |
+| **32** | Cattle starts crossing after ego approaches | W5/7 |
+| **11** | Slow tractor-trolley; passing sight distance | W6/7 |
+| **21** | Pedestrian pauses, then resumes | W5/7 |
+| **76** | Overlapping tracks and ID swaps | W4/7 |
+| **39** | Pothole slow/avoid choice; ride subset | W4/7/8 |
+| **45** | Temporary construction corridor | W7/8 |
+| **10** | Bus stops, hides a person, then pulls out | W5/7 |
+| **9** | Auto-rickshaw stops for pickup | W4/7 |
+| **67** | Rain reduces visibility **and** grip | W8 |
+| **68** | Fog reduces reliable stopping sight | W8 |
+| **70** | Unlit night road beyond headlamp range | W8 |
+| **46** | Blind curve with speed limited by visible road | W3/7 |
+| **61** | Mutual yield, then an observable safe gap | W1/5/7 |
+| **25** | Pedestrian walks along road, then turns across | W5/7 |
+| **52** | Service-road re-entry into faster flow | W3/7 |
+
+**Uncovered P14 rows: none in the plan. Uncovered top-25 IDs: none in the plan.** That is traceability, not evidence that tests will pass. The nine beyond-PS items from P14 land in W2 (verifier, timing), W5 (belief), W6–7 (reactive traffic and families), W8 (degradation, 14DOF, shadow replay) and W9 (stratified statistics and baselines).
+
+## 5. Degraded modes and fallbacks
+
+**JUDGMENT — age limits to test:** ego state >50 ms, front RGB >150 ms, lidar/radar >200 ms or validated plan >100 ms counts as stale. These values must be checked against actual sensor timing; the monitor logs every transition.
+
+| Failure | Detection | Required response |
+|---|---|---|
+| Late planner or stale sensor | Timestamp/sequence/heartbeat limit | Recheck the remaining certified prefix; otherwise brake within the last known free corridor, hazards, `BLOCKED` |
+| Missed, unknown or conflicting object | Cross-sensor disagreement, low existence, unknown grid cell | Widen occupied region, reduce speed to visible stopping distance; stop if no certified corridor |
+| Prediction out of distribution or coverage failure | Unmodelled mass, wide tube or held-out coverage monitor | Replace learned paths with conservative reachable region; no ML-derived GO |
+| GNSS loss or map mismatch | Pose covariance, innovation and route-edge checks | IMU/wheel dead reckoning at reduced speed; stop when position margin exceeds free corridor |
+| Heavy rain, fog or dark road | Measured reliable range and friction estimate, not weather slider alone | Sight-limited speed; low beam; minimal-risk stop when stopping sight is inadequate |
+| Actuator/CAN fault | Counter/timeout or commanded-versus-measured steer/brake mismatch | Reject new trajectories; brake if available, hazards and takeover request; log when braking cannot be guaranteed |
+| No safe candidate or traffic deadlock | All candidates vetoed; persistent reason and observed gap record | `BLOCKED`; re-evaluate, permit only a newly verified creep; timeout never authorizes crossing |
+| No driver response to takeover | Request timer expires without acknowledgment | Continue autonomous minimal-risk stop; never assume a driver took control |
+| CARLA–SUMO desynchronization | Actor ID, frame, pose or timestamp assertion fails | Pause/fail the run and command stop; mark results invalid for performance claims |
+
+A minimal-risk manoeuvre here is a **verified deceleration to a stop in visible free space**, optionally toward a verified pull-over region. It is not a promise that a safe stopping place always exists. [P13 safety design](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md)
+
+## 6. Eight-minute finale demonstration
+
+| Time | What judges see |
+|---|---|
+| **0:00–0:40** | One Simulink model, live sensor/track/belief/certificate/actuator/HMI signals; declared simulated ODD and RoadRunner substitution on screen. |
+| **0:40–1:35** | Unmarked village: camera road mask, lidar edge, tractor/pushcart and a stoppable pass. |
+| **1:35–2:30** | Unsignalled junction: group/cover actor response, rejected unsafe candidate, then verified progress or an explained blocked state. |
+| **2:30–3:20** | Highway slow-vehicle merge: metric futures, front/corner sensing where available, measured gap and control response. |
+| **3:20–4:15** | Dense market: bike seepage, auto stop and pedestrian occlusion; show track IDs and no false permanent stall. |
+| **4:15–5:05** | Sudden cattle crossing: detection, reachable region, brake and stop margin. |
+| **5:05–6:00** | Inject one sensor dropout or fog/actuator delay; monitor requests takeover, hazards activate, car reaches the tested stop. |
+| **6:00–7:10** | Replay one mined failure by seed, show changed result and frozen-holdout result; display paired baseline comparison. |
+| **7:10–8:00** | PS scorecard: contact, completion, jerk/curvature, p50/p95/p99 and deadline misses; state remaining failures and the RoadRunner deviation. |
+
+All segments use **recorded run IDs from the same model**. If a live simulator hiccups, play the matching trace and film rather than implying a separate successful run.
+
+## 7. Top risks and cut line
+
+| Risk | Decision if its gate slips |
+|---|---|
+| **W2 fails 100 ms even before pixels** | Stop feature expansion; simplify candidate generation and rewrite the hotspot. Do not claim real-time. |
+| **W4 camera still gives unreliable rendered detections** | Retain lidar/radar and unknown-space fallback for safety; label the camera result as failed. Do not claim all four classes are identified in-loop. |
+| **W6 three-way world sync or 8 GB GPU fails** | Keep **one Simulink ego stack** with SUMO reactive fast-tier traffic and CARLA selected pixel scenes as separate world backends. Disclose that simultaneous CARLA–SUMO runs were not achieved. |
+| **Reactive actors overfit the planner** | Add a second fixed actor policy and non-yield sweeps before tuning the learned scorer. |
+| **Two-builder capacity or earlier finale** | Freeze the core by W8. Cut automated shadow mining, full 299-run claim, 14DOF ride study, broad F7–F10 sweeps, rear/surround pixel inference, corner-radar refinement and horn-response work—in that order. Keep their interface ports and mark them unvalidated. |
+
+**Non-negotiable line:** If the five PS scenes, in-loop front camera/lidar/radar, independent movement check, working actuator loop, declared fallback, measured latency and three PS metrics are unfinished, the final claim is **“partial integrated prototype”**, not a complete autonomous-driving solution. RoadRunner remains a disclosed literal deviation in either case.
+tokens used
+3,22,853
+# P15 — build plan to the December 2026 finale
+
+**Verdict — JUDGMENT:** Two builders can produce a credible **simulation-only, integrated** system in roughly ten weeks if the current stalls and timing failure are fixed first. A flawless car for all Indian roads is impossible; here, “no gaps” means **40/40 P14 rows and 25/25 top difficulties have an owner, executable test, recorded result and declared fallback**. The two RoadRunner rows remain disclosed deviations. The finale date is unverified, so the core demonstration must be ready by **late November**, with December as buffer. [P14 scorecard](/Users/aditya/dev/sih2026-hq/research/P14-PS-COMPLIANCE.md), [P2 audit](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md)
+
+**Scope cut:** **MUST** is one Simulink ego stack, front camera + lidar + front radar, vehicle-state sensors and actuator feedback, all five PS scenarios, four required object classes, irregular-motion fallback, independent movement check, 10 Hz measurement and stale-plan response, PS metrics, report and video. **SHOULD** adds the remaining car sensors, detailed degradation curves, 14DOF pothole runs, automated shadow mining and broad F1–F10 sweeps. **STRETCH** adds a learned joint traffic model, a horn-response study and strong statistical claims. Every listed car signal has an interface even if its higher-fidelity model is cut.
+
+## 1. Interface contract: one running stack
+
+**JUDGMENT — fixed conventions:** Every message carries `run_id`, monotonically increasing `seq`, `t_sim_s`, `source`, `valid` and `age_s`. Position uses metres, speed m/s, angles radians. Canonical world coordinates are **ENU** (east, north, up); ego coordinates are **FLU** (forward, left, up). The CARLA adapter reverses its right-positive lateral axis; the Vehicle Dynamics Blockset adapter also converts its right/down-positive vehicle axes. Simulator ground truth goes to evaluation only. A timestamp, frame or transform mismatch is a fault, never silently corrected. [CARLA sensor frames](https://carla.readthedocs.io/en/0.9.15/ref_sensors/), [Vehicle Body 3DOF axes](https://www.mathworks.com/help/vdynblks/ref/vehiclebody3dof.html)
+
+| Message and producer → consumer | Fixed fields beyond the common header | Target rate; frame |
+|---|---|---|
+| `ScenarioTickV1`: world adapter → harness | `scenario_id`, seed, backend, actor-policy version, fixed step, route ID | 10 Hz; world ENU |
+| `SensorPacketV1`: CARLA/fast-tier adapter → perception | modality, sensor ID, calibration ID, extrinsic pose, payload, measurement covariance, dropout flag | RGB/lidar 10 Hz; radar 20 Hz; ultrasonic 10 Hz; GNSS 10 Hz; IMU 100 Hz; native sensor frame |
+| `VehicleStateV1`: localization → all ego blocks | ENU pose and covariance, FLU velocity/acceleration, yaw rate, wheel speeds, measured steer, gear, friction estimate, quality flag | 50 Hz; stated per field |
+| **Frozen `S1 TrackList`**: tracker → downstream | Existing `TrackID`, `ClassID`, ego-frame position/velocity/extent/yaw, existence, age, `SensorMask` | 10 Hz; ego FLU |
+| `FreeSpaceV1`: perception → proposer/verifier | local-grid origin, resolution, traversable/occupied/**unknown** cells, edge confidence, visible range, localization margin | 10 Hz; ego FLU |
+| `MotionSetV1`: prediction → proposer/verifier | track IDs; top-K metric paths and time-indexed occupied regions for each ego candidate; coverage, unmodelled flag | 10 Hz; ego FLU; 2–3 s horizon |
+| `BeliefV1`: belief update → prediction/proposer | track IDs; probabilities for continue, cross, brake/turn, group/cover; five response values; unmodelled mass | 10 Hz; ego FLU |
+| `CandidateSetV1`: proposer → verifier | 8–16 IDs, sampled pose/speed/curvature, executed prefix, planned stop, route progress | 10 Hz; ego FLU; SI units |
+| `CertificateV1`: verifier → control/monitor | accepted candidate ID **and trajectory hash**, pass/veto reason, last valid time, worst clearance, stopping margin, assumed sensor ages | 10 Hz; ego FLU |
+| `ActuatorBusV1`: control/monitor → plant/CARLA | steering angle rad, throttle/brake 0–1, gear P/N/D/R, command counter, applied-feedback counter | 50 Hz; vehicle frame |
+| `SignalHMIV1`: decision/monitor → vehicle/driver display | left/right indicator, hazards, low/high beam, brake/reverse light, horn request, mode, fault reason, takeover request/ack/deadline | On change; heartbeat 10 Hz |
+| `RunRecordV1`: harness → replay/evaluation | all message hashes, scenario/config/seed/model versions, separate simulator truth, contacts, timing and outcome | Every tick; files under `results/<run>/` |
+
+**Compatibility rule:** The [frozen S1–S8 contract](/Users/aditya/dev/sih2026-hq/05-ASSETS/PRD.md:192) stays unchanged. In particular, S3 `PYield` remains invalid and cannot authorize movement; S4 `EgoCommand` is adapted into `ActuatorBusV1`. Do not renumber S5 classes. An e-rickshaw uses the existing three-wheeler class plus subtype metadata keyed by `TrackID`; an overloaded two-wheeler carries its measured **extent**, not a new class ID.
+
+**JUDGMENT — timing allocation:** The target from a synchronized sensor snapshot to a validated command is **100 ms**: transport/sync 10, perception 30, localization/tracking 10, belief/prediction 15, candidates/scorer 10, verifier 15, control/monitor 5, slack 5 ms. Measure each stage and the separate sensor-to-actuation age on the Windows PC. These are budgets to test, **not current performance**; today’s planner alone takes **735.8 ms/step**. [P9–P12](/Users/aditya/dev/sih2026-hq/research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md), [P2](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md)
+
+**Declared simulated ODD:** Five named road layouts; speed caps chosen for testing of 30 km/h in market/junction, 40 km/h on village roads and 60 km/h on the highway merge. Heavy rain, dense fog, darkness beyond reliable headlamp range, lost localization and blocked roads are **degraded-mode tests**: safe slowing or a minimal-risk stop counts as correct handling, not route completion. The controller never depends on a driver accepting takeover. These limits are design choices to validate, not public-road operating claims.
+
+## 2. Car specification
+
+Parameters below are **proposed simulation settings**, not measured specifications of a production car. The same Simulink ports receive fast-tier sensor models or CARLA 0.9.x messages. `visionDetectionGenerator` supplies detections for fast sweeps; it does **not** test YOLOX on pixels. CARLA’s ROS bridge exposes RGB, lidar, radar, GNSS and IMU. [MathWorks sensor models](/Users/aditya/dev/sih2026-hq/research/P6-P7-P8-SIM-TRAFFIC-SENSORS.md), [CARLA ROS bridge](https://carla.readthedocs.io/en/0.9.15/ros_documentation/)
+
+| Car part | Model/parameters; MATLAB/Simulink or CARLA source | Actual use | Priority |
+|---|---|---|---|
+| Front RGB camera | CARLA `sensor.camera.rgb`, ~800×450, 90° field, 10 Hz; fast tier `visionDetectionGenerator` | Road mask and auto/pushcart/person/cattle detection | **MUST** |
+| Rear RGB camera | CARLA RGB, ~640×360, wide field, 5–10 Hz | Reverse clearance and rear approach | **SHOULD** |
+| Left/right surround cameras | Two CARLA RGB views, ~640×360, 5–10 Hz | Merge-side and near-corner occlusion; measured value must justify GPU cost | **SHOULD** |
+| Lidar | CARLA ray-cast or MATLAB `lidarSensor`; ~32 beams, 100 m, 10 Hz, dropout sweep | Metric obstacles, edge height, unknown space | **MUST** |
+| Front radar | CARLA radar or `radarDetectionGenerator`; ~150 m, 20 Hz | Closing speed and fog redundancy | **MUST** |
+| Corner radars | Two CARLA radar cones or radar-generator instances; ~80 m, 20 Hz | Cross traffic and side approach at junctions | **SHOULD** |
+| Ultrasonic ring | 8 short-range channels, ~0.2–5 m, 10 Hz; `ultrasonicDetectionGenerator` plus miss/ghost injection | Low-speed clearance and reverse; not a long-range safety sensor | **SHOULD** |
+| GNSS | CARLA GNSS or MATLAB `gnssSensor`, 10 Hz; drift/dropout injection | Coarse route position; never the sole road-edge source | **MUST** |
+| IMU | CARLA IMU or MATLAB `imuSensor`, 100 Hz | Yaw, acceleration and GNSS-loss propagation | **MUST** |
+| Wheel speed/odometry | Plant wheel rotation or speed/radius with slip and quantization; MATLAB Function block, 50 Hz | Speed, distance and GNSS-loss support | **MUST** |
+| Steering-angle sensor | Measured steering-system output with delay/noise, 50 Hz | Detect tracking or actuator mismatch | **MUST** |
+| CAN-style vehicle bus | `Simulink.Bus` + rate transitions; counter, delay, stale and dropped-frame injection, 50 Hz | One timed path for sensors, commands and feedback; **simulation**, not a physical CAN claim | **MUST** |
+| Steer, throttle, brake | Simulink bicycle/3DOF plant and CARLA `VehicleControl`; steer bounded by existing ±0.6 rad contract, throttle/brake 0–1; feedback at 50 Hz | Execute and verify accepted motion | **MUST** |
+| Gear including reverse | P/N/D/R command and applied gear; CARLA vehicle control; zero-speed interlock | Forward drive and tested reverse command; a full three-point turn is additional work | **MUST** interface; manoeuvre **SHOULD** |
+| Indicators, brake/reverse lights, hazards | `SignalHMIV1`; CARLA `VehicleLightState` where supported; event log | Show intended turn and minimal-risk stop | **MUST** |
+| Low beam and high beam | CARLA light state plus recorded illumination setting | Low beam supports night tests; high beam is evaluated for glare and has **no assumed effect on other drivers** | Low beam **MUST**; high beam **SHOULD** |
+| Horn | Boolean request, event/audio overlay; no assumed actor response | Judge-visible communication only until a response model is validated | **STRETCH** |
+| Driver display and takeover input | Simulink Dashboard/Stateflow mode, reason, request timer and simulated acknowledgment | Explain degraded state; no acknowledgment leads to minimal-risk stop | **MUST** |
+
+The 3DOF plant is the broad test model; the 14DOF model is reserved for pothole and speed-breaker ride checks because it includes vertical, pitch, roll and wheel motion. [MathWorks vehicle-model comparison](https://www.mathworks.com/help/vdynblks/ug/passenger-vehicle-dynamics-models.html) CARLA 0.9.x is pinned for the 8 GB lab GPU; 0.9.15 documents a 6 GB minimum and 8 GB recommendation. The exact 0.9.x release and ROS bridge pair is frozen only after a lab smoke test. [P13 correction](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md), [CARLA requirements](https://carla.readthedocs.io/en/0.9.15/start_quickstart/)
+
+## 3. Ten weekly build gates
+
+**Global exit rule:** Every week ends with the **same Simulink ego model** running an end-to-end seed, all applicable existing **348 tests**, schema/units checks and a saved `config.json` plus timing/contact log. Fast-tier ground-truth input is an explicit test mode, never silently mixed with sensor-in-loop results. A phase is unfinished if its gate fails. **A = Aditya; S = Shourya.** Dates assume a 1 October start; move the freeze forward when the official finale date is known. [Existing tests and artifacts](/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md)
+
+| Week | Goal and tasks | Owner | Measurable exit gate | P14 rows; P1 top-25 IDs |
+|---|---|---|---|---|
+| **W1, 1–7 Oct** | Reproduce S2 contact/stall and dense S3 stall; fix lost longitudinal station, one-frame WAIT, rearming timeout and tie-break; preserve traces. Inventory and safeguard the eight unpushed commits and model files. | A; S reproduces | On ≥3 fixed seeds each, S2 and dense S3 have **0 contact** and no >10 s stall when an oracle-labelled gap exists; before/after logs retained. | C01, C11, C14; **16, 53, 61** |
+| **W2, 8–14 Oct** | Replace per-candidate capsule construction with broad-phase then exact swept check; use 8–16 candidates; add independent stop check, persistent blocked state and stale-plan brake. | A; S profiles | Fast-tier state-input run: **p99 validated-plan time ≤100 ms** across ≥1,000 ticks; 100 deliberately unsafe candidates all vetoed; late output triggers brake, never GO. | C11–12, C29, C37–38; **5, 6, 38** |
+| **W3, 15–21 Oct** | Establish versioned buses, frame adapters, map/localization and 50 Hz plant/control/actuator feedback inside one `.slx`; Stanley+PI baseline; gear and HMI fault path. | A; S connects sensor adapter | One 5-minute S1 run in the unified model with steering executed, no unit/frame assertion, measured feedback, and a stop on injected command loss. | C03, C26, C30, C39; **46, 52** |
+| **W4, 22–28 Oct** | Put CARLA front RGB → YOLOX/DeepLab → lidar/radar fusion → frozen S1 tracks in the loop. Diagnose zero render boxes before retraining; label auto, pushcart, person and cattle renders. | S; A integrates verifier input | Held-out labelled render set reports per-class recall at the **visible stopping distance**; all four PS classes produce checked in-loop detections, and missed/unknown cells reduce permission. Recheck 100 ms budget. | C04–08, C13, C18, C36, C40; **31, 38, 75, 76** |
+| **W5, 29 Oct–4 Nov** | Add top-K metric occupancy and conservative tubes; belief over intent × response, including group/cover; small learned scorer. Keep S3 `PYield` disabled. | S prediction; A belief/scorer/verifier | Held-out trajectory coverage and fallback rate reported by class; lateral cut-in and rolling-crossing tests included; a unit test proves changing ML scores alone cannot bypass the verifier. | C01, C09–10, C14–15; **1, 2, 16, 20, 21, 32, 61** |
+| **W6, 5–11 Nov** | Pin CARLA 0.9.x; build detailed unmarked village and unsignalled junction scenes; connect the verified R2026a SUMO blocks to reactive traffic and CARLA actor mirroring. | S worlds/assets; A synchronization | ≥1,000 synchronized ticks with actor ID/pose and timestamp assertions, no 8 GB GPU exhaustion; a changed ego action produces a changed actor response. Both scenes run the **same** Simulink model. | C02, C19–20, C24, C27, C34–35; **11, 53, 61** |
+| **W7, 12–18 Nov** | Finish the five PS routes and a seeded probe for each top-25 difficulty; include F1–F10 templates, wrong-way users, bus pull-out, auto stop, diversion and service-road entry. | A routes/tests; S actors | **5 × 10 predeclared seeds**: report completion, contact and false-blocked rates per scene; target ≥9/10 completion and zero disqualifying contacts per scene. All 25 probes have a result and fallback trace. | C01–02, C14–25, C27, C31, C34; **all 25** |
+| **W8, 19–25 Nov** | Inject sensor delay/dropout, rain/fog/night and friction loss; test minimal-risk stop and takeover timeout. Compare 3DOF with 14DOF on a small pothole set if plant access permits. Add shadow disagreement/replay queue. | A safety/control; S faults/data | Every declared fault produces either continued certified motion or a logged stop; no fault silently yields a GO. Rain/fog/night curves and replay of one mined failure exist. **Core demo freezes by 25 Nov.** | C04, C16–18, C30, C38–39; **39, 45, 67, 68, 70, 75** |
+| **W9, 26 Nov–2 Dec** | Run frozen holdout and shared-seed baselines; profile the **full camera-in-loop** model on Windows; calculate exact PS metrics, confidence intervals and claim ledger. Prepare report and film from matched run IDs. | A evaluation/timing; S perception/results | Five-scene results, baseline table, p50/p95/p99 and deadline misses published. Run **299 independent predeclared fast-tier seeds** if ready; claim a <1% bound only if all 299 have zero failures for that specified distribution. | C11–12, C25, C28–34; all top-25 outcome summaries |
+| **W10, 3–9 Dec, contingent buffer** | Fix only release-blocking regressions; rehearse the eight-minute demo; package model, scenarios, logs, report and video. Move this work earlier if the finale is earlier. | A + S | Fresh-machine one-command replay matches recorded run IDs and metrics; every P14 row has evidence, failure or explicit deviation; RoadRunner substitution is visible. | C24, C32–35; final 40-row audit |
+
+The week estimates compress work that [P3](/Users/aditya/dev/sih2026-hq/research/P3-PLANNER.md), [P6–P8](/Users/aditya/dev/sih2026-hq/research/P6-P7-P8-SIM-TRAFFIC-SENSORS.md) and [P9–P12](/Users/aditya/dev/sih2026-hq/research/P9-P12-CONTROL-DATA-EVAL-COMPUTE.md) individually rate at several weeks. **W2, W4 and W6 are schedule gates:** failure there forces the cut line below, not an unlabelled claim of completion.
+
+## 4. Traceability check
+
+`C01–C40` are the rows of the [accepted P14 table](/Users/aditya/dev/sih2026-hq/research/P14-PS-COMPLIANCE.md), in order. Coverage: **C01–C03** W1/3/7; **C04–C08** W4/7; **C09–C10** W5; **C11–C12** W2/7/9; **C13–C18** W4/5/7/8; **C19–C23** W6/7; **C24 and C35** W6/10 as **permanent RoadRunner deviations**; **C25–C27** W3/6/7; **C28–C31** W9; **C32–C34** W6/9/10; **C36–C40** W2–5/8. Thus no P14 row lacks a phase; **C24 and C35 cannot be closed as MEETS** under the locked licence decision.
+
+Each top-25 ID gets one named regression probe, with the phase that supplies its mechanism and the W7 suite that records its result. A “pass” means the ego either completes within its declared ODD **or reaches a justified minimal-risk stop**; a false stall where a feasible gap existed fails.
+
+| P1 ID | Required probe | Phase |
+|---:|---|---|
+| **38** | Unmarked edge versus unsafe shoulder | W4/7 |
+| **2** | Two-wheeler seeps through a narrow lateral gap | W5/7 |
+| **20** | Pedestrian starts a midblock crossing | W5/7 |
+| **75** | Person emerges from behind a bus | W4/7/8 |
+| **16** | Informal merge with yielding **and** non-yielding actor | W1/5/7 |
+| **53** | Uncontrolled T-junction crossing gap | W1/6/7 |
+| **5** | Wrong-way oncoming vehicle | W2/7 |
+| **6** | Abrupt lead-vehicle brake and stop margin | W2/7 |
+| **1** | Close lateral cut-in | W5/7 |
+| **31** | Standing and low-lying cattle envelope | W4/7 |
+| **32** | Cattle starts crossing after ego approaches | W5/7 |
+| **11** | Slow tractor-trolley; passing sight distance | W6/7 |
+| **21** | Pedestrian pauses, then resumes | W5/7 |
+| **76** | Overlapping tracks and ID swaps | W4/7 |
+| **39** | Pothole slow/avoid choice; ride subset | W4/7/8 |
+| **45** | Temporary construction corridor | W7/8 |
+| **10** | Bus stops, hides a person, then pulls out | W5/7 |
+| **9** | Auto-rickshaw stops for pickup | W4/7 |
+| **67** | Rain reduces visibility **and** grip | W8 |
+| **68** | Fog reduces reliable stopping sight | W8 |
+| **70** | Unlit night road beyond headlamp range | W8 |
+| **46** | Blind curve with speed limited by visible road | W3/7 |
+| **61** | Mutual yield, then an observable safe gap | W1/5/7 |
+| **25** | Pedestrian walks along road, then turns across | W5/7 |
+| **52** | Service-road re-entry into faster flow | W3/7 |
+
+**Uncovered P14 rows: none in the plan. Uncovered top-25 IDs: none in the plan.** That is traceability, not evidence that tests will pass. The nine beyond-PS items from P14 land in W2 (verifier, timing), W5 (belief), W6–7 (reactive traffic and families), W8 (degradation, 14DOF, shadow replay) and W9 (stratified statistics and baselines).
+
+## 5. Degraded modes and fallbacks
+
+**JUDGMENT — age limits to test:** ego state >50 ms, front RGB >150 ms, lidar/radar >200 ms or validated plan >100 ms counts as stale. These values must be checked against actual sensor timing; the monitor logs every transition.
+
+| Failure | Detection | Required response |
+|---|---|---|
+| Late planner or stale sensor | Timestamp/sequence/heartbeat limit | Recheck the remaining certified prefix; otherwise brake within the last known free corridor, hazards, `BLOCKED` |
+| Missed, unknown or conflicting object | Cross-sensor disagreement, low existence, unknown grid cell | Widen occupied region, reduce speed to visible stopping distance; stop if no certified corridor |
+| Prediction out of distribution or coverage failure | Unmodelled mass, wide tube or held-out coverage monitor | Replace learned paths with conservative reachable region; no ML-derived GO |
+| GNSS loss or map mismatch | Pose covariance, innovation and route-edge checks | IMU/wheel dead reckoning at reduced speed; stop when position margin exceeds free corridor |
+| Heavy rain, fog or dark road | Measured reliable range and friction estimate, not weather slider alone | Sight-limited speed; low beam; minimal-risk stop when stopping sight is inadequate |
+| Actuator/CAN fault | Counter/timeout or commanded-versus-measured steer/brake mismatch | Reject new trajectories; brake if available, hazards and takeover request; log when braking cannot be guaranteed |
+| No safe candidate or traffic deadlock | All candidates vetoed; persistent reason and observed gap record | `BLOCKED`; re-evaluate, permit only a newly verified creep; timeout never authorizes crossing |
+| No driver response to takeover | Request timer expires without acknowledgment | Continue autonomous minimal-risk stop; never assume a driver took control |
+| CARLA–SUMO desynchronization | Actor ID, frame, pose or timestamp assertion fails | Pause/fail the run and command stop; mark results invalid for performance claims |
+
+A minimal-risk manoeuvre here is a **verified deceleration to a stop in visible free space**, optionally toward a verified pull-over region. It is not a promise that a safe stopping place always exists. [P13 safety design](/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md)
+
+## 6. Eight-minute finale demonstration
+
+| Time | What judges see |
+|---|---|
+| **0:00–0:40** | One Simulink model, live sensor/track/belief/certificate/actuator/HMI signals; declared simulated ODD and RoadRunner substitution on screen. |
+| **0:40–1:35** | Unmarked village: camera road mask, lidar edge, tractor/pushcart and a stoppable pass. |
+| **1:35–2:30** | Unsignalled junction: group/cover actor response, rejected unsafe candidate, then verified progress or an explained blocked state. |
+| **2:30–3:20** | Highway slow-vehicle merge: metric futures, front/corner sensing where available, measured gap and control response. |
+| **3:20–4:15** | Dense market: bike seepage, auto stop and pedestrian occlusion; show track IDs and no false permanent stall. |
+| **4:15–5:05** | Sudden cattle crossing: detection, reachable region, brake and stop margin. |
+| **5:05–6:00** | Inject one sensor dropout or fog/actuator delay; monitor requests takeover, hazards activate, car reaches the tested stop. |
+| **6:00–7:10** | Replay one mined failure by seed, show changed result and frozen-holdout result; display paired baseline comparison. |
+| **7:10–8:00** | PS scorecard: contact, completion, jerk/curvature, p50/p95/p99 and deadline misses; state remaining failures and the RoadRunner deviation. |
+
+All segments use **recorded run IDs from the same model**. If a live simulator hiccups, play the matching trace and film rather than implying a separate successful run.
+
+## 7. Top risks and cut line
+
+| Risk | Decision if its gate slips |
+|---|---|
+| **W2 fails 100 ms even before pixels** | Stop feature expansion; simplify candidate generation and rewrite the hotspot. Do not claim real-time. |
+| **W4 camera still gives unreliable rendered detections** | Retain lidar/radar and unknown-space fallback for safety; label the camera result as failed. Do not claim all four classes are identified in-loop. |
+| **W6 three-way world sync or 8 GB GPU fails** | Keep **one Simulink ego stack** with SUMO reactive fast-tier traffic and CARLA selected pixel scenes as separate world backends. Disclose that simultaneous CARLA–SUMO runs were not achieved. |
+| **Reactive actors overfit the planner** | Add a second fixed actor policy and non-yield sweeps before tuning the learned scorer. |
+| **Two-builder capacity or earlier finale** | Freeze the core by W8. Cut automated shadow mining, full 299-run claim, 14DOF ride study, broad F7–F10 sweeps, rear/surround pixel inference, corner-radar refinement and horn-response work—in that order. Keep their interface ports and mark them unvalidated. |
+
+**Non-negotiable line:** If the five PS scenes, in-loop front camera/lidar/radar, independent movement check, working actuator loop, declared fallback, measured latency and three PS metrics are unfinished, the final claim is **“partial integrated prototype”**, not a complete autonomous-driving solution. RoadRunner remains a disclosed literal deviation in either case.

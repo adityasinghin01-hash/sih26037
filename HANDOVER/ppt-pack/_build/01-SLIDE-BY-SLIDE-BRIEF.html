@@ -1,0 +1,323 @@
+<!doctype html><html><head><meta charset=utf-8><title>DOC 1 · Slide-by-slide brief</title><style>@page{size:A4;margin:14mm} body{font-family:Helvetica,Arial,sans-serif;font-size:11.5px;line-height:1.42;color:#111} h1{font-size:22px} h2{font-size:16px;border-bottom:1.5px solid #333;margin-top:18px} table{border-collapse:collapse;width:100%;margin:6px 0} td,th{border:1px solid #999;padding:3px 6px;vertical-align:top} th{background:#eee} a{color:#0645ad;word-break:break-all} code{background:#f2f2f2}</style></head><body><p style='font-size:10.5px;color:#444'>SIH26037 · PPT document pack · 27 Sep 2026 · Diagrams D1–D7 are separate PDFs in the same folder. Local <code>/Users/aditya/...</code> links point to the team's research files.</p><h1>Six-slide brief</h1>
+<p>Use the <strong>official six-slide template and its headings</strong>. The PDF is the idea-round upload. Bold text below is slide copy. Label proposed capabilities <strong>PLANNED</strong>; label the existing prototype <strong>PARTIAL</strong>. Use no survey, invented prototype URL, unsourced cost percentage, or projected lives saved. Reference IDs point to DOC 3. <a href="/Users/aditya/dev/sih2026-hq/research/P0-RULES.md">P0</a></p>
+<h2>Slide 1 — Title</h2>
+<p><strong>Layout:</strong> Follow the reference title fields. Put the idea title in the largest type and the child line below it.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Exact text</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Problem statement ID</td>
+<td><strong>SIH26037</strong></td>
+</tr>
+<tr>
+<td>Idea title</td>
+<td><strong>Safety-Checked Adaptive Path Planning for Unstructured Indian Roads</strong></td>
+</tr>
+<tr>
+<td>Theme</td>
+<td><strong>Smart Vehicles</strong></td>
+</tr>
+<tr>
+<td>Category</td>
+<td><strong>Software</strong></td>
+</tr>
+<tr>
+<td>Team ID</td>
+<td><strong>[TEAM ID]</strong></td>
+</tr>
+<tr>
+<td>Team name</td>
+<td><strong>[TEAM NAME]</strong></td>
+</tr>
+<tr>
+<td>One-line idea</td>
+<td><strong>The car watches and listens, guesses what might move, and drives only when it has room to stop.</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Limit:</strong> Title ≤10 words (uses the PS's own keywords); one-line idea as written. Source: R01.</p>
+<h2>Slide 2 — Proposed Solution</h2>
+<p><strong>Layout:</strong> Left solution bullets; central hub <strong>D1</strong>; right “It addresses the problem by”; narrow platform strip and tagline below. Mark D1 <strong>PLANNED SYSTEM</strong>.</p>
+<p><strong>Left column — copy verbatim; max 45 words</strong></p>
+<ul>
+<li><strong>One car, one loop:</strong> sense → understand → decide → act → prove.</li>
+<li><strong>Mixed traffic:</strong> detect autos, pushcarts, pedestrians, animals and uncertain road edges.</li>
+<li><strong>Several futures:</strong> predict short-term, non-lane-based movement.</li>
+<li><strong>Only checked moves:</strong> brake and report <strong>BLOCKED</strong> when no safe move passes.</li>
+</ul>
+<p><strong>D1 central hub — max 38 label words:</strong> One idea contains these five layers and <strong>13 named parts</strong>. Group them into roughly ten visual bubbles without dropping a part:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Parts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SENSE</strong></td>
+<td>Sensors</td>
+</tr>
+<tr>
+<td><strong>UNDERSTAND</strong></td>
+<td>Perception ML; Hearing; Gesture reader; Tracker; Prediction ML</td>
+</tr>
+<tr>
+<td><strong>DECIDE</strong></td>
+<td>Planner; Safety checker; Safety monitor</td>
+</tr>
+<tr>
+<td><strong>ACT</strong></td>
+<td>Control; Signals &amp; driver screen</td>
+</tr>
+<tr>
+<td><strong>PROVE</strong></td>
+<td>World; Test &amp; learn loop</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Right column — copy verbatim; max 43 words</strong></p>
+<ul>
+<li><strong>No lane markings:</strong> check road, shoulder and unknown space.</li>
+<li><strong>Informal merging:</strong> consider yielding and non-yielding responses.</li>
+<li><strong>Sudden movement:</strong> reserve space for crossing people and cattle.</li>
+<li><strong>Unexpected obstacles:</strong> preserve a visible stopping path.</li>
+<li><strong>Closed loop:</strong> the car’s action changes the next traffic scene.</li>
+</ul>
+<p><strong>Platform strip — max 19 words:</strong> <strong>MATLAB/Simulink ego stack · SUMO reactive traffic · CARLA 0.9.15 Indian scenes · real Indian video replay</strong></p>
+<p><strong>Tagline — max 13 words:</strong> <strong>Learning ranks moves. An independent physical check alone permits movement.</strong></p>
+<p>Source: R01; <a href="/Users/aditya/dev/sih2026-hq/research/P13-SYSTEM-DESIGN.md">P13</a>.</p>
+<h2>Slide 3 — Technical Approach</h2>
+<p><strong>Layout:</strong> Top expert line; left tech-stack logo wall grouped by the five layers; <strong>D2</strong> centre; <strong>D3</strong> right; prototype strip at bottom. Use a clear <strong>PLANNED</strong> label over the joined pipeline.</p>
+<p><strong>Top line — exact:</strong> <strong>One Simulink ego stack combines Indian-road sensing and prediction with a learned manoeuvre scorer, an independent movement verifier, and measured closed-loop tests.</strong></p>
+<p><strong>Tech-stack wall — max 52 words total</strong></p>
+<ul>
+<li><strong>SENSE:</strong> CARLA camera/LiDAR/radar; Automated Driving Toolbox.</li>
+<li><strong>UNDERSTAND:</strong> Python/PyTorch → ONNX → Deep Learning Toolbox; <code>trackerGNN</code>.</li>
+<li><strong>DECIDE:</strong> Navigation Toolbox; Stateflow; MATLAB Coder.</li>
+<li><strong>ACT:</strong> Simulink control; Vehicle Dynamics Blockset.</li>
+<li><strong>PROVE:</strong> <code>drivingScenario</code>; official R2026a SUMO blocks; CARLA scene replay.</li>
+</ul>
+<p><strong>D2:</strong> One decision: <strong>observe → track/predict → rank 8–16 moves → check swept space and stopping distance → drive or brake</strong>. Show the safety monitor’s veto arrow. Max 24 words inside the diagram.</p>
+<p><strong>D3:</strong> Label <strong>“Five-model target core; nine later models”</strong>, never “14 models running.” Exact model labels:</p>
+<ul>
+<li><strong>Core target:</strong> YOLOX object detector; DeepLab v3+ road/pothole mask; pose-based hand-signal reader; ego-conditioned top-K motion predictor with conformal coverage; move scorer.</li>
+<li><strong>Later tier:</strong> lidar 3D detector; BEV free-space/occupancy; sign and Indian-text reader; siren/horn recogniser; visibility estimator; driver watcher; crossing-intent model; RL policy <strong>comparison only</strong>; learned traffic agents.</li>
+</ul>
+<p>YOLOX and DeepLab exist <strong>offline</strong>; the other core models and the joined loop are <strong>planned</strong>. No AI model can move the car without the verifier. <a href="/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md">P2</a>, <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a></p>
+<p><strong>Prototype strip — max 22 words:</strong> <strong>PARTIAL today:</strong> internal <code>sihDemo</code> runs S1 and sparse S3. <strong>Public prototype link:</strong> [INSERT VERIFIED URL AFTER UPLOAD].</p>
+<p>Source: R01, R20–R28; <a href="/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md">P2</a>.</p>
+<h2>Slide 4 — Feasibility and Viability</h2>
+<p><strong>Layout:</strong> Four boxes as in the reference: Financials, Feasibility, Viability, Challenges → Mitigation. Put <strong>D5</strong> as a compact bottom timeline. Use the <strong>cost component of D7</strong> in Financials.</p>
+<p><strong>Financials — max 29 words:</strong> <strong>Software ₹0</strong> (KIET MATLAB licence; open-source CARLA, SUMO). <strong>Training ₹0</strong> on KIET DGX A100. Backup cloud A100 <strong>~$0.43–1.09/GPU-hour</strong> (GetDeploying, Thunder Compute, Sep 2026).</p>
+<p><strong>D7 graphic:</strong> use D7's cash-cost table (sourced) and its effort-split pie, labelled <strong>“planned effort split”</strong> — never as a cost pie.</p>
+<p><strong>Feasibility — max 32 words:</strong> <strong>Two builders, ten-week plan.</strong> W2 gates: 100 ms fast-tier planning and one custom prop plus vehicle spawning. W8 gate: five scenes and full camera-in-loop timing.</p>
+<p><strong>Viability — max 30 words:</strong> <strong>Real starting point (PARTIAL):</strong> MATLAB planner completes S1 (610 m); <strong>348/348</strong> automated tests; real-map pipeline; offline Indian road mask <strong>96.0% drivable IoU</strong>. Open failures are disclosed in Q&amp;A (DOC 4), not on the slide.</p>
+<p><strong>Challenges → Mitigation — max 11 words per row</strong></p>
+<table>
+<thead>
+<tr>
+<th>Challenge</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Slow checking</strong></td>
+<td>Profile, reduce candidates, compile and retest full-loop timing.</td>
+</tr>
+<tr>
+<td><strong>CARLA assets</strong></td>
+<td>Start source build W1; prove prop and vehicle W2.</td>
+</tr>
+<tr>
+<td><strong>Render-to-real gap</strong></td>
+<td>Measure per-class recall on held-out renders and Indian footage.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>D5:</strong> Ten weekly gates; distinguish A’s brain/safety/evaluation track from S’s world/assets/perception track. Add a red caption: <strong>“Two detailed CARLA scenes replace specified RoadRunner scenes; no RoadRunner licence.”</strong></p>
+<p>Source: <a href="/Users/aditya/dev/sih2026-hq/research/P2-AUDIT-OUR-SYSTEM.md">P2</a>, <a href="/Users/aditya/dev/sih2026-hq/research/P15-BUILD-PLAN.md">P15</a>, R27–R28.</p>
+<h2>Slide 5 — Impact and Benefits</h2>
+<p><strong>Layout:</strong> Stakeholders left; large sourced problem numbers centre; <strong>D4</strong> five-scenario strip right; <strong>D6</strong> coverage/beyond panel at bottom. Numbers describe the <strong>problem</strong>, not an impact achieved by this proposal.</p>
+<p><strong>Stakeholders — max 24 words</strong></p>
+<ul>
+<li><strong>Road users:</strong> safer decisions are the research goal.</li>
+<li><strong>ADAS and AV teams:</strong> reproducible Indian-road stress tests.</li>
+<li><strong>Researchers and judges:</strong> contact, progress, comfort and timing evidence.</li>
+</ul>
+<p><strong>Large numbers — exact labels</strong></p>
+<ul>
+<li><strong>4,80,583 crashes · 1,72,890 deaths — India, 2023.</strong> R03</li>
+<li><strong>2,161 pothole-related deaths — India, 2023.</strong> R03</li>
+<li><strong>3,383 stray-cattle crashes — Haryana, preceding five years.</strong> R04</li>
+<li>Small footnote: <strong>50 lakh stray cattle — 2019 livestock census; not a road-encounter rate.</strong> R05</li>
+</ul>
+<p><strong>D4:</strong> Exact PS scenes: <strong>unmarked village road; unsignalled urban intersection; highway merge with slow vehicles; dense market; sudden cattle crossing</strong>. Label <strong>PLANNED CLOSED-LOOP TESTS</strong>.</p>
+<p><strong>D6 — max 31 words:</strong> <strong>90 difficulties catalogued → ten composable families → 25 priority probes.</strong> Planned proof: <strong>replanning latency, path smoothness, scenario completion rate</strong>, plus contacts and false stalls. <strong>RoadRunner substitution remains a deviation.</strong></p>
+<p>Optional small behaviour note, if legible: <strong>“Patna sample: 26% rolling crossings; site-specific, not a national rate.”</strong> R06. Do not claim an estimated crash reduction.</p>
+<p>Source: R01, R03–R06; <a href="/Users/aditya/dev/sih2026-hq/research/P1-DIFFICULTY-CATALOGUE.md">P1</a>.</p>
+<h2>Slide 6 — Research and References</h2>
+<p><strong>Layout:</strong> Left: short reference list; right: <strong>D7 competitor component</strong>; bottom: dataset ribbon, prototype placeholder and RoadRunner disclosure. Keep the official “Research and References” heading.</p>
+<p><strong>Visible references — max 65 words:</strong> <strong>MoRTH 2023; Haryana Assembly cattle answer; IDD; IDD-PeD; METEOR; Kruse et al. 2022; Mosaic 2026; MathWorks SUMO/CARLA documentation.</strong> Use small <code>[Rxx]</code> tags linked to DOC 3.</p>
+<p><strong>D7 competitor table:</strong> Use <strong>✓ documented</strong>, <strong>P proposed</strong>, <strong>? unverified</strong>. Do not use × to assert an undocumented absence.</p>
+<table>
+<thead>
+<tr>
+<th>Organisation</th>
+<th style="text-align: center;">Indian traffic/scenario work</th>
+<th style="text-align: center;">Independent movement checker</th>
+<th style="text-align: center;">Paired Indian closed-loop metrics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Our system</strong></td>
+<td style="text-align: center;">✓ catalogue; P executable suite</td>
+<td style="text-align: center;">P</td>
+<td style="text-align: center;">P</td>
+</tr>
+<tr>
+<td><strong>The Syndicate</strong>*</td>
+<td style="text-align: center;">?</td>
+<td style="text-align: center;">?</td>
+<td style="text-align: center;">?</td>
+</tr>
+<tr>
+<td><strong>ARAI</strong></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">?</td>
+<td style="text-align: center;">?</td>
+</tr>
+<tr>
+<td><strong>WMG Safety Pool India</strong></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">?</td>
+<td style="text-align: center;">?</td>
+</tr>
+<tr>
+<td><strong>Swaayatt Robots</strong></td>
+<td style="text-align: center;">✓ company-described work</td>
+<td style="text-align: center;">?</td>
+<td style="text-align: center;">?</td>
+</tr>
+<tr>
+<td><strong>Minus Zero</strong></td>
+<td style="text-align: center;">✓ company-described work</td>
+<td style="text-align: center;">?</td>
+<td style="text-align: center;">?</td>
+</tr>
+</tbody>
+</table>
+<p>*Teammate-supplied description says stock CARLA, YOLOv11 + LiDAR, a three-tier planner and three scenes; <strong>independent evidence was not found in the research pack</strong>. Do not convert that description into ticks or crosses. ARAI and WMG already have Indian scenario work; do not claim “first Indian test suite.” <a href="/Users/aditya/dev/sih2026-hq/research/P1-DIFFICULTY-CATALOGUE.md">P1</a>, <a href="/Users/aditya/dev/sih2026-hq/research/P3-PLANNER.md">P3</a></p>
+<p><strong>Dataset ribbon — max 22 words:</strong> <strong>IDD family · DriveIndia · FGVD · TIAND · METEOR · Chennai SPT · RoadText · simulator data</strong>. Access and licences are checked before training.</p>
+<p><strong>Bottom disclosure — exact:</strong> <strong>RoadRunner is unavailable: two planned detailed CARLA scenes substitute for, but do not literally meet, that PS clause.</strong></p>
+<p><strong>Prototype link:</strong> [INSERT VERIFIED PUBLIC URL]; otherwise print <strong>“Internal prototype available on request”</strong>. Source: R01, R09–R19, R29–R32.</p>
+<h2>Keyword glossary — team use only</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Plain meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Adaptive path planning</strong></td>
+<td>Reconsidering the car’s path as the scene changes.</td>
+</tr>
+<tr>
+<td><strong>Unstructured Indian road conditions</strong></td>
+<td>Roads and traffic where lanes, edges and behaviour may be irregular.</td>
+</tr>
+<tr>
+<td><strong>Multi-sensor</strong></td>
+<td>Combining camera, LiDAR, radar and vehicle-state measurements.</td>
+</tr>
+<tr>
+<td><strong>LiDAR</strong></td>
+<td>Laser distance measurements that give obstacle shape and location.</td>
+</tr>
+<tr>
+<td><strong>Radar</strong></td>
+<td>Radio sensing that helps measure distance and closing speed.</td>
+</tr>
+<tr>
+<td><strong>Perception ML</strong></td>
+<td>Models that find road users, road surface and hazards.</td>
+</tr>
+<tr>
+<td><strong>Hearing</strong></td>
+<td>In this plan, simulated horn/siren direction and class events.</td>
+</tr>
+<tr>
+<td><strong>Gesture reader</strong></td>
+<td>Camera pose cues for raised hands and traffic direction.</td>
+</tr>
+<tr>
+<td><strong>Tracker</strong></td>
+<td>A continuing position and uncertainty record for each observed actor.</td>
+</tr>
+<tr>
+<td><strong>Short-term motion prediction</strong></td>
+<td>Possible actor positions over the next few seconds.</td>
+</tr>
+<tr>
+<td><strong>Ego-conditioned</strong></td>
+<td>Forecasting an actor given a proposed action by our car.</td>
+</tr>
+<tr>
+<td><strong>Non-lane-based movement</strong></td>
+<td>Sideways or crossing motion that does not follow a lane centre.</td>
+</tr>
+<tr>
+<td><strong>Conformal coverage</strong></td>
+<td>A calibrated method for sizing predicted occupied regions.</td>
+</tr>
+<tr>
+<td><strong>Learned manoeuvre scorer</strong></td>
+<td>A model that ranks a fixed set of candidate moves.</td>
+</tr>
+<tr>
+<td><strong>Independent movement verifier</strong></td>
+<td>A separate geometric and braking check that alone permits motion.</td>
+</tr>
+<tr>
+<td><strong>Safety monitor</strong></td>
+<td>A watchdog that cancels permission when data or control is faulty.</td>
+</tr>
+<tr>
+<td><strong>BLOCKED</strong></td>
+<td>An explicit state when no checked move exists.</td>
+</tr>
+<tr>
+<td><strong>Real-time replanning</strong></td>
+<td>Meeting a measured decision deadline while driving.</td>
+</tr>
+<tr>
+<td><strong>Closed-loop validation</strong></td>
+<td>The car acts, traffic responds, sensors update, and the next decision uses that update.</td>
+</tr>
+<tr>
+<td><strong>Replanning latency</strong></td>
+<td>Time from a scene snapshot to a checked replacement path.</td>
+</tr>
+<tr>
+<td><strong>Path smoothness</strong></td>
+<td>How sharply the driven path bends or acceleration changes.</td>
+</tr>
+<tr>
+<td><strong>Scenario completion rate</strong></td>
+<td>Share of runs that reach the goal under the declared rules.</td>
+</tr>
+<tr>
+<td><strong>ODD</strong></td>
+<td>The roads, speeds, weather and traffic conditions within which the system is tested.</td>
+</tr>
+</tbody>
+</table></body></html>

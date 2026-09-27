@@ -1,0 +1,136 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D2 · One decision, step by step (every 100 ms)</title>
+<style>
+@page { size: A2 portrait; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D2 · One decision, step by step (every 100 ms)</h1><div class="sub">How the car decides once. Green = the car moves. Red = safety check / safe stop. Numbers in brackets = target time budget, not today&#x27;s speed (today: 736 ms).</div>
+<pre class="mermaid">flowchart TB
+  subgraph T0[&quot;EVERY 100 ms (10 Hz planning tick) — timing budget in brackets&quot;]
+    s1[&quot;1 · Snapshot all sensors&lt;br/&gt;(sync + timestamps) [10 ms]&quot;]
+    s0[&quot;Data fresh?&lt;br/&gt;ego ≤50 ms · camera ≤150 ms · LiDAR/radar ≤200 ms&quot;]
+    s2[&quot;2 · Perceive&lt;br/&gt;objects · road/unknown · signs · gestures · sounds [30 ms]&quot;]
+    s3[&quot;3 · Track + locate&lt;br/&gt;TrackList + ego pose [10 ms]&quot;]
+    s4[&quot;4 · Update belief&lt;br/&gt;who is cooperative? (from what they did after OUR last move)&quot;]
+    s5[&quot;5 · Generate 8–16 short moves&lt;br/&gt;keep · slow · creep · nudge left/right · stop · go-around [10 ms]&quot;]
+    s6[&quot;6 · Predict others FOR EACH move&lt;br/&gt;top-K paths + safety margin [15 ms incl. step 4]&quot;]
+    s7[&quot;7 · Score moves&lt;br/&gt;progress · comfort · keeps options&quot;]
+    s8[&quot;8 · SAFETY CHECK best move first [15 ms]&lt;br/&gt;fits free space? can we still stop?&lt;br/&gt;safe even if nobody yields?&quot;]
+    s9[&quot;Any move passes?&quot;]
+    s10[&quot;9 · Issue certificate&lt;br/&gt;(move ID + path hash + expiry)&quot;]
+    s11[&quot;10 · Control → steer / throttle / brake / gear&lt;br/&gt;50 Hz [5 ms] + indicators&quot;]
+    s12[&quot;SAFE STOP&lt;br/&gt;brake within known free space · hazards&lt;br/&gt;state = BLOCKED (reason + time logged)&quot;]
+    s13[&quot;Re-check next tick&lt;br/&gt;creep only if a new move passes&lt;br/&gt;timeout never means &#x27;go&#x27;&quot;]
+    s14[&quot;Record everything&lt;br/&gt;(run log → metrics → failure replay)&quot;]
+  end
+  s1 --&gt; s0
+  s0 --&gt;|&quot;yes&quot;| s2
+  s0 --&gt;|&quot;no: stale / missing&quot;| s12
+  s2 --&gt; s3
+  s3 --&gt; s4
+  s4 --&gt; s5
+  s5 --&gt; s6
+  s6 --&gt; s7
+  s7 --&gt;|&quot;best first&quot;| s8
+  s8 --&gt; s9
+  s9 --&gt;|&quot;yes&quot;| s10
+  s9 --&gt;|&quot;no&quot;| s12
+  s10 --&gt; s11
+  s12 --&gt; s13
+  s13 --&gt;|&quot;next tick&quot;| s1
+  s11 --&gt; s14
+  s12 --&gt; s14
+  s11 --&gt;|&quot;car moved → world changed → next tick&quot;| s1
+  classDef safety fill:#ffd6d6,stroke:#b00000,stroke-width:3px
+  class s8,s12 safety
+  classDef go fill:#d6f5d6,stroke:#1a7f1a,stroke-width:2px
+  class s10,s11 go</pre>
+
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">BOXES (grouped exactly as drawn):
+■ EVERY 100 ms (10 Hz planning tick) — timing budget in brackets
+  - [s1] 1 · Snapshot all sensors (sync + timestamps) [10 ms]
+  - [s0] Data fresh? ego ≤50 ms · camera ≤150 ms · LiDAR/radar ≤200 ms
+  - [s2] 2 · Perceive objects · road/unknown · signs · gestures · sounds [30 ms]
+  - [s3] 3 · Track + locate TrackList + ego pose [10 ms]
+  - [s4] 4 · Update belief who is cooperative? (from what they did after OUR last move)
+  - [s5] 5 · Generate 8–16 short moves keep · slow · creep · nudge left/right · stop · go-around [10 ms]
+  - [s6] 6 · Predict others FOR EACH move top-K paths + safety margin [15 ms incl. step 4]
+  - [s7] 7 · Score moves progress · comfort · keeps options
+  - [s8] 8 · SAFETY CHECK best move first [15 ms] fits free space? can we still stop? safe even if nobody yields?
+  - [s9] Any move passes?
+  - [s10] 9 · Issue certificate (move ID + path hash + expiry)
+  - [s11] 10 · Control → steer / throttle / brake / gear 50 Hz [5 ms] + indicators
+  - [s12] SAFE STOP brake within known free space · hazards state = BLOCKED (reason + time logged)
+  - [s13] Re-check next tick creep only if a new move passes timeout never means &#x27;go&#x27;
+  - [s14] Record everything (run log → metrics → failure replay)
+
+CONNECTIONS (18 arrows, from → to : what flows):
+  1 · Snapshot all sensors (sync + timestamps) [10 ms]  →  Data fresh? ego ≤50 ms · camera ≤150 ms · LiDAR/radar ≤200 ms
+  Data fresh? ego ≤50 ms · camera ≤150 ms · LiDAR/radar ≤200 ms  →  2 · Perceive objects · road/unknown · signs · gestures · sounds [30 ms]   : yes
+  Data fresh? ego ≤50 ms · camera ≤150 ms · LiDAR/radar ≤200 ms  →  SAFE STOP brake within known free space · hazards state = BLOCKED (reason + time logged)   : no: stale / missing
+  2 · Perceive objects · road/unknown · signs · gestures · sounds [30 ms]  →  3 · Track + locate TrackList + ego pose [10 ms]
+  3 · Track + locate TrackList + ego pose [10 ms]  →  4 · Update belief who is cooperative? (from what they did after OUR last move)
+  4 · Update belief who is cooperative? (from what they did after OUR last move)  →  5 · Generate 8–16 short moves keep · slow · creep · nudge left/right · stop · go-around [10 ms]
+  5 · Generate 8–16 short moves keep · slow · creep · nudge left/right · stop · go-around [10 ms]  →  6 · Predict others FOR EACH move top-K paths + safety margin [15 ms incl. step 4]
+  6 · Predict others FOR EACH move top-K paths + safety margin [15 ms incl. step 4]  →  7 · Score moves progress · comfort · keeps options
+  7 · Score moves progress · comfort · keeps options  →  8 · SAFETY CHECK best move first [15 ms] fits free space? can we still stop? safe even if nobody yields?   : best first
+  8 · SAFETY CHECK best move first [15 ms] fits free space? can we still stop? safe even if nobody yields?  →  Any move passes?
+  Any move passes?  →  9 · Issue certificate (move ID + path hash + expiry)   : yes
+  Any move passes?  →  SAFE STOP brake within known free space · hazards state = BLOCKED (reason + time logged)   : no
+  9 · Issue certificate (move ID + path hash + expiry)  →  10 · Control → steer / throttle / brake / gear 50 Hz [5 ms] + indicators
+  SAFE STOP brake within known free space · hazards state = BLOCKED (reason + time logged)  →  Re-check next tick creep only if a new move passes timeout never means &#x27;go&#x27;
+  Re-check next tick creep only if a new move passes timeout never means &#x27;go&#x27;  →  1 · Snapshot all sensors (sync + timestamps) [10 ms]   : next tick
+  10 · Control → steer / throttle / brake / gear 50 Hz [5 ms] + indicators  →  Record everything (run log → metrics → failure replay)
+  SAFE STOP brake within known free space · hazards state = BLOCKED (reason + time logged)  →  Record everything (run log → metrics → failure replay)
+  10 · Control → steer / throttle / brake / gear 50 Hz [5 ms] + indicators  →  1 · Snapshot all sensors (sync + timestamps) [10 ms]   : car moved → world changed → next tick</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">flowchart TB
+  subgraph T0[&quot;EVERY 100 ms (10 Hz planning tick) — timing budget in brackets&quot;]
+    s1[&quot;1 · Snapshot all sensors&lt;br/&gt;(sync + timestamps) [10 ms]&quot;]
+    s0[&quot;Data fresh?&lt;br/&gt;ego ≤50 ms · camera ≤150 ms · LiDAR/radar ≤200 ms&quot;]
+    s2[&quot;2 · Perceive&lt;br/&gt;objects · road/unknown · signs · gestures · sounds [30 ms]&quot;]
+    s3[&quot;3 · Track + locate&lt;br/&gt;TrackList + ego pose [10 ms]&quot;]
+    s4[&quot;4 · Update belief&lt;br/&gt;who is cooperative? (from what they did after OUR last move)&quot;]
+    s5[&quot;5 · Generate 8–16 short moves&lt;br/&gt;keep · slow · creep · nudge left/right · stop · go-around [10 ms]&quot;]
+    s6[&quot;6 · Predict others FOR EACH move&lt;br/&gt;top-K paths + safety margin [15 ms incl. step 4]&quot;]
+    s7[&quot;7 · Score moves&lt;br/&gt;progress · comfort · keeps options&quot;]
+    s8[&quot;8 · SAFETY CHECK best move first [15 ms]&lt;br/&gt;fits free space? can we still stop?&lt;br/&gt;safe even if nobody yields?&quot;]
+    s9[&quot;Any move passes?&quot;]
+    s10[&quot;9 · Issue certificate&lt;br/&gt;(move ID + path hash + expiry)&quot;]
+    s11[&quot;10 · Control → steer / throttle / brake / gear&lt;br/&gt;50 Hz [5 ms] + indicators&quot;]
+    s12[&quot;SAFE STOP&lt;br/&gt;brake within known free space · hazards&lt;br/&gt;state = BLOCKED (reason + time logged)&quot;]
+    s13[&quot;Re-check next tick&lt;br/&gt;creep only if a new move passes&lt;br/&gt;timeout never means &#x27;go&#x27;&quot;]
+    s14[&quot;Record everything&lt;br/&gt;(run log → metrics → failure replay)&quot;]
+  end
+  s1 --&gt; s0
+  s0 --&gt;|&quot;yes&quot;| s2
+  s0 --&gt;|&quot;no: stale / missing&quot;| s12
+  s2 --&gt; s3
+  s3 --&gt; s4
+  s4 --&gt; s5
+  s5 --&gt; s6
+  s6 --&gt; s7
+  s7 --&gt;|&quot;best first&quot;| s8
+  s8 --&gt; s9
+  s9 --&gt;|&quot;yes&quot;| s10
+  s9 --&gt;|&quot;no&quot;| s12
+  s10 --&gt; s11
+  s12 --&gt; s13
+  s13 --&gt;|&quot;next tick&quot;| s1
+  s11 --&gt; s14
+  s12 --&gt; s14
+  s11 --&gt;|&quot;car moved → world changed → next tick&quot;| s1
+  classDef safety fill:#ffd6d6,stroke:#b00000,stroke-width:3px
+  class s8,s12 safety
+  classDef go fill:#d6f5d6,stroke:#1a7f1a,stroke-width:2px
+  class s10,s11 go</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>

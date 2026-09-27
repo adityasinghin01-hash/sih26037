@@ -1,0 +1,405 @@
+OpenAI Codex v0.155.1
+--------
+workdir: /Users/aditya/dev/sih2026-hq/research/_codex
+model: gpt-6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0de91-707c-7fb1-866a-6652e7898403
+--------
+user
+You are my research partner on SIH26037 (Smart India Hackathon 2026, MathWorks problem statement:
+"Adaptive Path Planning and Collision Avoidance for Autonomous Vehicles on Unstructured Indian Roads").
+Our team cleared the college internal round and must now submit the national idea PPT.
+I (Claude) research in parallel and will check every source you give. Rules: use live web search;
+every fact needs a working URL; if you cannot verify, write UNVERIFIED; never invent. Be concise.
+
+PHASE P0 - THE RULES. Answer each with sources:
+1. The official SIH26037 problem statement text, as close to verbatim as possible (sih.gov.in), incl.
+   expected outcomes/deliverables, datasets named, organisation, category, theme.
+2. SIH 2026 timeline: idea submission deadline (after the internal hackathon), who submits (SPOC/team
+   leader), and what happens next (evaluation, shortlist date, grand finale dates/format).
+3. The official idea PPT template rules (slide count, sections) and any file-format/size rules.
+4. How ideas are evaluated at the national screening: official criteria and weights if published.
+   Also any evaluator guidance for MathWorks-sponsored PS specifically.
+5. Is there any evidence SIH uses AI/automated/keyword-based screening of submitted PPTs? If yes,
+   details. If no evidence, say so. Also: any free tool that scores a PPT against a rubric/PS
+   (e.g. an LLM rubric we can run ourselves).
+6. MathWorks + SIH: past MathWorks PS winners (e.g. SIH 2024/2025), what they built, what MathWorks
+   says it values (MathWorks SIH pages / Student Lounge blog posts).
+End with: a list of anything you could not verify.
+
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+I’ll check the official SIH and MathWorks pages first, then separate confirmed rules from anything the live sources don’t establish. I’m using the source-checking workflow in the available skills for this research.
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/SKILL.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, ignore this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action** — including clarifying questions, exploring the codebase, or checking files. If it turns out wrong for the situation, you don't have to use it.
+
+**Before entering plan mode:** if you haven't already brainstormed, invoke the brainstorming skill first.
+
+Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
+
+## Skill Priority
+
+When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Superpowers' most common process skills, but the rule holds for any of them.
+
+- "Let's build X" → superpowers:brainstorming first, then implementation skills.
+- "Fix this bug" → superpowers:systematic-debugging first, then domain skills.
+
+## Red Flags
+
+These thoughts mean STOP—you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
+| "Let me gather information first" | Skills tell you HOW to gather information. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "This doesn't count as a task" | Action = task. Check for skills. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
+| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
+
+## Platform Adaptation
+
+If your harness appears here, read its reference file for special instructions:
+
+- Codex: `references/codex-tools.md`
+- Pi: `references/pi-tools.md`
+- Antigravity: `references/antigravity-tools.md`
+
+## User Instructions
+
+User instructions (CLAUDE.md, AGENTS.md, GEMINI.md, etc, direct requests) take precedence over skills, which in turn override default behavior. Only skip skill workflows or instructions when your human partner has explicitly told you to.
+
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/using-superpowers/references/codex-tools.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+## Subagent dispatch requires multi-agent support
+
+Add to your Codex config (`~/.codex/config.toml`):
+
+```toml
+[features]
+multi_agent = true
+```
+
+This enables `spawn_agent`, `wait_agent`, and `close_agent` for skills like `dispatching-parallel-agents` and `subagent-driven-development`. When using subagent-driven-development, close reviewer subagents when their review returns. Keep each implementer subagent open until its task's review passes — the fix loop resumes the implementer — then close it. If your harness cannot send another message to a spawned agent, dispatch each fix round as a fresh implementer carrying the brief, the report file, and the findings.
+
+## Environment Detection
+
+Skills that create worktrees or finish branches should detect their
+environment with read-only git commands before proceeding:
+
+```bash
+GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
+GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
+BRANCH=$(git branch --show-current)
+```
+
+- `GIT_DIR != GIT_COMMON` → already in a linked worktree (skip creation)
+- `BRANCH` empty → detached HEAD (cannot branch/push/PR from sandbox)
+
+See `using-git-worktrees` Step 0 and `finishing-a-development-branch`
+Step 1 for how each skill uses these signals.
+
+## Codex App Finishing
+
+When the sandbox blocks branch/push operations (detached HEAD in an
+externally managed worktree), the agent commits all work and informs
+the user to use the App's native controls:
+
+- **"Create branch"** — names the branch, then commit/push/PR via App UI
+- **"Hand off to local"** — transfers work to the user's local checkout
+
+The agent can still run tests, stage files, and output suggested branch
+names, commit messages, and PR descriptions for the user to copy.
+
+exec
+/bin/zsh -lc 'cat /Users/aditya/.agents/skills/dispatching-parallel-agents/SKILL.md' in /Users/aditya/dev/sih2026-hq/research/_codex
+ succeeded in 0ms:
+---
+name: dispatching-parallel-agents
+description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
+---
+
+# Dispatching Parallel Agents
+
+## Overview
+
+You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
+
+When you have multiple unrelated failures (different test files, different subsystems, different bugs), investigating them sequentially wastes time. Each investigation is independent and can happen in parallel.
+
+**Core principle:** Dispatch one agent per independent problem domain. Let them work concurrently.
+
+## When to Use
+
+```dot
+digraph when_to_use {
+    "Multiple failures?" [shape=diamond];
+    "Are they independent?" [shape=diamond];
+    "Single agent investigates all" [shape=box];
+    "One agent per problem domain" [shape=box];
+    "Can they work in parallel?" [shape=diamond];
+    "Sequential agents" [shape=box];
+    "Parallel dispatch" [shape=box];
+
+    "Multiple failures?" -> "Are they independent?" [label="yes"];
+    "Are they independent?" -> "Single agent investigates all" [label="no - related"];
+    "Are they independent?" -> "Can they work in parallel?" [label="yes"];
+    "Can they work in parallel?" -> "Parallel dispatch" [label="yes"];
+    "Can they work in parallel?" -> "Sequential agents" [label="no - shared state"];
+}
+```
+
+**Use when:**
+- 3+ test files failing with different root causes
+- Multiple subsystems broken independently
+- Each problem can be understood without context from others
+- No shared state between investigations
+
+**Don't use when:**
+- Failures are related (fix one might fix others)
+- Need to understand full system state
+- Agents would interfere with each other
+
+## The Pattern
+
+### 1. Identify Independent Domains
+
+Group failures by what's broken:
+- File A tests: Tool approval flow
+- File B tests: Batch completion behavior
+- File C tests: Abort functionality
+
+Each domain is independent - fixing tool approval doesn't affect abort tests.
+
+### 2. Create Focused Agent Tasks
+
+Each agent gets:
+- **Specific scope:** One test file or subsystem
+- **Clear goal:** Make these tests pass
+- **Constraints:** Don't change other code
+- **Expected output:** Summary of what you found and fixed
+
+### 3. Dispatch in Parallel
+
+Issue all three subagent dispatches in the same response — they run in parallel:
+
+```text
+Subagent (general-purpose): "Fix agent-tool-abort.test.ts failures"
+Subagent (general-purpose): "Fix batch-completion-behavior.test.ts failures"
+Subagent (general-purpose): "Fix tool-approval-race-conditions.test.ts failures"
+# All three run concurrently.
+```
+
+Multiple dispatch calls in one response = parallel execution. One per response = sequential.
+
+### 4. Review and Integrate
+
+When agents return:
+- Read each summary
+- Verify fixes don't conflict
+- Run full test suite
+- Integrate all changes
+
+## Agent Prompt Structure
+
+Good agent prompts are:
+1. **Focused** - One clear problem domain
+2. **Self-contained** - All context needed to understand the problem
+3. **Specific about output** - What should the agent return?
+
+```markdown
+Fix the 3 failing tests in src/agents/agent-tool-abort.test.ts:
+
+1. "should abort tool with partial output capture" - expects 'interrupted at' in message
+2. "should handle mixed completed and aborted tools" - fast tool aborted instead of completed
+3. "should properly track pendingToolCount" - expects 3 results but gets 0
+
+These are timing/race condition issues. Your task:
+
+1. Read the test file and understand what each test verifies
+2. Identify root cause - timing issues or actual bugs?
+3. Fix by:
+   - Replacing arbitrary timeouts with event-based waiting
+   - Fixing bugs in abort implementation if found
+   - Adjusting test expectations if testing changed behavior
+
+Do NOT just increase timeouts - find the real issue.
+
+Return: Summary of what you found and what you fixed.
+```
+
+## Common Mistakes
+
+**❌ Too broad:** "Fix all the tests" - agent gets lost
+**✅ Specific:** "Fix agent-tool-abort.test.ts" - focused scope
+
+**❌ No context:** "Fix the race condition" - agent doesn't know where
+**✅ Context:** Paste the error messages and test names
+
+**❌ No constraints:** Agent might refactor everything
+**✅ Constraints:** "Do NOT change production code" or "Fix tests only"
+
+**❌ Vague output:** "Fix it" - you don't know what changed
+**✅ Specific:** "Return summary of root cause and changes"
+
+## When NOT to Use
+
+**Related failures:** Fixing one might fix others - investigate together first
+**Need full context:** Understanding requires seeing entire system
+**Exploratory debugging:** You don't know what's broken yet
+**Shared state:** Agents would interfere (editing same files, using same resources)
+
+## Real Example from Session
+
+**Scenario:** 6 test failures across 3 files after major refactoring
+
+**Failures:**
+- agent-tool-abort.test.ts: 3 failures (timing issues)
+- batch-completion-behavior.test.ts: 2 failures (tools not executing)
+- tool-approval-race-conditions.test.ts: 1 failure (execution count = 0)
+
+**Decision:** Independent domains - abort logic separate from batch completion separate from race conditions
+
+**Dispatch:**
+```
+Agent 1 → Fix agent-tool-abort.test.ts
+Agent 2 → Fix batch-completion-behavior.test.ts
+Agent 3 → Fix tool-approval-race-conditions.test.ts
+```
+
+**Results:**
+- Agent 1: Replaced timeouts with event-based waiting
+- Agent 2: Fixed event structure bug (threadId in wrong place)
+- Agent 3: Added wait for async tool execution to complete
+
+**Integration:** All fixes independent, no conflicts, full suite green
+
+## Verification
+
+After agents return:
+1. **Review each summary** - Understand what changed
+2. **Check for conflicts** - Did agents edit same code?
+3. **Run full suite** - Verify all fixes work together
+4. **Spot check** - Agents can make systematic errors
+
+codex
+I’m using the parallel-research skill to split the independent source checks: SIH rules, the problem statement, and MathWorks history. I’ll cross-check the claims before combining them.
+web search: 
+web search: site:sih.gov.in SIH 2026 evaluation criteria idea screening PPT automated AI screening ...
+web search: 
+web search: site:ai.google.dev aistudio free of charge upload PDF documents ...
+web search: 
+web search: https://www.sih.gov.in/
+web search: 
+web search: site:sih.gov.in/letters/ "SIH 2026" "IDEA SELECTION CRITERIA" ...
+web search: 
+web search: 'SIH26037'
+web search: 
+web search: 
+web search: 
+web search: site:sih.gov.in/letters/Guidelines 2026 SPOC pdf ...
+codex
+The live SIH 2026 problem page shows 30 September 2026 as SIH26037’s idea deadline. I have not found an official 2026 screening rubric, a shortlist date, or evidence of automated PPT screening yet; I’m checking those against older official guidance so the years do not get conflated.
+web search: 
+web search: 'IDEA SELECTION CRITERIA'
+web search: 
+web search: 
+web search: 
+web search: site:sih.gov.in "SIH 2026" "Idea submission- Template" ...
+web search: 
+web search: https://sih.gov.in/letters/2026/SIH2026-IDEA-Presentation-Format.pptx
+exec
+/bin/zsh -lc "curl -IL --max-time 15 'https://sih.gov.in/letters/2026/SIH2026-IDEA-Presentation-Format.pptx'" in /Users/aditya/dev/sih2026-hq/research/_codex
+ exited 6 in 0ms:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: sih.gov.in
+
+web search: 
+web search: "SIH2026-IDEA-Presentation-Format.pptx" ...
+collab: Wait
+web search: 
+web search: "SIH2026-Guidelines-College-SPOC.pdf" ...
+web search: 
+web search: https://www.mathworks.com/academia/students/competitions/hackathons/winners.html
+web search: 
+web search: https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf
+web search: 
+web search: site:mathworks.com Smart India Hackathon 2026 MathWorks values winners ...
+codex
+## P0 — SIH26037 rules and sources
+
+**1. Problem statement.** The [official SIH26037 listing](https://www.sih.gov.in/sih2026PS) gives the title **“Adaptive Path Planning and Collision Avoidance for Autonomous Vehicles on Unstructured Indian Roads.”** Organization and department: **MathWorks**; category: **Software**; theme: **Smart Vehicles**. The full wording is on that page; the following is a close paraphrase of its requirements.
+
+Build a MATLAB/Simulink simulation that combines camera/LiDAR/radar perception, short-term prediction of irregular road-user movement, decision logic, real-time collision-free replanning, and vehicle motion. Test at least five situations: an unmarked village road, an unsignalized urban intersection, a slow-vehicle highway merge, a dense mixed-traffic market, and a sudden cattle crossing. Include at least two detailed RoadRunner scenes. The stated **finished-solution deliverables** are the simulation model, scenes, results for replanning latency/path smoothness/scenario completion rate, a short technical report, and a demo video. The listing does **not** say all those assets must accompany the idea PPT. [Official listing](https://www.sih.gov.in/sih2026PS)
+
+Permitted data includes Automated Driving Toolbox datasets, RoadRunner samples, team-created scenarios, and public Indian traffic data. The listing names the live [India Driving Dataset](https://idd.insaan.iiit.ac.in/). Its other named source, “Mendeley traffic dataset,” has a truncated URL (`https://data.mend`) on the [SIH listing](https://www.sih.gov.in/sih2026PS); the intended dataset is **UNVERIFIED**.
+
+**2. Timeline and submitter.** The live [SIH26037 row](https://www.sih.gov.in/sih2026PS) states **30 September 2026** for idea submission. A [university-hosted copy of SIH 2026 guidelines](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf) instead says **15 September** and contains a stale “SIH2025” label. These sources conflict; use the live PS deadline while the SPOC checks what the team’s portal actually permits.
+
+Under that [2026 guidelines copy](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf), the **college SPOC nominates** internal-round teams; the **nominated team leader** then logs in, enters the idea, and uploads its PDF. Experts evaluate submissions; selections appear on the portal and are emailed. About **4–5 teams per PS may** reach the finale. The copy proposes an **offline finale at nodal centres in December 2026**. An exact shortlist announcement date and exact finale dates are **UNVERIFIED**. The SPOC/leader sequence also appears in [SIH-hosted 2024 guidance](https://www.sih.gov.in/letters/Guidelines-College-SPOC.pdf).
+
+**3. Idea PPT.** [SIH’s 2026 PPTX template](https://sih.gov.in/letters/2026/SIH2026-IDEA-Presentation-Format.pptx) is linked by [MGIT’s SIH 2026 page](https://mgit.ac.in/events/mgit-internal-hackathon-smart-india-hackathon-sih-2026/). An [accessible copy of the template text](https://www.scribd.com/document/1075380264/SIH2026-IDEA-Presentation-Format) specifies **at most six submitted slides, title included**: title; idea/proposed solution; technical approach; feasibility/viability; impact/benefits; research/references. Delete the seventh instruction slide, keep the prescribed headings, favour points and diagrams, and **upload PDF**, not PPTX. A national portal **file-size limit is UNVERIFIED**. [Template text](https://www.scribd.com/document/1075380264/SIH2026-IDEA-Presentation-Format)
+
+**4. National screening.** The [2026 guidelines copy, p. 19](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf) lists novelty, complexity, clarity and detail in the prescribed format, feasibility, practicability, sustainability, scale of impact, user experience, and potential for future progression. The same list appears in [SIH-hosted 2024 guidance](https://www.sih.gov.in/letters/Guidelines-College-SPOC.pdf). **2026 criterion weights and separate MathWorks evaluator guidance are UNVERIFIED.** SIH26037’s own [required scenarios and performance evidence](https://www.sih.gov.in/sih2026PS) are the clearest PS-specific requirements to address.
+
+**5. Automated screening and a practice scorer.** I found **no official evidence** that SIH uses AI, keyword matching, or automated scoring to shortlist idea PPTs. The available [guidelines describe expert evaluation](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf); that does not prove automation is absent. For a **practice review only**, [ChatGPT Free supports file uploads](https://help.openai.com/en/articles/9275245-using-chatgpt-s-free-tier-faq), including [PDF and PPTX](https://help.openai.com/en/articles/8983675-what-types-of-files-are-supported). Upload the PS text, template and draft PDF, then ask it to score each published criterion **without invented weights**, cite the slide evidence for each score, and flag every missing PS deliverable. Its score would **not** predict SIH’s decision.
+
+**6. MathWorks precedent.** MathWorks’ [winners archive](https://www.mathworks.com/academia/students/competitions/hackathons/winners.html) names **Team TwinX** as its SIH 2025 PS winner. Its [Student Lounge account](https://blogs.mathworks.com/student-lounge/2026/04/06/from-real-roads-to-real-simulations-how-team-twinx-won-smart-india-hackathon-2025/) describes turning real road data into simulation-ready traffic scenarios with Indian traffic behaviour and hazards. The archive names **Team Solar Masters** as its 2024 winner; its [account](https://blogs.mathworks.com/student-lounge/2025/06/13/innovation-meets-excellence-solar-masters-winning-journey-at-smart-india-hackathon-2024/) describes a MATLAB/Simulink/Simscape single-axis solar tracker with hardware and monitoring. These are examples of completed work, **not published judging weights**. MathWorks’ [hackathon page](https://www.mathworks.com/academia/students/competitions/hackathons.html) describes originality and technical knowledge among past winners; the [SIH26037 listing](https://www.sih.gov.in/sih2026PS) specifically asks for realistic scenarios and closed-loop performance evidence.
+
+**Could not verify:** the intended Mendeley dataset/link; a 2026 national PPT size limit; exact shortlist and finale dates; screening weights; separate MathWorks SIH26037 evaluator instructions; or SIH use of automated PPT screening.
+tokens used
+78,660
+## P0 — SIH26037 rules and sources
+
+**1. Problem statement.** The [official SIH26037 listing](https://www.sih.gov.in/sih2026PS) gives the title **“Adaptive Path Planning and Collision Avoidance for Autonomous Vehicles on Unstructured Indian Roads.”** Organization and department: **MathWorks**; category: **Software**; theme: **Smart Vehicles**. The full wording is on that page; the following is a close paraphrase of its requirements.
+
+Build a MATLAB/Simulink simulation that combines camera/LiDAR/radar perception, short-term prediction of irregular road-user movement, decision logic, real-time collision-free replanning, and vehicle motion. Test at least five situations: an unmarked village road, an unsignalized urban intersection, a slow-vehicle highway merge, a dense mixed-traffic market, and a sudden cattle crossing. Include at least two detailed RoadRunner scenes. The stated **finished-solution deliverables** are the simulation model, scenes, results for replanning latency/path smoothness/scenario completion rate, a short technical report, and a demo video. The listing does **not** say all those assets must accompany the idea PPT. [Official listing](https://www.sih.gov.in/sih2026PS)
+
+Permitted data includes Automated Driving Toolbox datasets, RoadRunner samples, team-created scenarios, and public Indian traffic data. The listing names the live [India Driving Dataset](https://idd.insaan.iiit.ac.in/). Its other named source, “Mendeley traffic dataset,” has a truncated URL (`https://data.mend`) on the [SIH listing](https://www.sih.gov.in/sih2026PS); the intended dataset is **UNVERIFIED**.
+
+**2. Timeline and submitter.** The live [SIH26037 row](https://www.sih.gov.in/sih2026PS) states **30 September 2026** for idea submission. A [university-hosted copy of SIH 2026 guidelines](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf) instead says **15 September** and contains a stale “SIH2025” label. These sources conflict; use the live PS deadline while the SPOC checks what the team’s portal actually permits.
+
+Under that [2026 guidelines copy](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf), the **college SPOC nominates** internal-round teams; the **nominated team leader** then logs in, enters the idea, and uploads its PDF. Experts evaluate submissions; selections appear on the portal and are emailed. About **4–5 teams per PS may** reach the finale. The copy proposes an **offline finale at nodal centres in December 2026**. An exact shortlist announcement date and exact finale dates are **UNVERIFIED**. The SPOC/leader sequence also appears in [SIH-hosted 2024 guidance](https://www.sih.gov.in/letters/Guidelines-College-SPOC.pdf).
+
+**3. Idea PPT.** [SIH’s 2026 PPTX template](https://sih.gov.in/letters/2026/SIH2026-IDEA-Presentation-Format.pptx) is linked by [MGIT’s SIH 2026 page](https://mgit.ac.in/events/mgit-internal-hackathon-smart-india-hackathon-sih-2026/). An [accessible copy of the template text](https://www.scribd.com/document/1075380264/SIH2026-IDEA-Presentation-Format) specifies **at most six submitted slides, title included**: title; idea/proposed solution; technical approach; feasibility/viability; impact/benefits; research/references. Delete the seventh instruction slide, keep the prescribed headings, favour points and diagrams, and **upload PDF**, not PPTX. A national portal **file-size limit is UNVERIFIED**. [Template text](https://www.scribd.com/document/1075380264/SIH2026-IDEA-Presentation-Format)
+
+**4. National screening.** The [2026 guidelines copy, p. 19](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf) lists novelty, complexity, clarity and detail in the prescribed format, feasibility, practicability, sustainability, scale of impact, user experience, and potential for future progression. The same list appears in [SIH-hosted 2024 guidance](https://www.sih.gov.in/letters/Guidelines-College-SPOC.pdf). **2026 criterion weights and separate MathWorks evaluator guidance are UNVERIFIED.** SIH26037’s own [required scenarios and performance evidence](https://www.sih.gov.in/sih2026PS) are the clearest PS-specific requirements to address.
+
+**5. Automated screening and a practice scorer.** I found **no official evidence** that SIH uses AI, keyword matching, or automated scoring to shortlist idea PPTs. The available [guidelines describe expert evaluation](https://sih-uit.vercel.app/assets/sih-2026-guidelines.pdf); that does not prove automation is absent. For a **practice review only**, [ChatGPT Free supports file uploads](https://help.openai.com/en/articles/9275245-using-chatgpt-s-free-tier-faq), including [PDF and PPTX](https://help.openai.com/en/articles/8983675-what-types-of-files-are-supported). Upload the PS text, template and draft PDF, then ask it to score each published criterion **without invented weights**, cite the slide evidence for each score, and flag every missing PS deliverable. Its score would **not** predict SIH’s decision.
+
+**6. MathWorks precedent.** MathWorks’ [winners archive](https://www.mathworks.com/academia/students/competitions/hackathons/winners.html) names **Team TwinX** as its SIH 2025 PS winner. Its [Student Lounge account](https://blogs.mathworks.com/student-lounge/2026/04/06/from-real-roads-to-real-simulations-how-team-twinx-won-smart-india-hackathon-2025/) describes turning real road data into simulation-ready traffic scenarios with Indian traffic behaviour and hazards. The archive names **Team Solar Masters** as its 2024 winner; its [account](https://blogs.mathworks.com/student-lounge/2025/06/13/innovation-meets-excellence-solar-masters-winning-journey-at-smart-india-hackathon-2024/) describes a MATLAB/Simulink/Simscape single-axis solar tracker with hardware and monitoring. These are examples of completed work, **not published judging weights**. MathWorks’ [hackathon page](https://www.mathworks.com/academia/students/competitions/hackathons.html) describes originality and technical knowledge among past winners; the [SIH26037 listing](https://www.sih.gov.in/sih2026PS) specifically asks for realistic scenarios and closed-loop performance evidence.
+
+**Could not verify:** the intended Mendeley dataset/link; a 2026 national PPT size limit; exact shortlist and finale dates; screening weights; separate MathWorks SIH26037 evaluator instructions; or SIH use of automated PPT screening.

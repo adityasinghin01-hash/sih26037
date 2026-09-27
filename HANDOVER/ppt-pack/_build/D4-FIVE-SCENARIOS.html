@@ -1,0 +1,188 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D4 · The 5 required Indian scenarios</title>
+<style>
+@page { size: A2 landscape; margin: 12mm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#111; }
+h1 { font-size: 26px; margin: 0 0 4px; } .sub { color:#444; margin-bottom: 10px; font-size: 14px; }
+.mermaid { text-align:center; }
+h2 { font-size: 18px; border-bottom: 2px solid #333; margin-top: 18px; page-break-before: always; }
+pre.spec, pre.code { font-size: 11.5px; white-space: pre-wrap; background:#f6f6f6; padding:10px; border:1px solid #ccc; }
+table { border-collapse: collapse; font-size: 13px; margin: 8px 0; } td, th { border:1px solid #888; padding:4px 7px; vertical-align: top; }
+th { background:#eee; } .note { font-size: 12px; color:#333; }
+</style></head><body>
+<h1>D4 · The 5 required Indian scenarios</h1><div class="sub">Each scenario: who is on the road → which Indian difficulties it tests (P1 catalogue IDs) → test family → what the car must show.</div>
+<pre class="mermaid">flowchart LR
+  subgraph PS[&quot;5 REQUIRED PS SCENARIOS — each run × 10 seeds, pass = ≥9/10 complete + zero contacts&quot;]
+    subgraph Vg[&quot;1 · Unmarked village road&quot;]
+      Va[&quot;Actors: tractor-trolley · bullock cart · cycle · cattle on verge · no edge lines · gravel&quot;]
+      Vi[&quot;P1 difficulties: IDs 11, 13–15, 38, 43, 49&quot;]
+      Vf[&quot;Test family: F1 village mix + F7 surface + F9 weather&quot;]
+      Vp[&quot;Must show: find safe edge, pass slow vehicle only with sight distance&quot;]
+    end
+    subgraph Ug[&quot;2 · Unsignalled urban intersection&quot;]
+      Ua[&quot;Actors: cross traffic · turning autos · jaywalkers · police/pedestrian hand signals&quot;]
+      Ui[&quot;P1 difficulties: IDs 16, 20–22, 28, 53–61&quot;]
+      Uf[&quot;Test family: F4 junction + F2/F3&quot;]
+      Up[&quot;Must show: negotiate gap, no deadlock, no forced entry&quot;]
+    end
+    subgraph Hg[&quot;3 · Highway merge with slow vehicles&quot;]
+      Ha[&quot;Actors: slow truck · tractor on highway · wrong-way vehicle · service-road entry&quot;]
+      Hi[&quot;P1 difficulties: IDs 5, 6, 11, 52&quot;]
+      Hf[&quot;Test family: F5 highway + F4/F9&quot;]
+      Hp[&quot;Must show: verified gap despite speed difference&quot;]
+    end
+    subgraph Mg[&quot;4 · Dense market&quot;]
+      Ma[&quot;Actors: 2W seepage (0.9 m gaps) · auto pickup stops · vendors · crowd · bus hiding a person&quot;]
+      Mi[&quot;P1 difficulties: IDs 1–4, 9, 10, 25–27, 75, 76&quot;]
+      Mf[&quot;Test family: F2 market + F3 pedestrians + F9&quot;]
+      Mp[&quot;Must show: keep moving safely or declare BLOCKED&quot;]
+    end
+    subgraph Cg[&quot;5 · Sudden cattle crossing&quot;]
+      Ca[&quot;Actors: cow dashes from verge · cow lying on road · herd&quot;]
+      Ci[&quot;P1 difficulties: IDs 31–34&quot;]
+      Cf[&quot;Test family: F6 animals + F1/F7&quot;]
+      Cp[&quot;Must show: detect, reserve its reachable zone, stop in time&quot;]
+    end
+  end
+  subgraph OV[&quot;APPLIED TO ALL 5&quot;]
+    ov1[&quot;Weather overlay: rain · fog · night (F9)&quot;]
+    ov2[&quot;Fault injection: sensor dropout · delay (F10)&quot;]
+    ov3[&quot;Metrics: replanning latency · path smoothness · completion rate&quot;]
+  end
+  Va --&gt; Vi
+  Vi --&gt; Vf
+  Vf --&gt; Vp
+  Ua --&gt; Ui
+  Ui --&gt; Uf
+  Uf --&gt; Up
+  Ha --&gt; Hi
+  Hi --&gt; Hf
+  Hf --&gt; Hp
+  Ma --&gt; Mi
+  Mi --&gt; Mf
+  Mf --&gt; Mp
+  Ca --&gt; Ci
+  Ci --&gt; Cf
+  Cf --&gt; Cp
+  ov1 --&gt; Va
+  ov1 --&gt; Ua
+  ov1 --&gt; Ha
+  ov1 --&gt; Ma
+  ov1 --&gt; Ca</pre>
+
+<h2>Exact spec for redrawing (give this page to Gemini / Nano Banana)</h2>
+<p class="note">Redraw rule: keep every box, every group and every arrow below. Do not add, merge or drop any. Styling is free; structure is fixed.</p>
+<pre class="spec">BOXES (grouped exactly as drawn):
+■ 5 REQUIRED PS SCENARIOS — each run × 10 seeds, pass = ≥9/10 complete + zero contacts
+  ■ 1 · Unmarked village road
+    - [Va] Actors: tractor-trolley · bullock cart · cycle · cattle on verge · no edge lines · gravel
+    - [Vi] P1 difficulties: IDs 11, 13–15, 38, 43, 49
+    - [Vf] Test family: F1 village mix + F7 surface + F9 weather
+    - [Vp] Must show: find safe edge, pass slow vehicle only with sight distance
+  ■ 2 · Unsignalled urban intersection
+    - [Ua] Actors: cross traffic · turning autos · jaywalkers · police/pedestrian hand signals
+    - [Ui] P1 difficulties: IDs 16, 20–22, 28, 53–61
+    - [Uf] Test family: F4 junction + F2/F3
+    - [Up] Must show: negotiate gap, no deadlock, no forced entry
+  ■ 3 · Highway merge with slow vehicles
+    - [Ha] Actors: slow truck · tractor on highway · wrong-way vehicle · service-road entry
+    - [Hi] P1 difficulties: IDs 5, 6, 11, 52
+    - [Hf] Test family: F5 highway + F4/F9
+    - [Hp] Must show: verified gap despite speed difference
+  ■ 4 · Dense market
+    - [Ma] Actors: 2W seepage (0.9 m gaps) · auto pickup stops · vendors · crowd · bus hiding a person
+    - [Mi] P1 difficulties: IDs 1–4, 9, 10, 25–27, 75, 76
+    - [Mf] Test family: F2 market + F3 pedestrians + F9
+    - [Mp] Must show: keep moving safely or declare BLOCKED
+  ■ 5 · Sudden cattle crossing
+    - [Ca] Actors: cow dashes from verge · cow lying on road · herd
+    - [Ci] P1 difficulties: IDs 31–34
+    - [Cf] Test family: F6 animals + F1/F7
+    - [Cp] Must show: detect, reserve its reachable zone, stop in time
+■ APPLIED TO ALL 5
+  - [ov1] Weather overlay: rain · fog · night (F9)
+  - [ov2] Fault injection: sensor dropout · delay (F10)
+  - [ov3] Metrics: replanning latency · path smoothness · completion rate
+
+CONNECTIONS (20 arrows, from → to : what flows):
+  Actors: tractor-trolley · bullock cart · cycle · cattle on verge · no edge lines · gravel  →  P1 difficulties: IDs 11, 13–15, 38, 43, 49
+  P1 difficulties: IDs 11, 13–15, 38, 43, 49  →  Test family: F1 village mix + F7 surface + F9 weather
+  Test family: F1 village mix + F7 surface + F9 weather  →  Must show: find safe edge, pass slow vehicle only with sight distance
+  Actors: cross traffic · turning autos · jaywalkers · police/pedestrian hand signals  →  P1 difficulties: IDs 16, 20–22, 28, 53–61
+  P1 difficulties: IDs 16, 20–22, 28, 53–61  →  Test family: F4 junction + F2/F3
+  Test family: F4 junction + F2/F3  →  Must show: negotiate gap, no deadlock, no forced entry
+  Actors: slow truck · tractor on highway · wrong-way vehicle · service-road entry  →  P1 difficulties: IDs 5, 6, 11, 52
+  P1 difficulties: IDs 5, 6, 11, 52  →  Test family: F5 highway + F4/F9
+  Test family: F5 highway + F4/F9  →  Must show: verified gap despite speed difference
+  Actors: 2W seepage (0.9 m gaps) · auto pickup stops · vendors · crowd · bus hiding a person  →  P1 difficulties: IDs 1–4, 9, 10, 25–27, 75, 76
+  P1 difficulties: IDs 1–4, 9, 10, 25–27, 75, 76  →  Test family: F2 market + F3 pedestrians + F9
+  Test family: F2 market + F3 pedestrians + F9  →  Must show: keep moving safely or declare BLOCKED
+  Actors: cow dashes from verge · cow lying on road · herd  →  P1 difficulties: IDs 31–34
+  P1 difficulties: IDs 31–34  →  Test family: F6 animals + F1/F7
+  Test family: F6 animals + F1/F7  →  Must show: detect, reserve its reachable zone, stop in time
+  Weather overlay: rain · fog · night (F9)  →  Actors: tractor-trolley · bullock cart · cycle · cattle on verge · no edge lines · gravel
+  Weather overlay: rain · fog · night (F9)  →  Actors: cross traffic · turning autos · jaywalkers · police/pedestrian hand signals
+  Weather overlay: rain · fog · night (F9)  →  Actors: slow truck · tractor on highway · wrong-way vehicle · service-road entry
+  Weather overlay: rain · fog · night (F9)  →  Actors: 2W seepage (0.9 m gaps) · auto pickup stops · vendors · crowd · bus hiding a person
+  Weather overlay: rain · fog · night (F9)  →  Actors: cow dashes from verge · cow lying on road · herd</pre>
+<h2>Mermaid source (paste into mermaid.live to re-render)</h2>
+<pre class="code">flowchart LR
+  subgraph PS[&quot;5 REQUIRED PS SCENARIOS — each run × 10 seeds, pass = ≥9/10 complete + zero contacts&quot;]
+    subgraph Vg[&quot;1 · Unmarked village road&quot;]
+      Va[&quot;Actors: tractor-trolley · bullock cart · cycle · cattle on verge · no edge lines · gravel&quot;]
+      Vi[&quot;P1 difficulties: IDs 11, 13–15, 38, 43, 49&quot;]
+      Vf[&quot;Test family: F1 village mix + F7 surface + F9 weather&quot;]
+      Vp[&quot;Must show: find safe edge, pass slow vehicle only with sight distance&quot;]
+    end
+    subgraph Ug[&quot;2 · Unsignalled urban intersection&quot;]
+      Ua[&quot;Actors: cross traffic · turning autos · jaywalkers · police/pedestrian hand signals&quot;]
+      Ui[&quot;P1 difficulties: IDs 16, 20–22, 28, 53–61&quot;]
+      Uf[&quot;Test family: F4 junction + F2/F3&quot;]
+      Up[&quot;Must show: negotiate gap, no deadlock, no forced entry&quot;]
+    end
+    subgraph Hg[&quot;3 · Highway merge with slow vehicles&quot;]
+      Ha[&quot;Actors: slow truck · tractor on highway · wrong-way vehicle · service-road entry&quot;]
+      Hi[&quot;P1 difficulties: IDs 5, 6, 11, 52&quot;]
+      Hf[&quot;Test family: F5 highway + F4/F9&quot;]
+      Hp[&quot;Must show: verified gap despite speed difference&quot;]
+    end
+    subgraph Mg[&quot;4 · Dense market&quot;]
+      Ma[&quot;Actors: 2W seepage (0.9 m gaps) · auto pickup stops · vendors · crowd · bus hiding a person&quot;]
+      Mi[&quot;P1 difficulties: IDs 1–4, 9, 10, 25–27, 75, 76&quot;]
+      Mf[&quot;Test family: F2 market + F3 pedestrians + F9&quot;]
+      Mp[&quot;Must show: keep moving safely or declare BLOCKED&quot;]
+    end
+    subgraph Cg[&quot;5 · Sudden cattle crossing&quot;]
+      Ca[&quot;Actors: cow dashes from verge · cow lying on road · herd&quot;]
+      Ci[&quot;P1 difficulties: IDs 31–34&quot;]
+      Cf[&quot;Test family: F6 animals + F1/F7&quot;]
+      Cp[&quot;Must show: detect, reserve its reachable zone, stop in time&quot;]
+    end
+  end
+  subgraph OV[&quot;APPLIED TO ALL 5&quot;]
+    ov1[&quot;Weather overlay: rain · fog · night (F9)&quot;]
+    ov2[&quot;Fault injection: sensor dropout · delay (F10)&quot;]
+    ov3[&quot;Metrics: replanning latency · path smoothness · completion rate&quot;]
+  end
+  Va --&gt; Vi
+  Vi --&gt; Vf
+  Vf --&gt; Vp
+  Ua --&gt; Ui
+  Ui --&gt; Uf
+  Uf --&gt; Up
+  Ha --&gt; Hi
+  Hi --&gt; Hf
+  Hf --&gt; Hp
+  Ma --&gt; Mi
+  Mi --&gt; Mf
+  Mf --&gt; Mp
+  Ca --&gt; Ci
+  Ci --&gt; Cf
+  Cf --&gt; Cp
+  ov1 --&gt; Va
+  ov1 --&gt; Ua
+  ov1 --&gt; Ha
+  ov1 --&gt; Ma
+  ov1 --&gt; Ca</pre>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default', flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis'}, gantt:{useMaxWidth:true}});</script>
+</body></html>
