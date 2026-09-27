@@ -19,7 +19,7 @@ cd sih26037
 `-b integration/dense-planner` matters: it is the newest branch. `main` is older.
 
 ## Step 3 · Download the big files (models, results, renders, videos, Blender city)
-Google Drive folder: **https://drive.google.com/your-real-link**
+Google Drive folder: **https://drive.google.com/drive/folders/1fYWRQTFoailHS5TXGErVLHJxLlH_WU7D?usp=sharing**
 
 | Zip | Size | What | Need it? |
 |---|---|---|---|
