@@ -113,3 +113,51 @@ Stateflow                                             Version 26.1        (R2026
 
 ===== VERDICT =====
 All required products present. Proceed to check02_lidar_cow.m
+
+===== CHECK 0+1 : ENVIRONMENT =====
+Date run : 29-Sep-2026 02:11:33
+Computer : PCWIN64
+
+--- MATLAB VERSION ---
+24.2.0.3212159 (R2024b) Update 9
+Release  : 2024b
+
+--- REQUIRED PRODUCTS ---
+  [ OK ]      MATLAB                             v24.2
+  [ MISSING ] Simulink                           <-- BLOCKS: the closed loop, Stateflow charts
+  [ OK ]      Automated Driving Toolbox          v24.2
+  [ OK ]      Computer Vision Toolbox            v24.2
+  [ OK ]      Image Processing Toolbox           v24.2
+  [ OK ]      Deep Learning Toolbox              v24.2
+  [ MISSING ] Stateflow                          <-- BLOCKS: the planner state machine
+  [ MISSING ] Sensor Fusion and Tracking Toolbox <-- BLOCKS: S1 TrackList, AND THE BASELINE
+  [ MISSING ] Navigation Toolbox                 <-- BLOCKS: Frenet planner, AND THE BASELINE
+
+--- NEEDED FOR SPECIFIC JOBS ---
+  [ absent ]  Lidar Toolbox                  PointPillars (model 5). Not needed otherwise
+  [ absent ]  Mapping Toolbox                real terrain elevation for the ghat road
+  [ OK ]      Parallel Computing Toolbox
+  [ absent ]  Simulink 3D Animation          the Unreal scenes. Stretch goal only
+
+--- YOLOX TRAINING (model 3) ---
+  [ OK ]      trainYOLOXObjectDetector is available
+
+--- ONNX IMPORT ---
+  [ OK ]      importNetworkFromONNX is available
+
+--- FULL INSTALLED PRODUCT LIST ---
+-----------------------------------------------------------------------------------------------------
+MATLAB Version: 24.2.0.3212159 (R2024b) Update 9
+MATLAB License Number: 41087767
+Operating System: Microsoft Windows 11 Home Single Language Version 10.0 (Build 26200)
+Java Version: Java 1.8.0_202-b08 with Oracle Corporation Java HotSpot(TM) 64-Bit Server VM mixed mode
+-----------------------------------------------------------------------------------------------------
+MATLAB                                                Version 24.2        (R2024b)
+Automated Driving Toolbox                             Version 24.2        (R2024b)
+Computer Vision Toolbox                               Version 24.2        (R2024b)
+Deep Learning Toolbox                                 Version 24.2        (R2024b)
+Image Processing Toolbox                              Version 24.2        (R2024b)
+Parallel Computing Toolbox                            Version 24.2        (R2024b)
+
+===== VERDICT =====
+BLOCKED. Email the licence admin with the MISSING lines above.

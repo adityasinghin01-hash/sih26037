@@ -161,6 +161,10 @@ arguments
                                               % handing the planner exact ground truth
     opts.Interactive(1,1) logical = true
     opts.Snap       (1,1) string  = ""       % write a frame here and exit
+    opts.SnapState  (1,1) string  = ""       % optional recorded state to snapshot
+    opts.SnapWarmupFrames (1,1) double = 1   % exercise sequential view updates before snap
+    opts.CameraVideo (1,1) string = ""       % offline footage for submission view only
+    opts.SubmissionView (1,1) logical = false % three-panel SIH submission presentation
     opts.Cow        (1,1) string  = "blocking" % "blocking" | "verge" | "none"
     opts.InjectStep (1,1) double  = NaN      % automated rehearsal/test hook; UI uses clicks
     opts.InjectXY   (1,2) double  = [NaN NaN]
@@ -219,6 +223,7 @@ else
     LOG.Stamp = routeStamp(D);
     saveCache(cacheFile, LOG);
 end
+D.ReplaySource = cacheFile;                    % presentation provenance only
 
 % ================================================================= the evidence
 % "A number without its config is not a result" - AGENTS.md section 3. Written
@@ -1541,17 +1546,32 @@ end
 function R = play(D, LOG, DT, opts)
 %PLAY  Draw the recorded run at the true DT against a real clock.
 n = numel(LOG.t);
-sc.plannerView('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
+view = @sc.plannerView;
+if opts.SubmissionView, view = @sc.submissionView; end
+view('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
     'Hazards',D.Hazards,'Title',D.Title,'ViewSpan',opts.ViewSpan, ...
     'Interactive',opts.Interactive,'EnableInjection',opts.Interactive, ...
-    'Sensed',D.Sensed));
+    'Sensed',D.Sensed,'ReplaySource',D.ReplaySource, ...
+    'CameraVideo',opts.CameraVideo));
 
 if strlength(opts.Snap) > 0                       % one frame, for a screenshot
     i = max(1, round(n/2));
-    sc.plannerView('step', frameOf(LOG, i));
-    sc.plannerView('snap', struct('file',char(opts.Snap)));
-    sc.plannerView('close');
-    R = struct('Frames',1,'Snapped',opts.Snap);
+    if strlength(opts.SnapState) > 0
+        for k = 1:n
+            if isfield(LOG.cmd{k},'State') && contains(string(LOG.cmd{k}.State),opts.SnapState, ...
+                    'IgnoreCase',true)
+                i = k;
+                break
+            end
+        end
+    end
+    firstSnapFrame = max(1,i-max(1,round(opts.SnapWarmupFrames))+1);
+    for k = firstSnapFrame:i
+        view('step', frameOf(LOG, k));
+    end
+    view('snap', struct('file',char(opts.Snap)));
+    view('close', struct());
+    R = struct('Frames',i-firstSnapFrame+1,'Snapped',opts.Snap);
     fprintf('wrote %s\n', opts.Snap);
     return
 end
@@ -1573,7 +1593,7 @@ if batchStartupOptionUsed && strlength(opts.Snap) == 0
              'the playback leg is skipped - there is nothing to watch and no\n' ...
              'Snap= was asked for. Re-run from a MATLAB session WITH a display\n' ...
              '(desktop, or -nodesktop) to watch it; the cache means that is fast.\n']);
-    sc.plannerView('close');
+    view('close', struct());
     R = struct('Frames',0,'Elapsed_s',0,'Quit',false,'MeanFrame_ms',NaN, ...
                'MedianFrame_ms',NaN,'P95Frame_ms',NaN,'MaxFrame_ms',NaN, ...
                'OverBudget',0,'MaxLag_s',NaN,'Headless',true);
@@ -1589,11 +1609,11 @@ lastObstacleS = NaN;  lastObstacleE = NaN;
 % fourteen labelled hazards is a genuine one-off cost (measured at ~14 s the
 % first time MATLAB touches these graphics paths) and charging it to the
 % playback clock would make the car appear to sprint to catch up.
-sc.plannerView('step', frameOf(LOG, 1));
+view('step', frameOf(LOG, 1));
 tClock = tic;  pausedFor = 0;  quit = false;  drawn = 1;
 i = 2;
 while i <= n
-    ctl = sc.plannerView('step', frameOf(LOG, i));
+    ctl = view('step', frameOf(LOG, i));
     if isfinite(opts.InjectStep) && i == round(opts.InjectStep) && all(isfinite(opts.InjectXY))
         % Deterministic twin of a mouse event for regression testing and a
         % pre-scripted rehearsal fallback. The normal demo leaves this off.
@@ -1609,7 +1629,7 @@ while i <= n
             % terminal line. Four m/s makes this a controlled pass; the local
             % re-solve still decides the candidate trajectory and speed below.
             liveHz = hz("barrier", hs, he, "LIVE OBSTACLE - judge click", 0.35, 4.0, 0);
-            sc.plannerView('status', struct('Text',sprintf( ...
+            view('status', struct('Text',sprintf( ...
                 'LIVE RE-PLAN TRIGGERED AT s=%.1f m, e=%+.1f m', hs, he)));
             nextD = D;  nextD.Hazards(end+1) = liveHz;
             try
@@ -1620,19 +1640,19 @@ while i <= n
                 nReplans = nReplans + 1;
                 lastReplanS = LOG.s(i);
                 lastObstacleS = hs;  lastObstacleE = he;
-                sc.plannerView('addHazard', struct('Hazard',liveHz));
-                sc.plannerView('status', struct('Text',sprintf( ...
+                view('addHazard', struct('Hazard',liveHz));
+                view('status', struct('Text',sprintf( ...
                     'LIVE RE-PLAN COMPLETE FROM s=%.1f m  (%g Hz)', LOG.s(i), 20/opts.PlanEvery)));
             catch me
                 % The already-watched prefix and the original cached tail both
                 % survive. A failed live feature must not destroy the demo.
-                sc.plannerView('status', struct('Text', ...
+                view('status', struct('Text', ...
                     "LIVE RE-PLAN FAILED - ORIGINAL SAFE TAIL RETAINED"));
                 warning('demo_play:liveReplan','live re-plan failed: %s',me.message);
             end
         else
             nRejected = nRejected + 1;
-            sc.plannerView('status', struct('Text',"OBSTACLE NOT PLACED - " + why));
+            view('status', struct('Text',"OBSTACLE NOT PLACED - " + why));
         end
     end
     drawn = i;
@@ -1678,7 +1698,7 @@ fprintf('  frames over the %.0f ms budget: %d (%.2f%%)\n', 1000*DT, R.OverBudget
         100*R.OverBudget/max(drawn,1));
 fprintf('  worst drift from the real clock: %.3f s\n', R.MaxLag_s);
 fprintf('  live re-plans: %d  rejected clicks: %d\n', R.LiveReplans, R.RejectedClicks);
-if ~quit, fprintf('  (window left open - close it or call sc.plannerView(''close''))\n'); end
+if ~quit, fprintf('  (presentation window left open - close it when finished)\n'); end
 end
 
 function fp = plannerFingerprint()
