@@ -688,3 +688,303 @@ The chapter is complete only when a reviewer can choose any visible agent and fo
 TrackID across the synchronized camera and bird's-eye panels while watching the planner react to
 that same recorded scene. The separate real-road perception chapter must remain clearly separated
 before and after editing.
+
+---
+
+## Offline Real-World Perception Chapter — Implementation Plan
+
+> Added 30 September 2026.
+> This chapter is a **standalone presentation unit**, completely separate from the synchronized
+> three-panel planner demo. It shows genuine Indian-road camera footage with YOLOX detection
+> overlays and DeepLab v3+ driveable-road shading. No planner is connected. No metric depth,
+> calibration, or S1 TrackList is produced or implied.
+
+### Layout (agreed in design review, 30 Sep 2026)
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  OFFLINE · REAL-WORLD PERCEPTION         drive_10 · 12.07s · 848×478     │
+│  Unstructured Indian Road — Perception Analysis  PLANNING NOT CONNECTED   │
+├─────────────────────────────────────────┬────────────────────────────────┤
+│                                         │  YOLOX · This Frame            │
+│   VIDEO PANEL (16:9)                    │  Total | Vehicles | Persons    │
+│   · YOLOX bounding boxes (per class)    │  confidence bars per class     │
+│   · DeepLab road shading (green tint)   │  scene density badge           │
+│   · Frame counter (top-left)            ├────────────────────────────────┤
+│   · "OFFLINE CAMERA" badge (top-right)  │  DeepLab v3+ Segmentation      │
+│   · "DRIVEABLE AREA" legend (btm-left)  │  pixel % bars per class        │
+│                                         │  road obstruction %            │
+│                                         │  left/right margin estimate    │
+│                                         │  road type label               │
+│                                         ├────────────────────────────────┤
+│                                         │  Object Motion · τ Estimates   │
+│                                         │  per-box time-to-contact       │
+│                                         │  approach / stable / fast      │
+│                                         ├────────────────────────────────┤
+├─────────────────────────────────────────┤  ⚠ Offline Chapter             │
+│  PLAYER CONTROLS                        │  "No planner connected."       │
+│  [⏮] [▶/⏸] [⏭]   t=0:04 / 0:12        │  "No metric depth."            │
+│  ┌──────┬──────┬──────┬──────┬──────┐  └────────────────────────────────┘
+│  │  04  │  07  │  08  │  09  │  10  │
+│  └──────┴──────┴──────┴──────┴──────┘
+│   14.7s  14.8s  15.3s  9.9s  12.1s
+└─────────────────────────────────────────┘
+```
+
+### Source files
+
+| Clip | Duration | Notes |
+|---|---|---|
+| `submission/assets/footage/drive_04 - Trim.mp4` | 14.74 s | 848 × 478 |
+| `submission/assets/footage/drive_07 - Trim.mp4` | 14.76 s | |
+| `submission/assets/footage/drive_08 - Trim.mp4` | 15.28 s | |
+| `submission/assets/footage/drive_09 - Trim.mp4` | 9.92 s  | Unpaved-road alternative |
+| `submission/assets/footage/drive_10 - Trim.mp4` | 12.07 s | **Main clip — mixed market traffic** |
+| `submission/assets/footage/drive_10_yolox.mat`  | —       | Cached YOLOX detections at 2 Hz, 25 samples, threshold 0.35 |
+
+The YOLOX cache for `drive_10` already exists (built 29 Sep). Caches for the other four
+clips will be built on demand using `submission/build_yolox_cache.m`.
+
+DeepLab v3+ results will be run at the same 2 Hz sample rate using MATLAB's pretrained
+`deeplabv3plus` (Cityscapes weights). Output: per-pixel label map → road class pixels → mask.
+
+### New MATLAB file: `matlab/+sc/perceptionView.m`
+
+Mirrors the design of `submissionView.m` but contains no planner state, no simulation cache,
+and no S1/S3/S4 structs.
+
+#### Internal structure
+
+```matlab
+classdef perceptionView < handle
+    % Offline real-world perception chapter.
+    % Inputs:  CameraVideo  — path to one of the five footage clips
+    %          YoloxCache   — path to the matching .mat detection cache
+    %          DeepLabCache — path to the matching .mat segmentation cache
+    % Outputs: uifigure-based presentation panel
+    %
+    % CONTRACT: this class never touches S1 TrackList, S3 YieldPrediction,
+    %           S4 EgoCommand, or any planner struct.
+    properties (Access = private)
+        Fig         % uifigure
+        AxVideo     % uiaxes — video + overlays
+        VidReader   % VideoReader per clip
+        YoloxData   % loaded detection cache struct
+        DeepData    % loaded segmentation cache struct
+        Timer       % timer for playback loop
+        CurrentClip (1,1) double = 5   % index into Clips (1-5)
+        Playing     logical = false
+        FrameIdx    (1,1) double = 1
+    end
+end
+```
+
+#### Function breakdown
+
+| Function | Responsibility |
+|---|---|
+| `build(obj)` | Creates uifigure; lays out video axes, right-column panels, and player controls at 16:9 |
+| `renderFrame(obj, idx)` | Draws one frame: video image → road mask patch → YOLOX boxes → text labels |
+| `drawRoadMask(obj, ax, mask)` | Overlays DeepLab driveable-road pixels as a semi-transparent green patch |
+| `drawDetections(obj, ax, boxes, labels, scores)` | Class-coloured `rectangle()` + `text()` from the YOLOX cache |
+| `updateStatsPanel(obj, boxes, labels, scores, mask)` | Refreshes count cards, confidence bars, segmentation bars, τ estimates |
+| `computeTau(obj, boxes, prevBoxes)` | τ = h / Δh per box across two consecutive sampled frames |
+| `selectClip(obj, clipIdx)` | Loads new VideoReader, YOLOX cache, DeepLab cache; resets frame index |
+| `togglePlay(obj)` | Starts or stops the playback timer |
+| `stepFrame(obj)` | Timer callback: advances frameIdx, calls renderFrame and updateStatsPanel |
+| `snap(obj, frameIdx)` | Renders a single frozen frame; used for export |
+| `exportPng(obj, outPath)` | Writes current figure to a PNG for the submission record |
+
+### Class colours (YOLOX display only — not S5 ClassID enum)
+
+| Label | Hex colour | Reference S5 class |
+|---|---|---|
+| person | `#f97316` orange | 8 |
+| car | `#3b82f6` blue | 1 |
+| truck | `#a855f7` purple | 2 |
+| bus | `#8b5cf6` violet | 3 |
+| auto-rickshaw | `#f43f5e` rose | 4 |
+| motorbike / bicycle | `#14b8a6` teal | 5 / 9 |
+| cow / animal | `#eab308` yellow | 10 / 11 |
+| pushcart | `#f59e0b` amber | 12 |
+
+Colours are for visual display only. `perceptionView` reads class-name strings from the YOLOX
+cache and never writes to or reads from the S5 enum at runtime.
+
+### DeepLab segmentation classes displayed
+
+| Class | Colour | Display |
+|---|---|---|
+| Road | `#22c55e` green | Road mask overlay + "Road (driveable)" bar |
+| Sky | `#38bdf8` sky | "Sky" percentage bar |
+| Vegetation | `#84cc16` lime | "Vegetation" percentage bar |
+| Building / Wall | `#94a3b8` slate | "Building / Wall" percentage bar |
+| Objects on road | `#f97316` orange | "Objects on road" bar + road obstruction % |
+
+**Road obstruction %** = road pixels overlapping non-road foreground objects / total road pixels.
+**Left/right margin estimate** = horizontal extent of clear road pixels on each side of the frame
+centre, converted to approximate metres. Note: no verified camera calibration exists for these
+clips — label margins as approximate (`~1.1 m`) and never quote as verified planner clearance.
+
+### Player controls — MATLAB implementation notes
+
+```matlab
+% Five uibutton elements laid out as a segmented horizontal bar.
+% Active clip button: green BackgroundColor, bold FontWeight.
+% uibutton('play/pause') — toggles obj.Playing, starts/stops timer.
+% uibutton('prev') / uibutton('next') — call selectClip(obj, obj.CurrentClip ± 1).
+% uilabel for "Now playing: drive_10 — Trim.mp4  ·  Clip 5 of 5".
+% uilabel for time counter "0:04 / 0:12" — updated each frame by stepFrame.
+```
+
+Playback runs at the YOLOX sample rate (2 Hz, one frame every 0.5 s). The timer period is
+`0.5 s`. Full-frame-rate video playback is not required; this is a presentation tool, not a
+media player. MATLAB's built-in `VideoReader` handles seek-by-frame for each sample.
+
+### Build sequence
+
+**Step A — Extend the YOLOX cache to all five clips**
+- Script: `submission/build_yolox_cache.m` (already written for `drive_10`).
+- Run for `drive_04`, `drive_07`, `drive_08`, `drive_09` with the same 2 Hz / 0.35 threshold settings.
+- Output: `submission/assets/footage/<clip>_yolox.mat` alongside each source MP4.
+
+**Step B — Build the DeepLab cache**
+- New script: `submission/build_deeplab_cache.m`.
+- Mirrors `build_yolox_cache.m`. For each sampled frame, runs `semanticseg(frame, net)` with a
+  pretrained Cityscapes DeepLab v3+ network, stores the label image and per-class pixel counts.
+- Output: `submission/assets/footage/<clip>_deeplab.mat`.
+- Verify that `deeplabv3plus` is available in the installed toolboxes before running.
+
+**Step C — Implement `matlab/+sc/perceptionView.m`**
+- Implement in this order to enable incremental visual checks:
+  1. `build` → static layout, placeholder panels, correct 16:9 figure size.
+  2. `renderFrame` → video image only, no overlays yet.
+  3. `drawRoadMask` → DeepLab green overlay.
+  4. `drawDetections` → YOLOX bounding boxes and labels.
+  5. `updateStatsPanel` → all right-column cards.
+  6. `computeTau` → motion estimates.
+  7. `selectClip`, `togglePlay`, `stepFrame` → working player.
+  8. `snap` + `exportPng` → snapshot export.
+
+**Step D — Launcher script**
+
+Create `submission/run_perception_demo.m`:
+
+```matlab
+% One-command launcher for the offline perception chapter.
+v = sc.perceptionView( ...
+    'CameraVideo',  'submission/assets/footage/drive_10 - Trim.mp4', ...
+    'YoloxCache',   'submission/assets/footage/drive_10_yolox.mat', ...
+    'DeepLabCache', 'submission/assets/footage/drive_10_deeplab.mat');
+v.build();
+```
+
+**Step E — Snapshot export**
+
+```matlab
+v.snap(50);
+v.exportPng('submission/step_perception_shell.png');
+```
+
+Visually inspect the exported PNG: DeepLab overlay and at least one YOLOX box must be visible.
+Record the snapshot filename in `submission/PROGRESS.md`.
+
+### Required permanent wording (always visible in the view)
+
+```
+REAL-WORLD OFFLINE PERCEPTION — PLANNING NOT CONNECTED
+Camera:       Genuine Indian-road footage — offline · not sensor input
+Detection:    YOLOX (MATLAB built-in, small-coco weights) — image plane only
+Segmentation: DeepLab v3+ (Cityscapes weights) — no metric calibration
+```
+
+### Acceptance tests
+
+1. All five clips load without error; switching clips resets the frame counter and all panels.
+2. Road mask does not bleed outside the video axes boundary.
+3. YOLOX boxes disappear between sampled frames (they do not persist across the 0.5 s interval).
+4. The count, confidence, segmentation, and τ panels update on every frame step.
+5. No S1, S3, or S4 struct is referenced anywhere in `perceptionView.m`.
+6. `PLANNING NOT CONNECTED` and `OFFLINE CAMERA` labels are visible at all times in every clip.
+7. `exportPng` produces a file; visual inspection confirms overlay and at least one box are present.
+8. MATLAB Code Analyzer reports zero findings on `perceptionView.m` before marking complete.
+
+### Definition of done
+
+The chapter is complete when a reviewer can:
+- Switch between all five clips using the player controls without error.
+- See class-coloured YOLOX bounding boxes and a green driveable-area overlay on the video.
+- Read per-class detection counts, segmentation percentages, and τ motion estimates in the right column.
+- Confirm that no planner state, trajectory, bird's-eye map, or simulation panel appears anywhere.
+- Export a snapshot PNG that can be added to the submission record.
+
+---
+
+## Alternative Implementation Plan: Python-Based Standalone Perception Renderer
+
+> Added 30 September 2026.
+> This alternative plan replaces the MATLAB `perceptionView.m` dependency when running on systems
+> where MATLAB R2026a/R2024b cannot be installed. It builds the identical 16:9 presentation console
+> using Python (OpenCV + Pillow + NumPy) and renders a presentation-ready 1080p MP4 and/or live
+> desktop player window.
+
+### Rationale
+- The target system has Python 3.11 (`C:\Users\admin\.local\bin\python3.11.exe`) available, but MATLAB cannot be installed.
+- The visual layout, cards, color palette, disclaimers, and data streams remain 100% identical to the approved UI design.
+- The resulting deliverable is a high-resolution, presentation-ready video (`perception_chapter.mp4`) and interactive runner (`run_perception_demo.py`).
+
+### Dependencies & Setup
+Only standard Python image/video processing packages are required:
+```bash
+python3.11 -m pip install opencv-python pillow numpy scipy
+```
+
+### Architecture: `submission/python/render_perception.py`
+
+#### 1. Canvas Layout (1920 × 1080, 16:9)
+- **Header (Y: 0–90):**
+  - Title: `OFFLINE · REAL-WORLD PERCEPTION` + pulsing dot
+  - Subtitle: `Unstructured Indian Road — Perception Analysis`
+  - Badges: `drive_10 · 12.07s · 848×478` and `PLANNING NOT CONNECTED — PERCEPTION ONLY`
+- **Left Panel (Video & Scrubber, X: 50–1250, Y: 100–980):**
+  - 16:9 Video Canvas (1200 × 675) with:
+    - Base video frame from `drive_10 - Trim.mp4` (or selected clip).
+    - DeepLab v3+ driveable road green tint mask (semi-transparent alpha overlay).
+    - YOLOX bounding boxes with class colors, labels, and confidence tags.
+    - Top badges: `frame N / total · t = X.XX s` and `OFFLINE CAMERA · NOT SENSOR INPUT`.
+    - Bottom legend: `Driveable Area (DeepLab v3+)`.
+  - Player Bar & Scrubber (Y: 800–950):
+    - Now playing label & time counters.
+    - 5-segment clickable / highlighted scrubber for `drive_04`, `drive_07`, `drive_08`, `drive_09`, `drive_10`.
+    - Transport buttons: `[⏮]`, `[▶ / ⏸]`, `[⏭]`.
+  - Class Legend (Y: 960–1030):
+    - Pills for Person, Car, Truck, Auto-Rickshaw, Bike, Cow.
+- **Right Panel (Cards, X: 1280–1870, Y: 100–1030):**
+  - **Card 1: YOLOX This Frame:** Total count, Vehicle count, Person count, animated confidence bars per class, scene density badge (`CROWDED`).
+  - **Card 2: DeepLab v3+ Segmentation:** Pixel % bars for Road (38%), Sky (22%), Vegetation (18%), Buildings (12%), Objects on road (10%); Road obstruction %, Left/Right margin estimates (`~1.1 m` / `~0.8 m`), Road type (`Unstructured / No lanes`).
+  - **Card 3: Object Motion (τ Estimates):** Time-to-contact per detected box (`τ = h / Δh`), Approach / Stable / Fast status tags.
+  - **Card 4: Disclaimer Card:** Warning icon, "No planner connected", "No metric depth".
+
+### Execution Modes
+1. **Interactive Desktop Preview:**
+   - Opens an OpenCV window (`cv2.imshow`) running in real-time.
+   - Hotkeys:
+     - `Space`: Play / Pause
+     - `1`–`5`: Jump directly to clips `drive_04` through `drive_10`
+     - `Left` / `Right`: Step frame by frame
+     - `q` / `Esc`: Exit
+2. **Video Export Mode:**
+   - Command: `python render_perception.py --export`
+   - Encodes all frames into `submission/perception_chapter.mp4` at 30 fps (or 2 Hz sampled) with H.264 codec.
+   - Directly usable in presentation slides and pitch video.
+3. **Snapshot Export Mode:**
+   - Command: `python render_perception.py --snap 50 --output submission/step_perception_shell.png`
+   - Produces identical documentation snapshot for the submission record.
+
+### Build & Verification Steps
+1. Verify package installation: `python3.11 -c "import cv2, PIL, numpy, scipy; print('OK')"`
+2. Verify cache loading: Load `drive_10_yolox.mat` and `road_segmenter_deeplab.mat`.
+3. Implement `submission/python/render_perception.py`.
+4. Run interactive mode to verify real-time composite rendering.
+5. Export `submission/step_perception_shell.png` and verify visual fidelity against the approved mockup.
+6. Export `submission/perception_chapter.mp4`.
