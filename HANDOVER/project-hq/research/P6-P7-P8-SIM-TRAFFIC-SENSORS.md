@@ -1,0 +1,140 @@
+# P6 + P7 + P8 — Simulation world, traffic behaviour, sensors
+
+Status: FINAL, 26 Sep 2026. Codex (session B) + Claude verification.
+
+## What Claude verified by opening the source
+- **Simulink–SUMO co-simulation is OFFICIAL in R2026a:** the "Client" block, via the add-on
+  "Automated Driving Toolbox Interface for Eclipse SUMO Traffic Simulator".
+  https://www.mathworks.com/help/driving/ref/client.html
+- **Instant NuRec** (Apache-2.0):
+  - Input is a **calibrated multi-view camera rig**, as an NCore V4 sequence.
+  - The standalone CLI exports **static** 3DGS (PLY) + sky only.
+  - It reconstructs a 10–20 s scene in ~1.5 s.
+  - **Raw single dashcam + phone GPS is NOT a documented input.** That needs camera calibration
+    and a pose pipeline. **UNVERIFIED if feasible.**
+- The MathWorks student-competition software form says **"Form submission is currently
+  unavailable"**, must be filed by faculty, and **does not list RoadRunner**. The RoadRunner route
+  = the mentor / KIET licence admin / hackathon@mathworks.com.
+
+## Decisions (working direction)
+1. **Simulink is the running ego system and test harness.** Tiers:
+   - fast `drivingScenario` suite (Mac OK)
+   - rendered RoadRunner/Unreal (Windows; if licensed) or CARLA for camera tests
+   - **SUMO for dense reactive Indian traffic** (the official R2026a block)
+2. The neural reconstruction (NuRec/AlpaSim on the DGX) is a **"best" research tier**, not the
+   critical path. First gate: rebuild a static Indian road from a calibrated capture.
+3. Traffic agents must **react to the ego's actual actions**, with bounded adversarial variants.
+   Test against ≥2 independent agent policies to avoid home-field advantage.
+4. Sensors:
+   - test a **camera+radar production-style suite** (like Mahindra XUV 3XO L2: 1 radar + 1 camera)
+   - **and** a camera+radar+lidar diagnostic suite
+   - plot degradation against **measured** visibility/dropout
+   - trap: CARLA fog affects the camera only
+5. Scenario formats: OpenDRIVE (roads) + OpenSCENARIO XML (actors) + **OpenCRG (potholes and road
+   surface)**. OSM is a starting topology only.
+
+---
+# P6–P8: the simulation I would build
+
+**Recommendation:** make **Simulink the running ego system** and test harness. Give it timestamped sensor messages, have it return steering, throttle and brake, and log every decision against scenario ground truth. Start with a fast `drivingScenario` test suite; add a rendered RoadRunner/Unreal or CARLA suite for camera and occlusion tests; use SUMO for dense, reactive traffic. This is a proposed architecture, supported by MathWorks’ [scenario and sensor workflow](https://www.mathworks.com/help/driving/driving-scenario-simulation.html), its [SUMO interface](https://www.mathworks.com/help/driving/ref/client.html), and its [CARLA connection](https://www.mathworks.com/help/ros/ug/set-up-and-connect-to-carla-simulator.html).
+
+A simulator can establish performance **within a stated operating domain and set of tested conditions**. It cannot establish that the car drives all Indian roads. Report the domain, scenario distribution, sensor assumptions, failure rates and held-out results alongside every claim. This is my evaluation recommendation, consistent with Waymo’s distinction between [reactive simulation and log playback](https://waymo.com/open/challenges/2025/sim-agents/).
+
+## P6 — Simulation world
+
+### Tool choice
+
+| Tool | Useful role and fidelity | MATLAB path; fit to your hardware |
+|---|---|---|
+| **`drivingScenario`** | Fast, closed-loop actor geometry and generated vision/radar/lidar/ultrasonic outputs. Its vision generator produces *detections*, not camera pixels; configurable misses, false positives and noise make it useful for system sweeps. [MathWorks](https://www.mathworks.com/help/driving/ref/drivingscenario.addsensors.html), [vision model](https://www.mathworks.com/help/driving/ref/visiondetectiongenerator-system-object.html) | Native MATLAB/Simulink; sensible first tier on the Mac or lab PC. [MathWorks](https://www.mathworks.com/help/driving/driving-scenario-simulation.html) |
+| **RoadRunner + RoadRunner Scenario** | Editable 3D roads, road damage and custom assets; scenario control and MATLAB/Simulink co-simulation. Requires **both RoadRunner and RoadRunner Scenario licences** for that workflow. [RoadRunner](https://www.mathworks.com/help/roadrunner/), [licence prerequisites](https://www.mathworks.com/help/driving/ug/connect-matlab-and-roadrunner.html) | Windows/Linux; **RoadRunner does not support macOS**. The Windows PC meets the published minimum VRAM, though complex scenes still need profiling. [Requirements](https://www.mathworks.com/help/roadrunner/ug/roadrunner-system-requirements.html) |
+| **Simulink `sim3d` / Unreal** | Rendered camera, lidar and weather scenes with a direct Simulink loop. Weather controls include sun, fog and rain; rendering alone does not validate sensor physics. [Scene configuration](https://www.mathworks.com/help/driving/ref/simulation3dsceneconfiguration.html), [3D lidar](https://www.mathworks.com/help/driving/ref/simulation3dlidar.html) | Windows/Linux, with Simulink 3D Animation; **no Mac co-simulation**. MathWorks recommends 8 GB video memory and 32 GB system memory. [Requirements](https://www.mathworks.com/help/driving/ug/unreal-engine-simulation-environment-requirements-and-limitations.html) |
+| **CARLA + ScenarioRunner** | Rendered camera, ray-cast lidar, radar and programmable actors/scenarios; useful independent sensor test. ScenarioRunner’s OpenSCENARIO support is **partial**. [Sensors](https://carla.readthedocs.io/en/latest/ref_sensors/), [ScenarioRunner support matrix](https://github.com/carla-simulator/scenario_runner/blob/master/Docs/openscenario_support.md) | Official MATLAB route is the CARLA ROS bridge; RoadRunner Scenario also has a CARLA co-simulation route. Current CARLA UE5 guidance recommends **RTX with ≥16 GB VRAM**, so the 8 GB lab GPU is a serious constraint; the M1 is unsuitable as its server. [MathWorks ROS example](https://www.mathworks.com/help/ros/ug/set-up-and-connect-to-carla-simulator.html), [RoadRunner bridge](https://www.mathworks.com/help/roadrunner-scenario/cosimulate-actors-with-carla.html), [CARLA requirements](https://github.com/carla-simulator/carla/blob/ue5-dev/Docs/start_quickstart.md) |
+| **AlpaSim + NuRec** | Modular closed-loop research simulator with renderer, traffic, physics, controller and driver services; NuRec supplies reconstructed scenes. This is an **experimental additional tier**, since connecting a Simulink driver requires a custom service bridge. [AlpaSim](https://github.com/NVlabs/alpasim), [tutorial](https://github.com/NVlabs/alpasim/blob/main/docs/TUTORIAL.md) | NuRec explicitly supports **A100** on Linux x86-64 with CUDA ≥12.8 and **more than 24 GB GPU memory**. Verify each DGX GPU’s memory and driver. [NuRec requirements](https://docs.nvidia.com/nurec/basics/hardware.html) |
+| **SUMO** | Scalable traffic and sublane movement, **not** the camera-rendering world. Pair it with one of the worlds above. [Sublane model](https://sumo.dlr.de/docs/Simulation/SublaneModel.html) | MathWorks introduced an official Simulink–SUMO add-on interface in **R2026a**; prefer it over the older TraCI4Matlab bridge if available. [MathWorks Client block](https://www.mathworks.com/help/driving/ref/client.html), [TraCI4Matlab](https://github.com/pipeacosta/traci4matlab) |
+| **esmini / OpenSCENARIO** | Lightweight OpenSCENARIO XML player and road/scenario validator; limited feature coverage and no substitute for rendered perception. [esmini](https://github.com/esmini/esmini) | Useful to lint and replay interchange scenarios before heavier runs; integration would be custom. [esmini](https://github.com/esmini/esmini) |
+| **Waymax; nuPlan; NAVSIM; MetaDrive/ScenarioNet** | Valuable **behaviour/planning benchmarks**, not direct replacements for the sensor-in-loop Indian world. Waymax represents objects as boxes; NAVSIM uses pseudo-simulation; nuPlan supplies planning simulation; ScenarioNet can replay imported scenarios in MetaDrive. [Waymax](https://waymo.com/research/waymax/), [NAVSIM](https://github.com/autonomousvision/navsim), [nuPlan](https://github.com/motional/nuplan-devkit), [ScenarioNet](https://github.com/metadriverse/scenarionet) | Python research/evaluation sidecars. A bridge into the Simulink run would need to be built and checked for timing and coordinate errors. [Waymax](https://github.com/waymo-research/waymax), [ScenarioNet](https://github.com/metadriverse/scenarionet) |
+
+**Licence correction.** RoadRunner Scenario’s MATLAB `importScenario` has supported OpenSCENARIO XML since **R2022a**, not first in R2026a. [MathWorks](https://www.mathworks.com/help/driving/ref/roadrunner.importscenario.html). Scenario Builder is a downloadable **support package** for recorded GPS, IMU, camera, lidar and tracks; I did not verify that it is free under your licence. [MathWorks](https://www.mathworks.com/help/driving/scenario-generation-from-real-world-sensor-data.html). TwinX’s use of RoadRunner verifies that **one SIH team used it**, not that all SIH teams receive it. [MathWorks TwinX account](https://blogs.mathworks.com/student-lounge/2026/04/06/from-real-roads-to-real-simulations-how-team-twinx-won-smart-india-hackathon-2025/). **Action:** have the mentor check the August request and campus licence administrator, explicitly asking for *RoadRunner and RoadRunner Scenario*. MathWorks’ [student competition form](https://www.mathworks.com/academia/academic-support/student-competition-individual-team.html) says a faculty adviser or authorized representative must apply; the page currently displays **“Form submission is currently unavailable.”**
+
+### Can one dashcam plus phone GPS make a drivable neural scene?
+
+| Claim | Finding |
+|---|---|
+| **Instant NuRec needs multiple cameras** | **Corrected:** its released `pa-front` profile accepts **18 front-wide frames**; `pa-multiview` accepts 1, 3 or 5 calibrated views. [Official repository](https://github.com/NVIDIA/instant-nurec) |
+| **A raw single dashcam video plus phone GPS suffices** | **UNVERIFIED.** The released workflow ingests an **NCore V4 sequence** with calibrated camera rays and pose/exposure information. It does not document an end-to-end consumer dashcam + phone GPS conversion. [Instant NuRec](https://github.com/NVIDIA/instant-nurec), [NuRec input requirements](https://docs.nvidia.com/nurec/basics/how-nurec-works.html) |
+| **The released Instant NuRec CLI yields a complete editable driving world** | **Incorrect for the standalone CLI:** it currently exports **static Gaussians (PLY) and sky**; the paper’s dynamic layers are outside that export path. Full NuRec reconstruction can produce a USDZ package containing an XODR drivable map and movable-object layers, but needs additional data preparation/refinement. [Instant NuRec scope](https://github.com/NVIDIA/instant-nurec), [NuRec output](https://docs.nvidia.com/nurec/basics/how-nurec-works.html) |
+| **Indian-road neural reconstructions are established** | **UNVERIFIED.** I found [IDD-3D](https://openaccess.thecvf.com/content/WACV2023/papers/Dokania_IDD-3D_Indian_Driving_Dataset_for_3D_Unstructured_Road_Scenes_WACV_2023_paper.pdf), which provides Indian multi-camera/lidar data, but no verified published, reusable **Indian-road NuRec/3DGS closed-loop scene** in this search. |
+
+**Practical experiment:** record a short, repeated pass with a calibrated camera and synchronized pose estimate; reconstruct a **static** road first; measure novel-view error and road-edge/pothole geometry against held-out observations; only then attempt moving traffic. This is a proposed feasibility gate, not a claim that phone capture already works.
+
+### Map and scenario scale
+
+Use **OpenDRIVE for road geometry**, **OpenSCENARIO XML for concrete actor manoeuvres**, and **OpenCRG or scene geometry for potholes/speed breakers**. OpenSCENARIO DSL is useful for abstract parameterised scenarios, but execution support differs: ASAM currently lists [XML 1.4](https://www.asam.net/standards/detail/openscenario-xml/) and [DSL 2.2](https://www.asam.net/standards/detail/openscenario-dsl/) as separate standards. OpenCRG is explicitly a high-resolution road-surface format and can be linked from OpenDRIVE. [ASAM OpenCRG](https://www.asam.net/standards/detail/opencrg/), [OpenDRIVE surface objects](https://publications.pages.asam.net/standards/ASAM_OpenDRIVE/ASAM_OpenDRIVE_Specification/v1.8.1/specification/13_objects/13_13_object_surface.html).
+
+OSM is a **starting topology**, requiring manual correction of width, unmarked edges, junction priority and surface condition. SUMO `netconvert` imports [OSM](https://sumo.dlr.de/docs/Networks/Import/OpenStreetMap.html) and [OpenDRIVE](https://sumo.dlr.de/docs/Networks/Import/OpenDRIVE.html); RoadRunner can [import OSM](https://www.mathworks.com/help/driving/ref/roadrunner.importscene.html). None of these conversions supplies a verified pothole map.
+
+**Proposed coverage matrix:** encode ten families—road edge/hairpin, seepage/cut-in, pedestrian crossing/occlusion, merge/T-junction/right-of-way, wrong-way/abrupt braking, slow or stopped buses/autos/tractors, cattle, pothole/diversion, dense overlap, and adverse visibility. Vary speed, gap, density, sight distance, actor size, surface defect, weather and sensor state. Use seeded pairwise combinations for breadth, then optimise within each family for failures. [Scenic/VerifAI](https://arxiv.org/abs/2108.13796), [KING](https://arxiv.org/abs/2204.13683), [AdvSim](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_AdvSim_Generating_Safety-Critical_Scenarios_for_Self-Driving_Vehicles_CVPR_2021_paper.pdf), [CAT](https://github.com/metadriverse/cat) and [ChatScene](https://github.com/javyduck/ChatScene) offer published ways to search or generate critical cases; their published results are **not evidence of Indian-traffic realism**.
+
+| P6 option | Build | Estimated effort* | Main risk |
+|---|---|---:|---|
+| **Good** | Simulink + `drivingScenario`; 10 parameterised families, ground-truth and noisy-sensor runs. | 2–3 weeks | No real camera-domain test. |
+| **Better — recommended** | Add RoadRunner/Simulink Unreal **if licensed**, or CARLA via ROS; reuse scenario IDs, run camera/perception tests and report sim-to-real gaps. | 4–7 weeks | Licence, graphics hardware and bridge timing. |
+| **Best** | Add calibrated Indian capture, NuRec/AlpaSim feasibility experiment and adversarial search on the DGX, keeping Simulink as the tested ego stack. | 8–12+ weeks | Input reconstruction quality and custom integration. |
+
+\*Effort is my planning estimate for a small team, not a published benchmark.
+
+## P7 — Traffic behaviour and sim agents
+
+**The essential requirement is counterfactual reactivity:** a bus, pedestrian or two-wheeler must respond to the *actual* ego action on each step. Waymo explicitly shows why fixed log playback can become implausible when the ego deviates. Its Sim Agents benchmark evaluates joint futures through motion, interaction and map-adherence statistics. [Waymax](https://waymo.com/research/waymax/), [WOSAC protocol](https://waymo.com/open/challenges/2025/sim-agents/).
+
+| Layer | What to use; limitation |
+|---|---|
+| **Heterogeneous vehicles** | SUMO sublanes support parallel two-wheelers, lateral gaps, encroachment and virtual lanes; smaller lateral resolution costs runtime. [SUMO](https://sumo.dlr.de/docs/Simulation/SublaneModel.html). The **2026 seepage paper** reports observed mean gap **0.906 m**, default `minGap` **2.5 m** (**176% larger**), and 13,219 filtered events from IDD/TIAND. Its calibrated model increased seepage but **undershot the observed mean gap** (0.609 m versus 0.906 m); calibrating only the aggressive tail is therefore insufficient as a complete realism claim. [Paper](https://www.sciencedirect.com/science/article/pii/S1389128626005220). The linked [Zenodo files are restricted](https://zenodo.org/records/18955993). |
+| **Pedestrians** | SUMO striping and its JuPedSim coupling can model pedestrian movement, but its uncontrolled-crossing rule is conservative and **midblock crossings must be added explicitly**. For Indian rolling crossings, fit gap acceptance and hesitation to [IDD-PeD](https://cvit.iiit.ac.in/research/projects/cvit-projects/iddped) or your own labelled tracks. [SUMO pedestrian docs](https://sumo.dlr.de/docs/Simulation/Pedestrians.html). |
+| **Cattle** | **UNVERIFIED** as an Indian road-agent model. Ecology has stop/move models for grazing cattle, but transferring their parameters to road crossings would be unsupported. Use stationary, startle/turn, slow-cross and group scenarios with broad uncertainty until road observations exist. [Cattle movement study](https://arxiv.org/abs/1603.05319). |
+| **Learned agents** | [SMART-R1](https://arxiv.org/abs/2509.23993) reports WOSAC realism meta **0.7858** at submission; [TrajTok](https://github.com/Thinklab-SJTU/TrajTok) and [RIFT](https://arxiv.org/abs/2505.03344) target realism/controllability; [ProSim](https://arxiv.org/abs/2409.05863) accepts numerical, categorical and text behaviour prompts. The SMART-R1 paper and TrajTok repository both claim a 2025 first-place result; **the public leaderboard was not exposed in the page I could verify**, so I would not assert an uncontested winner. [Waymo challenge page](https://waymo.com/open/challenges/2025/sim-agents/). Their reported benchmarks do **not** establish transfer to Indian traffic. |
+
+| Indian data for fitting | What is actually available |
+|---|---|
+| **SPT Chennai** | Six drones covered a **560 m** Chennai road; the researcher describes approximately **59 hours** of drone recordings and extracted spatial trajectories. The “How to access” page did not expose usable download terms in the accessible page view: **access/licence UNVERIFIED**. [Project](https://www.chennaitrafficdata.com/), [researcher dataset page](https://shashankrajput-iitk.github.io/datasets/), [access page](https://www.chennaitrafficdata.com/how-to-access) |
+| **IDD-X** | 3,634 annotated driving scenarios, 697K important-object boxes and about 9K tracks; promising for actor types/interactions, but image tracks are **not automatically metric BEV trajectories**. [Dataset owner](https://insaan.iiit.ac.in/datasets/) |
+| **METEOR / IDD-PeD** | METEOR captures rare heterogeneous behaviours; IDD-PeD supplies crossing intent and trajectory annotations under occlusion and unsignalised conditions. Validate metric trajectories, licence and train/test split before fitting agents. [METEOR paper](https://openreview.net/pdf?id=NsUqfWtvtV), [IDD-PeD project](https://cvit.iiit.ac.in/research/projects/cvit-projects/iddped) |
+
+**Proposed agent contract:** each actor receives current local observations and the ego’s executed motion, then emits a bounded next action. Give some actors a hidden *goal* (“merge ahead,” “cross now”), but let them react during execution. Keep the ego’s action from future timesteps hidden. For adversarial runs, constrain acceleration, turning, speed and collision behaviour to observed or physically plausible envelopes; also run non-adversarial sampled traffic. This prevents a “home-field” test in which every actor conveniently yields, while avoiding impossible attacks. [WOSAC’s reactive factorisation](https://waymo.com/open/challenges/2025/sim-agents/), [AdvSim’s physically plausible perturbations](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_AdvSim_Generating_Safety-Critical_Scenarios_for_Self-Driving_Vehicles_CVPR_2021_paper.pdf).
+
+Validate by **vehicle class and scenario family**, comparing real versus simulated speed/acceleration, lateral position, accepted gaps, time to collision, crossing initiation, near misses and collision rates. Report both WOSAC-style distributions and Indian-specific seepage/crossing distributions; a single realism score can hide a bad aggressive tail. [WOSAC metrics](https://waymo.com/open/challenges/2025/sim-agents/), [seepage study](https://www.sciencedirect.com/science/article/pii/S1389128626005220). Hold out locations and recordings used to fit agents, and test the ego against at least two independently specified agent policies. The latter is my proposed defence against simulator overfitting.
+
+| P7 option | Build | Estimated effort* | Main risk |
+|---|---|---:|---|
+| **Good** | Reactive hand rules for the critical actors; explicit wrong-way, crossing, cow and bus-pull-out scripts; measure ego-action response. | 1–2 weeks | Narrow behaviour distribution. |
+| **Better — recommended** | Official Simulink–SUMO co-simulation, class-specific sublane calibration, plus separate crossing/cattle state machines and held-out Indian distribution checks. [MathWorks](https://www.mathworks.com/help/driving/ref/client.html), [SUMO](https://sumo.dlr.de/docs/Simulation/SublaneModel.html) | 3–5 weeks | Dataset access and calibration bias. |
+| **Best** | Fit or adapt a joint learned agent model on verified metric Indian tracks; retain SUMO/rules as independent test agents and adversarial variants. [WOSAC](https://waymo.com/open/challenges/2025/sim-agents/), [ProSim](https://arxiv.org/abs/2409.05863) | 8–12+ weeks | Sparse Indian metric trajectories, high evaluation cost. |
+
+\*Planning estimates.
+
+## P8 — Sensors
+
+Your current S1 result (**0.625 m versus 0.618 m ground truth**, from your audit) is evidence about that tracking test, **not evidence that sensor degradation was represented**. P8 needs two distinct tests: whether perception fails on plausible raw observations, and whether tracking/planning survives specified misses, clutter, delay and miscalibration.
+
+| Modality | Supported simulation and necessary caution |
+|---|---|
+| **Camera** | Simulink Unreal and CARLA can render RGB scenes with light/fog/rain controls. A `visionDetectionGenerator` instead yields object detections and allows configurable false positives/noise; it cannot test your YOLOX on pixels. [MathWorks scene](https://www.mathworks.com/help/driving/ref/simulation3dsceneconfiguration.html), [vision generator](https://www.mathworks.com/help/driving/ref/visiondetectiongenerator-system-object.html), [CARLA sensors](https://carla.readthedocs.io/en/latest/ref_sensors/) |
+| **Lidar** | MATLAB’s `lidarSensor` supports ray-based point clouds, Gaussian noise and **fog/rain settings**. **Caveat: if both are set, it simulates fog only.** CARLA supports ray cast geometry, range noise, atmospheric attenuation and point drop-off. These parameters require calibration against observations. [MATLAB lidar](https://www.mathworks.com/help/lidar/ref/lidarsensor-system-object.html), [CARLA lidar](https://carla.readthedocs.io/en/latest/ref_sensors/) |
+| **Radar** | MATLAB can simulate probabilistic detections and more detailed radar processing, including multipath ghosts and clutter, at greater cost. CARLA provides a radar sensor but should not be assumed to reproduce all propagation effects. [MathWorks automotive radar](https://www.mathworks.com/help/radar/automotive-radar.html), [multipath example](https://www.mathworks.com/help/driving/ug/multipath-radar-detection-and-tracking.html), [CARLA sensors](https://carla.readthedocs.io/en/latest/ref_sensors/) |
+| **Near-field ultrasonic** | MATLAB provides closest-target range detections for `drivingScenario` and RoadRunner Scenario. Add missed echoes, spurious echoes and timing errors as an explicit test layer if needed; **a weather/animal-specific ultrasonic model is UNVERIFIED**. [MathWorks](https://www.mathworks.com/help/driving/ref/ultrasonicdetectiongenerator-system-object.html) |
+| **Cross-sensor failure** | **CARLA’s `fog_density` and `wetness` explicitly affect RGB camera only**; do not interpret a CARLA fog preset as matched fog corruption across lidar and radar. Implement and validate each modality separately, including latency, dropout, extrinsic drift and correlated failures. [CARLA weather API](https://carla.readthedocs.io/en/latest/python_api/) |
+
+For suite choice, distinguish **full autonomy research** from **cost-realistic Indian ADAS**. Waymo states its sixth-generation system uses **13 cameras, four lidars and six radars**. [Waymo](https://waymo.com/blog/2024/08/meet-the-6th-generation-waymo-driver/). Tesla documents camera-based Tesla Vision for specified Model 3/Y markets; it also states currently enabled Autopilot/FSD features do **not** make those vehicles autonomous. [Tesla](https://www.tesla.com/en_gb/support/autopilot). India-facing examples differ: [Minus Zero](https://minuszero.ai/technology) describes a camera-input approach, while Mahindra’s [XUV 3XO](https://auto.mahindra.com/press-release/mahindra-launches-the-xuv-3xo-a-disruptor-in-compact-suvs.html) advertises one radar plus one vision camera for Level 2 ADAS. Swaayatt’s [public technology page](https://www.swaayattrobots.com/) does not specify a complete current sensor bill; **UNVERIFIED**. For your *simulation research*, I would test a camera+radar production-style suite **and** a camera+radar+lidar diagnostic suite. Cost figures require a separate, current parts quotation.
+
+**Proposed M3 degradation experiment:** for every scenario seed, run clean and stepped severities for rain/fog/night/glare, camera blur/occlusion, lidar beam loss/backscatter, radar ghosts/clutter, ultrasonic misses, sensor clock skew and calibration drift. First measure detection/road-edge/track quality; then measure collision, minimum clearance, intervention and safe-stop rate. Plot performance against **measured visibility, range or dropout**, not only a renderer’s weather slider. [RoboBEV](https://github.com/worldbench/robobev), [Robo3D](https://github.com/worldbench/Robo3D), [MultiCorrupt](https://github.com/ika-rwth-aachen/multicorrupt) and the measured [radar/lidar weather study](https://arxiv.org/abs/2405.12736) provide published corruption types and calibration examples. [RADIATE](https://arxiv.org/abs/2010.09076) supplies real adverse-weather camera/lidar/radar data, though it is not Indian traffic.
+
+| P8 option | Build | Estimated effort* | Main risk |
+|---|---|---:|---|
+| **Good** | Parameterised missed detections, false alarms, delays and sensor dropout in Simulink; sweep M3 and test safe-stop behaviour. | 1–2 weeks | Cannot establish raw perception robustness. |
+| **Better — recommended** | Rendered camera in selected Indian-style scenes; MATLAB lidar rain/fog and radar ghost models; compare failure curves with real adverse-weather data. [MATLAB lidar](https://www.mathworks.com/help/lidar/ref/lidarsensor-system-object.html), [radar](https://www.mathworks.com/help/radar/automotive-radar.html) | 3–6 weeks | Uncalibrated simulated weather and your current zero-detection render gap. |
+| **Best** | Calibrate each modality and timing against recordings from the intended sensor suite; run held-out raw-sensor and fault-injection tests across the whole stack. [Adverse-weather sensor evaluation](https://arxiv.org/abs/2305.01336) | 8–12+ weeks | Sensor/logging access and ground-truth quality. |
+
+\*Planning estimates.
+
+**Immediate sequence:** secure the RoadRunner licence answer; build the P6/P7 fast, reactive suite without waiting for it; make the first rendered milestone a **camera frame on which your detector produces checked detections**; then publish P8 M3 curves with the sensor assumptions attached. That sequence directly addresses the present offline perception gap and the tracker’s almost ground-truth-equivalent sensing result.

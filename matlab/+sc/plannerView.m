@@ -178,11 +178,22 @@ case 'init'
     plot(S.axMap, Rm(:,1), Rm(:,2), '-',  'Color',[.35 .35 .35], 'LineWidth',1.2);
     plot(S.axMap, C(:,1),  C(:,2),  '--', 'Color',[.98 .98 .98], 'LineWidth',1.0);
 
-    % the cow, when a scenario has one
+    % the cow, when a scenario has one - NOW LABELLED.
+    % It was an unlabelled orange star, and sc.demo1Route puts a pothole at the
+    % SAME station ("right in the middle of the cow encounter (she's at 300 m)").
+    % So the pothole's label sat next to the star and the star read as the
+    % pothole - the animal the whole scenario is named for was the one thing on
+    % the map with no name on it. The fix is to name the cow, NOT to rename the
+    % pothole: the pothole is real, it is genuinely there, and relabelling it
+    % would make the picture say something untrue.
     if isfinite(S.CS)
         cowXY = S.P.at(S.CS, 0);
         plot(S.axMap, cowXY(1), cowXY(2), 'p', 'MarkerSize',15, ...
              'MarkerFaceColor',[.9 .5 .1],'MarkerEdgeColor','k');
+        text(S.axMap, cowXY(1), cowXY(2) + 6, 'COW', ...
+             'FontName','Menlo','FontSize',10,'FontWeight','bold', ...
+             'Color',[.5 .25 .0],'HorizontalAlignment','center', ...
+             'BackgroundColor',[1 1 1 ],'Margin',1, 'Clipping','on');
     end
 
     % ---- STATIC: every hazard, drawn once, LABELLED ----------------------
@@ -196,6 +207,15 @@ case 'init'
     for k = 1:(numel(kids) - nBefore)
         try set(kids(k), 'Clipping', 'on'); catch, end %#ok<CTCH>
     end
+
+    % ---- STATIC: world furniture, drawn once, from S.W's OWN fields -------
+    % Added 11 Sep 2026 for the 5-scenario density initiative. Every field is
+    % OPTIONAL: a scenario's world struct (sc.s1world and its future
+    % siblings) may or may not carry Buildings/Poles/Drains/SideRoads, and
+    % this draws whichever are present and silently skips the rest - the same
+    % "absent field, no error" discipline the hazard/track fields already
+    % have. plannerView does not know or care which scenario S.W came from.
+    drawWorldFurniture(S.axMap, S.P, S.W);
 
     % ---- DYNAMIC: preallocated, updated with set(), never deleted --------
     % the whole candidate fan in ONE line object, NaN-separated
@@ -288,21 +308,34 @@ case 'init'
     text(S.axMdl, 0.0, 0.905, sprintf(gtMsg), ...
          'VerticalAlignment','top', 'FontName','Menlo','FontSize',8.5, ...
          'Color',gtColor, 'Interpreter','none');
-    S.NM = 6;                                  % 4 models + planner + slack
+    S.NM = 6;                                  % 3 models + ML GATE + planner + slack
     S.mdlDot  = gobjects(1,S.NM);
     S.mdlName = gobjects(1,S.NM);
     S.mdlStat = gobjects(1,S.NM);
     S.mdlDet  = gobjects(1,S.NM);
-    y0 = 0.735;  dy = 0.142;      % lowered to clear the ground-truth notice above
+    % LAYOUT MEASURED, NOT GUESSED (17 Sep). Rendering the panel and LOOKING at it
+    % showed every row's 2-line Detail colliding with the next row's name. Detail
+    % sat at yk-0.086 while the next name sat at yk-0.142, leaving 0.056 - less
+    % than one wrapped line. Adding the ML GATE row made it worse.
+    % Now: rows start higher, pitch is unchanged, and the sub-lines are pulled in
+    % so a full 2-line Detail still clears the row below.
+    % THE ARITHMETIC, done properly the third time. 6 rows x 3 lines each = 18
+    % lines of text. The panel is ~0.72 tall in normalised units and a line is
+    % ~0.040, so 18 lines need 0.72 - the entire panel, with zero margin. Two-line
+    % Details CANNOT fit, and no amount of offset tuning changes that. I tuned
+    % offsets twice before doing this sum; both attempts still overlapped.
+    % 6 rows x 2 lines = 12 lines = 0.48. That fits with room to spare.
+    y0 = 0.735;  dy = 0.128;
+    dyStat = 0.042;   % status sits under the name; Detail is merged into it below
     for k = 1:S.NM
         yk = y0 - (k-1)*dy;
         S.mdlDot(k)  = plot(S.axMdl, 0.022, yk, 'o', 'MarkerSize',9, ...
                             'MarkerFaceColor',[.7 .7 .7],'MarkerEdgeColor',[.3 .3 .3]);
         S.mdlName(k) = text(S.axMdl, 0.065, yk, '', 'VerticalAlignment','middle', ...
                             'FontName','Menlo','FontSize',10,'FontWeight','bold','Interpreter','none');
-        S.mdlStat(k) = text(S.axMdl, 0.065, yk-0.045, '', 'VerticalAlignment','middle', ...
+        S.mdlStat(k) = text(S.axMdl, 0.065, yk-dyStat, '', 'VerticalAlignment','middle', ...
                             'FontName','Menlo','FontSize',9.5,'Color',[.35 .35 .35],'Interpreter','none');
-        S.mdlDet(k)  = text(S.axMdl, 0.065, yk-0.086, '', 'VerticalAlignment','middle', ...
+        S.mdlDet(k)  = text(S.axMdl, 0.065, yk-dyStat-0.034, '', 'VerticalAlignment','middle', ...
                             'FontName','Menlo','FontSize',9,'Color',[.5 .5 .5],'Interpreter','none');
     end
 
@@ -487,7 +520,7 @@ case 'step'
         end
     end
     S.mdlCache = M;  S.mdlS = d.s;
-    M = [M(:).', plannerRow(cmd, d)];
+    M = [M(:).', gateRow(d), plannerRow(cmd, d)];
     for k = 1:S.NM
         % Guard every handle. A demo must not die on stage because one panel
         % object went stale - and one WILL, whenever this file is edited while
@@ -501,6 +534,9 @@ case 'step'
                               'MarkerFaceColor', statusColour(M(k).Status));
             set(S.mdlName(k), 'String', char(M(k).Model));
             set(S.mdlStat(k), 'String', char(clampStr(M(k).Status, 34)));
+            % Detail is ONE line now - see the layout note above. The full,
+            % untruncated text still goes to the run log, so no caveat is lost,
+            % it just is not competing for pixels it does not have.
             % 46 chars is what fits this panel at 9 pt - measured off a real
             % exported frame, where Model 3's "[placeholder - see
             % modelStatus.m header]" ran off the right-hand edge of the figure.
@@ -513,7 +549,7 @@ case 'step'
             % cow photo, not a road..." on screen. A caveat that is cut off
             % mid-clause is worse than no caveat: it advertises that something
             % is being explained and then withholds it.
-            set(S.mdlDet(k),  'String', wrapStr(M(k).Detail, 46, 2));
+            set(S.mdlDet(k),  'String', char(clampStr(M(k).Detail, 52)));
         else
             set(S.mdlName(k),'String',''); set(S.mdlStat(k),'String','');
             set(S.mdlDet(k),'String','');  set(S.mdlDot(k),'XData',NaN);
@@ -667,6 +703,291 @@ end
 % =========================================================================
 %                              HAZARDS
 % =========================================================================
+function drawWorldFurniture(ax, P, W)
+%DRAWWORLDFURNITURE  The static world layer beyond the road itself -
+%   buildings, pole/wire runs, drains, and any side roads the world struct
+%   carries. Every field is OPTIONAL and this function does not judge
+%   whether the counts/positions are real or chosen - that disclosure lives
+%   in whichever sc.<scenario>world.m built the struct, per this project's
+%   "real vs chosen, said plainly" rule. This just draws what it is given.
+%
+%   Deliberately NOT one label per object, unlike drawHazard. A hazard is
+%   sparse (a handful per scenario) and the planner-relevant point of each
+%   one is unique, so every one earns a caption. A building count runs to
+%   dozens-to-hundreds (S2 alone is 96) and most of them are visually
+%   interchangeable brick houses - labelling all of them would bury the
+%   map in text boxes nobody can read. So buildings are colour-coded by
+%   Type (a legend, not per-object text) and only the ones carrying a
+%   non-empty .Label (a shop, a shrine, a named landmark) get an on-map
+%   caption, the same visual weight a hazard label gets.
+
+% ---- buildings ------------------------------------------------------
+if isfield(W,'Buildings') && ~isempty(W.Buildings)
+    B = W.Buildings;
+    nB = numel(B);
+    V = zeros(4*nB,2);  F = zeros(nB,4);  Cd = zeros(nB,3);
+    for k = 1:nB
+        b = B(k);
+        [alongDir, acrossDir] = frame(P, b.Station);
+        c = P.at(b.Station, b.Lateral);
+        d_ = fieldOr(b,'Depth', 6.0);
+        w_ = fieldOr(b,'Width', 6.0);
+        corners = c + alongDir.*[-d_/2 d_/2 d_/2 -d_/2]' + acrossDir.*[-w_/2 -w_/2 w_/2 w_/2]';
+        V(4*k-3:4*k,:) = corners;
+        F(k,:) = (4*k-3):(4*k);
+        Cd(k,:) = buildingColour(fieldOr(b,'Type',"house"));
+    end
+    patch(ax, 'Faces',F, 'Vertices',V, 'FaceVertexCData',Cd, 'FaceColor','flat', ...
+          'EdgeColor',[.35 .32 .28], 'LineWidth',0.6, 'FaceAlpha',0.92, 'Clipping','on');
+    for k = 1:nB
+        b = B(k);
+        lbl = string(fieldOr(b,'Label',""));
+        if strlength(lbl) == 0, continue; end
+        c = P.at(b.Station, b.Lateral);
+        text(ax, c(1), c(2), char(labelHead(lbl,26)), ...
+             'HorizontalAlignment','center','VerticalAlignment','middle', ...
+             'FontName','Helvetica','FontSize',8,'FontWeight','bold','Color',[.15 .12 .05], ...
+             'BackgroundColor',[1 1 .92],'EdgeColor',[.6 .5 .3],'Margin',1.5, ...
+             'Interpreter','none','Clipping','on');
+    end
+
+    % ---- rooftop detail: water tanks, dishes, balconies, rebar ---------
+    % Added 11 Sep 2026, Phase D of the density-initiative fix pass. THE ONLY facade
+    % elements a straight-down 2D view can honestly show - a window or a door is on a
+    % VERTICAL wall and has no plan-view signature at all, so this deliberately does not
+    % try to fake one. A water tank and a dish sit ON the roof (visible from above); a
+    % balcony genuinely projects past the wall line (a real plan-view footprint change);
+    % rebar tied off at a roof corner reads as a small mark at that corner. Every field
+    % below is OPTIONAL (fieldOr default false/0) so a building with none of them (most
+    % of S4/S5's, which carry no per-building spec detail to honour) draws exactly as
+    % before this pass - purely additive.
+    for k = 1:nB
+        b = B(k);
+        [alongDir, acrossDir] = frame(P, b.Station);
+        c = P.at(b.Station, b.Lateral);
+        w_ = fieldOr(b,'Width',6.0);  d_ = fieldOr(b,'Depth',6.0);
+        side = sign(b.Lateral); if side == 0, side = 1; end
+        if fieldOr(b,'Tank',false)
+            tp = c + alongDir*(d_*0.28) - acrossDir*side*(w_*0.28);
+            patch(ax, tp(1)+0.5*[-1 1 1 -1], tp(2)+0.5*[-1 -1 1 1], [.10 .10 .12], ...
+                  'EdgeColor',[.05 .05 .05], 'LineWidth',0.5, 'Clipping','on');
+        end
+        if fieldOr(b,'Dish',false)
+            dp = c - alongDir*(d_*0.30) - acrossDir*side*(w_*0.20);
+            th = linspace(0,2*pi,14);
+            patch(ax, dp(1)+0.35*cos(th), dp(2)+0.35*sin(th), [.75 .75 .78], ...
+                  'EdgeColor',[.4 .4 .4], 'LineWidth',0.4, 'Clipping','on');
+        end
+        if fieldOr(b,'Balcony',false)
+            % projects PAST the road-facing wall - a real footprint change, drawn as a
+            % thin extra rectangle beyond the building's own near edge.
+            bp0 = c - acrossDir*side*(w_/2);
+            bp1 = bp0 - acrossDir*side*0.9;
+            corners = [bp0 + alongDir*d_*0.25; bp1 + alongDir*d_*0.25; ...
+                       bp1 - alongDir*d_*0.25; bp0 - alongDir*d_*0.25];
+            patch(ax, corners(:,1), corners(:,2), [.68 .66 .60], ...
+                  'EdgeColor',[.4 .38 .32], 'LineWidth',0.4, 'Clipping','on');
+        end
+        if fieldOr(b,'Rebar',false)
+            rp = c + alongDir*(d_*0.35) + acrossDir*side*(w_*0.35);
+            plot(ax, rp(1)+[-.3 .3], rp(2)+[-.3 .3], '-', 'Color',[.55 .25 .15], ...
+                 'LineWidth',1.2, 'Clipping','on');
+            plot(ax, rp(1)+[-.3 .3], rp(2)+[.3 -.3], '-', 'Color',[.55 .25 .15], ...
+                 'LineWidth',1.2, 'Clipping','on');
+        end
+    end
+end
+
+% ---- pole/wire runs ---------------------------------------------------
+if isfield(W,'Poles') && ~isempty(W.Poles)
+    Pl = W.Poles;
+    runs = unique([Pl.Run]);
+    for r = runs
+        idxR = find([Pl.Run] == r);
+        [~, ord] = sort([Pl(idxR).Station]);
+        idxR = idxR(ord);
+        xy = zeros(numel(idxR),2);
+        for i = 1:numel(idxR)
+            xy(i,:) = P.at(Pl(idxR(i)).Station, Pl(idxR(i)).Lateral);
+        end
+        plot(ax, xy(:,1), xy(:,2), '-', 'Color',[.45 .40 .35], 'LineWidth',0.7, 'Clipping','on');
+        plot(ax, xy(:,1), xy(:,2), 'o', 'MarkerSize',3, 'MarkerFaceColor',[.3 .27 .22], ...
+             'MarkerEdgeColor','none', 'Clipping','on');
+    end
+    if isfield(Pl,'Label') && strlength(string(Pl(1).Label)) > 0
+        c0 = P.at(Pl(1).Station, Pl(1).Lateral);
+        text(ax, c0(1), c0(2)+3.0, char(labelHead(string(Pl(1).Label),26)), ...
+             'FontName','Helvetica','FontSize',7.5,'Color',[.35 .3 .25], ...
+             'BackgroundColor',[1 1 1],'Margin',1.0,'Interpreter','none','Clipping','on');
+    end
+end
+
+% ---- drains -------------------------------------------------------------
+if isfield(W,'Drains') && ~isempty(W.Drains)
+    for k = 1:numel(W.Drains)
+        dr = W.Drains(k);
+        ns = max(2, ceil((dr.S1 - dr.S0)/4));
+        ss = linspace(dr.S0, dr.S1, ns);
+        wd = fieldOr(dr,'Width', 0.4);
+        LL = zeros(ns,2); RR = zeros(ns,2);
+        for i = 1:ns
+            LL(i,:) = P.at(ss(i), dr.Lateral + wd/2);
+            RR(i,:) = P.at(ss(i), dr.Lateral - wd/2);
+        end
+        band = [LL; flipud(RR)];
+        patch(ax, band(:,1), band(:,2), [.32 .30 .22], 'EdgeColor','none', ...
+              'FaceAlpha',0.75, 'Clipping','on');
+        lbl = string(fieldOr(dr,'Label',""));
+        if strlength(lbl) > 0
+            mid = P.at((dr.S0+dr.S1)/2, dr.Lateral);
+            text(ax, mid(1), mid(2), char(labelHead(lbl,26)), ...
+                 'FontName','Helvetica','FontSize',7.5,'Color',[.25 .22 .16], ...
+                 'BackgroundColor',[1 1 1],'Margin',1.0,'Interpreter','none','Clipping','on');
+        end
+    end
+end
+
+% ---- side roads (context only - not drivable by the ego) ---------------
+if isfield(W,'SideRoads') && ~isempty(W.SideRoads)
+    for k = 1:numel(W.SideRoads)
+        sr = W.SideRoads(k);
+        plot(ax, sr.XY(:,1), sr.XY(:,2), '-', 'Color',[.7 .7 .68], 'LineWidth',3.0, ...
+             'Clipping','on');
+        lbl = string(fieldOr(sr,'Name',""));
+        if strlength(lbl) > 0
+            text(ax, sr.XY(end,1), sr.XY(end,2), char(labelHead(lbl,26)), ...
+                 'FontName','Helvetica','FontSize',8,'Color',[.3 .3 .3], ...
+                 'BackgroundColor',[1 1 1],'Margin',1.0,'Interpreter','none','Clipping','on');
+        end
+    end
+end
+
+% ---- service drops (a short stub from a building to its wire run) -------
+% Added with sc.s3world's own W.ServiceDrops (Phase C, 11 Sep 2026 fix pass) - each entry
+% is a single point in (Station, Lateral0->Lateral1), not a run along the path, so it is
+% drawn directly rather than through sc.path.at() at two different stations.
+if isfield(W,'ServiceDrops') && ~isempty(W.ServiceDrops)
+    for k = 1:numel(W.ServiceDrops)
+        d = W.ServiceDrops(k);
+        p0 = P.at(d.S0, d.Lateral0);  p1 = P.at(d.S1, d.Lateral1);
+        plot(ax, [p0(1) p1(1)], [p0(2) p1(2)], '-', 'Color',[.55 .50 .40], ...
+             'LineWidth',0.5, 'Clipping','on');
+    end
+end
+
+% ---- trees ----------------------------------------------------------------
+% Added 11 Sep 2026, Phase E of the density-initiative fix pass, for S4's median/shoulder
+% planting and S5's climb-side forest scatter - a DIFFERENT, lighter mechanism from
+% sc.s1world's own 2200-tree forest (a big numeric matrix, rendered by the older
+% sc.s1render 3D chase-cam system, not this one). Disclosed rather than unified: S1's
+% forest carries canopy-cover solving, clumping noise and a reveal-distance mechanic none
+% of the new vegetation needs or claims - this is a plain scatter of crowns, drawn as
+% filled circles, nothing more.
+if isfield(W,'TreeScatter') && ~isempty(W.TreeScatter)
+    Tr = W.TreeScatter;
+    nT = numel(Tr);
+    th = linspace(0, 2*pi, 10);
+    V = zeros(nT*10, 2);  F = zeros(nT,10);  Cd = zeros(nT,3);
+    for k = 1:nT
+        c = P.at(Tr(k).Station, Tr(k).Lateral);
+        r = fieldOr(Tr(k),'CrownR',1.5);
+        V((k-1)*10+1:k*10,:) = [c(1)+r*cos(th); c(2)+r*sin(th)]';
+        F(k,:) = (k-1)*10+1 : k*10;
+        Cd(k,:) = treeColour(fieldOr(Tr(k),'Species',"generic"));
+    end
+    patch(ax, 'Faces',F, 'Vertices',V, 'FaceVertexCData',Cd, 'FaceColor','flat', ...
+          'EdgeColor','none', 'FaceAlpha',0.85, 'Clipping','on');
+end
+
+% ---- signs - gantry / cautionary / km-stone / hoarding -------------------
+% Added 11 Sep 2026, Phase B of the density-initiative fix pass. Nothing drew these
+% before, at all - S4-THE-HIGHWAY.md's own "signage and furniture is the thing that makes
+% a highway read as a highway" line named a real gap. Shapes and colours are the SAME
+% IRC 67 / Vienna-convention sourcing drawHazard's own "sharpturn"/"speedsign" cases
+% already use for S1/S3's hazards - this is the identical real-world convention, just for
+% CONTEXT signs rather than hazards the planner's speed cap logic reads.
+if isfield(W,'Signs') && ~isempty(W.Signs)
+    for k = 1:numel(W.Signs)
+        drawSign(ax, P, W.Signs(k));
+    end
+end
+end
+
+function drawSign(ax, P, sg)
+c = P.at(sg.Station, sg.Lateral);
+switch string(sg.Type)
+case "gantry"
+    % IRC: a wide green overhead panel spanning the carriageway. Drawn here as a green
+    % band across the road at its station - the deck itself is 5.5m up, invisible to a
+    % top-down view (the same "no elevation channel" call sc.s4world's own header makes
+    % for flyover decks), so this marks WHERE it crosses, not what it looks like from below.
+    [~, acrossDir] = frame(P, sg.Station);
+    hw = 8.0;
+    p0 = c - acrossDir*hw;  p1 = c + acrossDir*hw;
+    plot(ax, [p0(1) p1(1)], [p0(2) p1(2)], '-', 'Color',[.05 .45 .15], 'LineWidth',5.0, ...
+         'Clipping','on');
+case "cautionary"
+    % IRC 67: white equilateral triangle, red border - IDENTICAL shape to drawHazard's
+    % own "sharpturn" case, reused verbatim rather than redrawn differently.
+    r = 2.0;
+    th = [pi/2, pi/2+2*pi/3, pi/2+4*pi/3];
+    patch(ax, c(1)+r*cos(th), c(2)+r*sin(th), [1 1 1], ...
+          'EdgeColor',[.80 .08 .10], 'LineWidth',2.6, 'Clipping','on');
+case "kmstone"
+    % IRC 8: 600x300x100mm, green top for a national highway.
+    r = 0.8;
+    patch(ax, c(1)+r*[-1 1 1 -1], c(2)+r*[-.5 -.5 .5 .5], [.90 .88 .80], ...
+          'EdgeColor',[.05 .45 .15], 'LineWidth',2.0, 'Clipping','on');
+case "hoarding"
+    % a unipole billboard - grey board, dark post mark. Drawn axis-aligned rather than
+    % rotated to the road heading - a small map icon, not a measured footprint.
+    r = [3.0 1.4];
+    patch(ax, c(1)+r(1)*[-1 1 1 -1], c(2)+r(2)*[-1 -1 1 1], [.75 .75 .75], ...
+          'EdgeColor',[.3 .3 .3], 'LineWidth',1.2, 'Clipping','on');
+otherwise
+    plot(ax, c(1), c(2), 's', 'MarkerSize',8, 'Color',[.5 .5 .5], 'Clipping','on');
+end
+lbl = string(fieldOr(sg,'Label',""));
+if strlength(lbl) > 0
+    [~, acrossDir] = frame(P, sg.Station);
+    anchor = c + acrossDir*7.0;
+    text(ax, anchor(1), anchor(2), char(labelHead(lbl,28)), ...
+         'HorizontalAlignment','center','VerticalAlignment','middle', ...
+         'FontName','Helvetica','FontSize',8,'Color',[.15 .15 .15], ...
+         'BackgroundColor',[1 1 1],'EdgeColor',[.6 .6 .6],'Margin',1.5, ...
+         'Interpreter','none','Clipping','on');
+end
+end
+
+function c = treeColour(species)
+%TREECOLOUR  Map-symbol colours, same footing as buildingColour's own -
+%   not photographed, a legibility convention distinguishing species groups.
+switch string(species)
+case "gulmohar_amaltas", c = [.42 .58 .28];   % median flowering trees, a warmer green
+case "eucalyptus",       c = [.38 .50 .42];   % cooler grey-green, pale peeling bark canopy
+case "sal",               c = [.30 .42 .22];   % denser forest green
+otherwise,                c = [.35 .48 .28];
+end
+end
+
+function c = buildingColour(typ)
+%BUILDINGCOLOUR  One colour per building Type tag, so the map reads as a
+%   legend even with no per-object label. Not sourced from a photograph -
+%   these are MAP SYMBOL colours (a legibility convention, same footing as
+%   drawHazard's speed-sign red rim), disclosed as such.
+switch string(typ)
+case "hut",       c = [.82 .70 .50];   % mud/dung-plastered, thatch
+case "house1",    c = [.80 .78 .74];   % single-storey unplastered brick
+case "house2",    c = [.72 .70 .64];   % two-storey
+case "house3",    c = [.60 .58 .55];   % three-storey, darkest of the three heights
+case "wall",      c = [.85 .84 .80];   % a blank compound wall, not a habitable building
+case "shop",      c = [.55 .62 .78];   % distinguishable from housing at a glance
+case "shrine",    c = [.95 .90 .55];   % whitewashed + marigold, a warm highlight
+case {"tin_shed","shed"}, c = [.60 .58 .62];
+otherwise,        c = [.78 .76 .72];
+end
+end
+
 function drawHazard(ax, P, hz, idx)
 %DRAWHAZARD  One static road hazard plus its on-screen label, drawn once at
 %   init. Real-world sourced colours - see plannerView's own header for exactly
@@ -924,10 +1245,46 @@ function M = stubModels(why)
 %   than one that admits it has none yet.
 d = 'stub - sc.modelStatus not on the path yet';
 if ~isempty(why), d = why; end
+% The "Fusion" row was dropped 17 Sep: its Status AND Detail both read "stub",
+% so it carried no information while consuming a full slot. The panel is sized
+% for a fixed number of rows and the live ML GATE row needed the space. A row
+% that says nothing is worse than no row - it makes the panel look fuller than
+% it is.
 M = struct( ...
-  'Model',  {"Models 1+2", "Model 3",  "Model 4",     "Fusion"}, ...
-  'Status', {"gated",      "stub",     "stub",        "stub"}, ...
-  'Detail', {"intent/traj gated off - planner runs on geometry", d, d, d});
+  'Model',  {"Models 1+2", "Model 3",  "Model 4"}, ...
+  'Status', {"gated",      "stub",     "stub"}, ...
+  'Detail', {"intent/traj gated off - planner runs on geometry", d, d});
+end
+
+function r = gateRow(d)
+%GATEROW  PHASE 7 - the ML gate's own line, built from the decisions it actually
+%   made this run, not from a sentence someone typed.
+%
+%   WHY THIS EXISTS: sih.prediction.gateYield returns USE or FALLBACK per track
+%   per planning step, and until now that verdict only ever reached a log file. A
+%   judge watching the screen saw a hand-written "gated off" caption and had to
+%   take it on trust. This row is the measured result: N of M tracks, live.
+%
+%   It reads d.GateUse / d.GateFallback when the caller supplies them and says so
+%   honestly when it cannot - an absent count is reported as absent, never as zero.
+if isfield(d,'GateUse') && isfield(d,'GateFallback')
+    u = double(d.GateUse); f = double(d.GateFallback); tot = u + f;
+    if tot == 0
+        r = struct('Model',"ML GATE",'Status',"no decisions yet", ...
+                   'Detail',"planner has not stepped");
+        return
+    end
+    if u == 0
+        st = "OFF for all " + string(tot);
+    else
+        st = sprintf('ON %d / %d', u, tot);
+    end
+    r = struct('Model',"ML GATE", 'Status',st, ...
+        'Detail',"no validated band: 2.089% vs <=1% - geometry drives");
+else
+    r = struct('Model',"ML GATE",'Status',"not reported", ...
+               'Detail',"caller supplied no gate counts - not the same as zero");
+end
 end
 
 function r = plannerRow(cmd, d)

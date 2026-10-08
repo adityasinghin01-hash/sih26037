@@ -42,6 +42,19 @@ __pycache__/
 venv/
 .pytest_cache/
 
+# submission media and generated evidence - store externally, not in Git history
+submission/assets/footage/
+submission/assets/perception demo/
+submission/*.mp4
+submission/*_contact_sheet.png
+submission/step*_shell.png
+submission/*_tests_output.txt
+derisk/check01_output.txt
+HANDOVER/project-hq/research/_codex/
+HANDOVER/ppt-pack/_build/*.html
+HANDOVER/ppt-pack/_build/t.pdf
+HANDOVER/project-hq/05-ASSETS/plan.html
+
 # os
 .DS_Store
 OpenTrafficLab/

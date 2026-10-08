@@ -14,7 +14,16 @@ fprintf('\n================ S1 ACTION, PHASE 3 ================\n');
 W = sc.s1world();
 P = W.Path;  CS = W.CowStation;
 
-DT = 0.05;  T_END = 62.0;                     % S1: "THE ACTION - 62 seconds"
+DT = 0.05;
+% T_END is overridable, using this file's own `if ~exist` idiom (same as VIEW,
+% PLAN_EVERY, INLOOP, SENSED below). Default unchanged at 62 s, so every existing
+% caller - s1_planner_run.m above all - behaves exactly as before.
+% WHY: densityPlannerRun applies sc.demo1Route's speed caps, which make the route
+% take 92.65 s. The scripted traffic recording was only 70 s (T_END+8), so 454 of
+% 1853 steps - 24% of that run - executed against a FROZEN world. A scenario whose
+% traffic stops existing before the route ends cannot measure anything after that
+% point.
+if ~exist('T_END','var'), T_END = 62.0; end   % S1: "THE ACTION - 62 seconds"
 [~, zd] = sc.meshes("zebu");  [~, cd] = sc.meshes("car");
 
 % the geometry the driver is handed. DERIVED from the meshes, never typed.

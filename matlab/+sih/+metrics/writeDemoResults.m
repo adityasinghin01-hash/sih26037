@@ -17,7 +17,11 @@ function info = writeDemoResults(runName, D, LOG, opts)
 %   INPUTS
 %     runName  (1,1) string   folder name under results/
 %     D        (1,1) struct   demo_play's route struct - D.W.Path, D.Poses,
-%              D.Who, D.DIMS, D.Sensed, D.Title all read here
+%              D.Who, D.DIMS, D.Sensed, D.Title all read here. Optional
+%              D.ActorClassIDs maps ActorID -> frozen S5 ClassID when role
+%              tags are evidence-specific rather than classIDByName names.
+%              Optional D.EgoWidthFolded supplies the effective width on
+%              LOG.MirrorsFolded samples.
 %     LOG      (1,1) struct   demo_play's runPlanner() output
 %     opts     (1,1) struct   the demo_play() opts that produced this run -
 %              written verbatim to config.json: "a number without its config
@@ -53,7 +57,11 @@ for i = 1:min(n, numel(D.Poses))
     Pi = D.Poses{i};
     for k = 1:numel(Pi)
         tag = string(D.Who(Pi(k).ActorID));
-        cid = double(sih.scenario.classIDByName(tag));
+        if isfield(D, 'ActorClassIDs') && isKey(D.ActorClassIDs, double(Pi(k).ActorID))
+            cid = double(D.ActorClassIDs(double(Pi(k).ActorID)));
+        else
+            cid = double(sih.scenario.classIDByName(tag));
+        end
         if isnan(cid), continue; end   % unrecognised tag - drop, matches S1 guarantee 4's spirit
         rows(end+1,:) = [LOG.t(i), double(Pi(k).ActorID), cid, ...
             Pi(k).Position(1), Pi(k).Position(2), Pi(k).Position(3), deg2rad(Pi(k).Yaw)]; %#ok<AGROW>
@@ -109,7 +117,19 @@ egoWidth = 1.8; egoLen = 4.7;   % TUNE.EgoWidth/EgoLength in demo_play's runPlan
 % UNDERSTATING how tight its clearances really are - the unsafe direction of
 % error. EgoLength has no such route override anywhere in demo_play.m (grep
 % confirms every TUNE.EgoLength is the same 4.7), so it needs none here either.
+% S3 additionally changes its effective width while MirrorsFolded is true.
+% The optional folded-width fields below apply that smaller footprint only to
+% those samples; callers without them retain the scalar-width behavior.
 if isfield(D, 'EgoWidth'), egoWidth = D.EgoWidth; end
+egoWidthByStep = repmat(egoWidth, numel(LOG.t), 1);
+foldedSteps = 0;
+if isfield(D, 'EgoWidthFolded') && isfield(LOG, 'MirrorsFolded')
+    folded = logical(LOG.MirrorsFolded(:));
+    nFold = min(numel(folded), numel(egoWidthByStep));
+    foldedIdx = find(folded(1:nFold));
+    egoWidthByStep(foldedIdx) = D.EgoWidthFolded;
+    foldedSteps = numel(foldedIdx);
+end
 
 x = LOG.x(:); y = LOG.y(:); v = LOG.v(:); t = LOG.t(:);
 d = [0; cumsum(vecnorm(diff([x y]), 2, 2))];
@@ -137,10 +157,10 @@ mh = min(H, [], 'omitnan');
 if isempty(mh), mh = NaN; end
 M.M5_minBarrier_rad = mh;
 
-% M6: minimum separation to any of the three scripted actors, world frame,
-% the same rectangle-projection method already used and verified in this
+% M6: minimum separation to every ground-truth actor in D.Poses, world frame,
+% using the same rectangle-projection method already used and verified in this
 % session's own Sensed-vs-ground-truth comparison.
-M.M6_minClearance_m = minClearanceToActors(D, LOG, egoWidth, egoLen);
+M.M6_minClearance_m = minClearanceToActors(D, LOG, egoWidthByStep, egoLen);
 
 M.M7_stoppedTime_s = DT*sum(v < 0.2);
 accel = diff(v)/DT;
@@ -154,6 +174,10 @@ M.M10_latWobble_m  = sum(abs(diff(LOG.e)));
 M.RouteLength_m     = D.W.Path.Len;
 M.EgoWidth_m        = egoWidth;
 M.EgoLength_m       = egoLen;
+if isfield(D, 'EgoWidthFolded')
+    M.EgoWidthFolded_m = D.EgoWidthFolded;
+    M.MirrorFoldedSteps = foldedSteps;
+end
 M.BarrierViolations = sum(H < 0, 'omitnan');
 % A REAL, DISCLOSED CAVEAT ON THE ABOVE, found preparing this session's case
 % study. Raw h<0 is true of ANY stationary object anywhere ahead in the ego's
@@ -171,7 +195,7 @@ M.BarrierViolations = sum(H < 0, 'omitnan');
 M.BarrierViolations_Imminent = sum(imminent);
 end
 
-function sep = minClearanceToActors(D, LOG, egoWidth, egoLen)
+function sep = minClearanceToActors(D, LOG, egoWidthByStep, egoLen)
 sep = inf;
 for i = 1:min(numel(LOG.t), numel(D.Poses))
     Pi = D.Poses{i};
@@ -185,7 +209,7 @@ for i = 1:min(numel(LOG.t), numel(D.Poses))
         aL = abs(dims(1)*cos(th)) + abs(dims(2)*sin(th));
         aW = abs(dims(1)*sin(th)) + abs(dims(2)*cos(th));
         gapS = abs(s - LOG.s(i)) - (aL + egoLen)/2;
-        gapE = abs(e - LOG.e(i)) - (aW + egoWidth)/2;
+        gapE = abs(e - LOG.e(i)) - (aW + egoWidthByStep(i))/2;
         sep = min(sep, max(gapS, gapE));
     end
 end
