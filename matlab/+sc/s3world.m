@@ -48,4 +48,159 @@ assert(abs(P.Len - 382.2) < 1.0, "sc:s3worldLen", ...
 
 W.Path  = P;
 W.Width = 4.5;             % m, S3-THE-GALLI.md: "tagged residential, 4.5 m where it is open"
+
+% =======================================================================================
+% BUILDINGS AND INFRASTRUCTURE - added 11 Sep 2026, the 5-scenario density initiative.
+% Zero planner risk (W.Path/W.Width untouched) - static-world furniture for
+% sc.plannerView only. This function stays "leaner than s1world" in spirit: no forest,
+% no reveal mechanic, so this section is the one addition, kept in the same file rather
+% than spawning a second one, because S3 has nothing else to keep it apart from.
+%
+% THE STATION REMAP THIS WHOLE SECTION RUNS ON. demo3Route.m's own header already
+% establishes it: stations <= 300 m are real (1:1 with the written spec), stations
+% > 300 m are foreshortened by (382.2-300)/(416-300) = 0.7086, because the real route
+% is 382.2 m against the written 416 m and nothing before 300 m moves. Reused here
+% verbatim rather than re-derived, so a building and a hazard can never disagree about
+% where "340 m" actually is.
+remap = @(sw) sw + (sw>300).*(sw-300).*(0.70862 - 1);
+
+% THE PER-BAND CLEAR WIDTH IS THE SPEC'S OWN TABLE, taken directly rather than reverse-
+% engineered from demo_play's corridorFrom mechanism (which narrows the DRIVABLE
+% corridor from hazard entries, a different and lossier path back to the same number).
+% "No setback" (S3-THE-GALLI.md, verbatim) means the building wall more or less IS the
+% edge of the clear width at each station - so a building's near edge is placed at that
+% half-width plus a small 0.15 m gap, not a yard the way S1's rural roadside got one.
+bands = [ ...
+    0   90  4.5   16 "house2" ; ...   % "two-storey, continuous frontage" both sides
+    90  150 3.6   11 "house3" ; ...   % "three-storey... canyon-like"
+    150 205 3.2    3 "wall"   ; ...   % blank compound walls (+ the empty-plot GAP, s3density)
+    205 246 2.4    4 "house1" ; ...   % stepping forward, the buttress, the squeeze
+    246 300 3.0    5 "house1" ; ...   % "lower houses, a courtyard door standing open"
+    300 416 3.8   10 "house2" ];      % widens toward the main road (foreshortened by remap)
+rng(26037);
+W.Buildings = struct('Type',{},'Station',{},'Lateral',{},'Width',{},'Depth',{}, ...
+    'Storeys',{},'Label',{});
+storeyOf = dictionary(["hut" "house1" "house2" "house3" "wall" "shop" "shed"], ...
+                      [1 1 2 3 0 1 1]);
+for b = 1:size(bands,1)
+    s0 = str2double(bands(b,1));  s1 = str2double(bands(b,2));
+    halfW = str2double(bands(b,3));  n = round(str2double(bands(b,4)));
+    typ = bands(b,5);
+    ss = linspace(s0 + (s1-s0)*0.06, s1 - (s1-s0)*0.06, n);
+    for i = 1:n
+        side = 2*mod(i,2) - 1;                    % alternate left/right
+        frontW = 3.0 + 3.5*rand;                   % S0 s5: "width 2.9-9.5 m" - kept modest
+        depth  = 5.0 + 2.0*rand;
+        near   = halfW + 0.15;
+        W.Buildings(end+1) = struct('Type',typ,'Station',remap(ss(i)), ...
+            'Lateral', side*(near + frontW/2), 'Width',frontW, 'Depth',depth, ...
+            'Storeys', storeyOf(typ), 'Label',""); %#ok<AGROW>
+    end
+end
+% the two tin sheds and the kirana shop - named, not scattered, both in the
+% widened 300-416 band (foreshortened, remapped)
+W.Buildings(end+1) = struct('Type',"shed",'Station',remap(320),'Lateral', 1.5+2.0+0.15, ...
+    'Width',3.2,'Depth',5.0,'Storeys',1,'Label',"");
+W.Buildings(end+1) = struct('Type',"shed",'Station',remap(400),'Lateral',-(1.9+1.6+0.15), ...
+    'Width',3.2,'Depth',5.0,'Storeys',1,'Label',"");
+W.Buildings(end+1) = struct('Type',"shop",'Station',remap(405),'Lateral', (1.9+1.5+0.15), ...
+    'Width',2.9,'Depth',4.0,'Storeys',1,'Label',"kirana shop, shutter half up");
+% the remaining 2 of the spec's "5 compound walls only" (3 already placed in band C)
+W.Buildings(end+1) = struct('Type',"wall",'Station',remap(340),'Lateral',-(1.9+1.6+0.15), ...
+    'Width',3.2,'Depth',3.0,'Storeys',0,'Label',"");
+W.Buildings(end+1) = struct('Type',"wall",'Station',remap(360),'Lateral', (1.9+1.5+0.15), ...
+    'Width',3.2,'Depth',3.0,'Storeys',0,'Label',"");
+assert(numel(W.Buildings) == 54, "sc:s3buildingCount", ...
+    "%d buildings built, S3's own spec states 54", numel(W.Buildings));
+% RESOLVED BEFORE ANYTHING ELSE READS A STATION OFF THESE - the named additions above
+% (the 2 sheds, the kirana shop, the 2 extra compound walls) were placed at fixed written
+% stations with no awareness of the procedural scatter already occupying that same 300-
+% 416m band, and collided with it. Service drops and the overlap assert below both read
+% W.Buildings' stations, so the resolve has to happen before either, not after.
+W.Buildings = sc.resolveFurnitureOverlaps(W.Buildings);
+
+% ROOFTOP DETAIL, Phase D of the fix pass (11 Sep 2026). S3's own "Counted" line gives
+% exact totals across all 54 buildings: 31 water tanks, 22 balconies, 14 exposed-rebar,
+% 7 satellite dishes. Applied here at a seeded random rate tuned so the EXPECTED count
+% matches - not force-matched to the exact integer (that would need a combinatorial
+% assignment this file has no real per-building data to justify), and the actual count
+% achieved is reported below rather than asserted, since it is inherently a random draw.
+% Restricted to "wall" (5 compound walls, not habitable) getting none of any - a blank
+% wall has no roof to put a tank on - and Balcony restricted to Storeys>=2 (S3's own text:
+% balconies belong to the two/three-storey buildings, never the single-storey ones).
+rngD = RandStream('twister','Seed',77201);
+nTank=0; nBal=0; nReb=0; nDish=0;
+for k = 1:numel(W.Buildings)
+    b = W.Buildings(k);
+    if b.Type == "wall", continue; end
+    if rand(rngD) < 31/49, W.Buildings(k).Tank = true; nTank=nTank+1; end
+    if b.Storeys >= 2 && rand(rngD) < 22/38, W.Buildings(k).Balcony = true; nBal=nBal+1; end
+    if rand(rngD) < 14/49, W.Buildings(k).Rebar = true; nReb=nReb+1; end
+    if rand(rngD) < 7/49,  W.Buildings(k).Dish  = true; nDish=nDish+1; end
+end
+fprintf('[S3 world] rooftop detail: %d tanks (spec 31) | %d balconies (spec 22) | %d rebar (spec 14) | %d dishes (spec 7)\n', ...
+        nTank, nBal, nReb, nDish);
+
+nOnRoadB = 0;
+for k = 1:numel(W.Buildings)
+    if abs(W.Buildings(k).Lateral) - W.Buildings(k).Width/2 < 0.90
+        nOnRoadB = nOnRoadB + 1;   % 0.90 m: below even the squeeze's own folded margin
+    end
+end
+assert(nOnRoadB == 0, "sc:s3buildingOnRoad", ...
+    "%d buildings leave less than 0.90 m of clear width at their own station", nOnRoadB);
+
+% ---------------------------------------------------------------- infrastructure
+% "An open drain the whole length, right side" - S3's own words, and W.Drains already
+% draws exactly this shape (a parallel band, not S1's culvert-marker point). Right side
+% is the SIGNED convention this codebase uses throughout (positive = left).
+W.Drains = struct('S0',0,'S1',W.Path.Len,'Lateral',-2.5,'Width',0.38, ...
+    'Label',"open drain, 380mm, the whole length");
+% BEYOND SPEC, DISCLOSED - Phase G of the fix pass (11 Sep 2026). S3-THE-GALLI.md names
+% "broken concrete in patches" but gives no pothole count or stations the way S1's spec
+% does (9 potholes, exact chainages). These 3 are authored, not measured, placed in the
+% open stretches away from the squeeze/hazard zones already built - added because the
+% original density ask wanted repeated instances of a hazard type, not a single token
+% one, and S3 had ZERO road-surface hazards of its own before this.
+for ps = [55, 175, 265]
+    W.Drains(end+1) = struct('S0',ps-0.4,'S1',ps+0.4,'Lateral',0.3,'Width',0.5, ...
+        'Label',"pothole (authored, not in the written spec)"); %#ok<AGROW>
+end
+% "9-14 parallel wire runs... service drops to every house" - UPGRADED in the Phase C fix
+% pass (11 Sep 2026) from a single representative line to THREE, one per real voltage tier
+% S3's own text names (3x 11kV, 4x 415V, the rest cable TV/telephone) - still not literally
+% 9-14 (at this zoom, 14 near-parallel lines over 382 m converge to visual noise with no
+% extra information in a flat top-down schematic - measured by looking at the S1 draft
+% before deciding this, not assumed), but the three real TIERS are now distinguishable
+% rather than one undifferentiated bundle. Each run gets its own lateral offset and its own
+% label so a viewer can tell which is which, the same way the culvert/drain labels work.
+poleS = 20:40:360;
+W.Poles = struct('Station',{},'Lateral',{},'Run',{},'Label',{});
+tiers = struct('e',{2.4,2.7,3.0}, 'lbl',{"11kV (3 real runs, drawn as one)", ...
+    "415V service (4 real runs, drawn as one)", "cable TV / telephone (the rest, drawn as one)"});
+for t = 1:3
+    for s = poleS
+        W.Poles(end+1) = struct('Station',s,'Lateral',tiers(t).e,'Run',t, ...
+            'Label',tiers(t).lbl); %#ok<AGROW>
+    end
+end
+% the transformer "on two poles" at 118 m, right side - a real, specifically located item
+W.Poles(end+1) = struct('Station',118,'Lateral',-2.6,'Run',4,'Label',"transformer, two poles");
+% service drops: a short stub from each building's own footprint to the nearest 415V run
+% (tier 2, e=2.7), matching "service drops to every single house... landing at a meter box".
+% Only buildings on the SAME side as the pole run get a drop (a drop cannot cross the road).
+W.ServiceDrops = struct('S0',{},'S1',{},'Lateral0',{},'Lateral1',{});
+for k = 1:numel(W.Buildings)
+    b = W.Buildings(k);
+    if sign(b.Lateral) <= 0, continue; end   % the pole runs are on the left (positive) side
+    W.ServiceDrops(end+1) = struct('S0',b.Station,'S1',b.Station, ...
+        'Lateral0',b.Lateral - sign(b.Lateral)*b.Width/2, 'Lateral1',2.7); %#ok<AGROW>
+end
+
+[nOverlap, overlapWorst] = sc.checkFurnitureOverlaps(W.Buildings, W.Poles);
+assert(nOverlap == 0, "sc:s3furnitureOverlap", "%d furniture overlaps - worst: %s", ...
+    nOverlap, overlapWorst);
+
+fprintf('[S3 world] route %.1f m | %d buildings (spec 54) | drain the whole length | %d poles in %d run(s) | %d service drops\n', ...
+        W.Path.Len, numel(W.Buildings), numel(W.Poles), numel(unique([W.Poles.Run])), numel(W.ServiceDrops));
 end

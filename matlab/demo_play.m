@@ -161,9 +161,15 @@ arguments
                                               % handing the planner exact ground truth
     opts.Interactive(1,1) logical = true
     opts.Snap       (1,1) string  = ""       % write a frame here and exit
+    opts.SnapState  (1,1) string  = ""       % optional recorded state to snapshot
+    opts.SnapWarmupFrames (1,1) double = 1   % exercise sequential view updates before snap
+    opts.CameraVideo (1,1) string = ""       % offline footage for submission view only
+    opts.SubmissionView (1,1) logical = false % three-panel SIH submission presentation
     opts.Cow        (1,1) string  = "blocking" % "blocking" | "verge" | "none"
     opts.InjectStep (1,1) double  = NaN      % automated rehearsal/test hook; UI uses clicks
     opts.InjectXY   (1,2) double  = [NaN NaN]
+    opts.Dense      (1,1) logical = false    % PHASE 1 - add the density world's background actors
+    opts.Reactive   (1,1) logical = false    % PHASE 8 - let agents respond to the ego
     opts.WriteResults(1,1) logical = true    % write results/<run>/{trajectories.csv,
                                               % metrics.json, config.json} - AGENTS.md
                                               % section 3. Skipped under Live=true, where
@@ -180,7 +186,7 @@ assert(~isempty(which('sih.planner.planContingency')), ...
 DT = 0.05;                                    % s, the seat's own step (20 Hz)
 
 % ================================================================= the route
-D = loadRoute(route, opts.Cow);
+D = loadRoute(route, opts.Cow, opts.Dense, opts.Reactive);
 D.Sensed = opts.Sensed;              % must be set before the cache tag/stamp below -
                                       % it changes what the planner sees every step, so a
                                       % Sensed run must never load or overwrite an exact-
@@ -217,6 +223,7 @@ else
     LOG.Stamp = routeStamp(D);
     saveCache(cacheFile, LOG);
 end
+D.ReplaySource = cacheFile;                    % presentation provenance only
 
 % ================================================================= the evidence
 % "A number without its config is not a result" - AGENTS.md section 3. Written
@@ -234,7 +241,9 @@ end
 % =========================================================================
 %                             ROUTE LOADING
 % =========================================================================
-function D = loadRoute(route, cowMode)
+function D = loadRoute(route, cowMode, dense, reactive)
+if nargin < 3, dense = false; end
+if nargin < 4, reactive = false; end
 %LOADROUTE  Chat 3 delivers sc.demo1Route / sc.demo2Route; sc.demo3Route is
 %   this file's own (10 Sep). Falls back to a route built here if a Route
 %   function is ever absent or errors, so this file is never blocked waiting.
@@ -246,17 +255,19 @@ if ~isempty(which(char(fn)))
     fprintf('using %s\n', fn);
     try
         got = feval(char(fn));
-        D = normaliseRoute(got, route, cowMode);
+        D = normaliseRoute(got, route, cowMode, dense, reactive);
         return
     catch me
         warning('demo_play:route', '%s errored (%s) - falling back to the built-in route', fn, me.message);
     end
 end
 fprintf('%s not on the path yet - using the built-in temporary %s route\n', fn, route);
-D = builtinRoute(route, cowMode);
+D = builtinRoute(route, cowMode, dense, reactive);
 end
 
-function D = normaliseRoute(got, route, cowMode)
+function D = normaliseRoute(got, route, cowMode, dense, reactive)
+if nargin < 4, dense = false; end
+if nargin < 5, reactive = false; end
 if isstruct(got) && isfield(got,'W') && isfield(got,'Hazards')
     D = got;
 elseif isstruct(got) && isfield(got,'Type')          % a bare hazard array
@@ -265,10 +276,10 @@ elseif isstruct(got) && isfield(got,'Type')          % a bare hazard array
     % route - but the title must say so honestly rather than keep calling
     % itself a stand-in when the real hazards are in fact loaded.
     if route == "demo3"
-        D = builtinRouteS3();  D.Hazards = got;
+        D = builtinRouteS3(dense, reactive);  D.Hazards = got;
         D.Title = 'SIH26037  DEMO3 - hazards from demo3Route, road from sc.s3world';
     else
-        D = builtinRoute(route, cowMode);  D.Hazards = got;
+        D = builtinRoute(route, cowMode, dense, reactive);  D.Hazards = got;
         D.Title = sprintf('SIH26037  %s - hazards from %sRoute, road from sc.s1world', ...
                           upper(route), route);
     end
@@ -284,7 +295,9 @@ D = fill(D, 'CruiseV', 52/3.6);
 D.Hazards = fillHazards(D.Hazards);
 end
 
-function D = builtinRoute(route, cowMode)
+function D = builtinRoute(route, cowMode, dense, reactive)
+if nargin < 3, dense = false; end
+if nargin < 4, reactive = false; end
 %BUILTINROUTE  A TEMPORARY Demo 1, so this file is never blocked on Chat 3.
 %   Real road (the Najibabad tertiary centreline sc.s1world already loads), real
 %   cow station, and a dense hazard sequence to the frozen contract. Chat 3's
@@ -342,7 +355,7 @@ D.Hazards = fillHazards(D.Hazards);
 % road and truncates the log to what it actually drove.
 D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, cowMode);
 nSteps = ceil(D.TEnd/0.05);
-D.Tracks = builtinTracks(W, D.CS, cowMode, nSteps, 0.05);
+D.Tracks = builtinTracks(W, D.CS, cowMode, nSteps, 0.05, dense, reactive);
 % D.Poses/D.Who/D.DIMS: the SAME three actors, raw (unsensed) - built off the
 % identical per-step kinematics as D.Tracks above (see actorSpec/activeActorsAt),
 % so the two can never silently disagree about where anything is. Built
@@ -370,7 +383,9 @@ for k = 1:numel(H)
 end
 end
 
-function TR = builtinTracks(W, CS, cowMode, n, DT)
+function TR = builtinTracks(W, CS, cowMode, n, DT, dense, reactive)
+if nargin < 6, dense = false; end
+if nargin < 7, reactive = false; end
 %BUILTINTRACKS  A handful of road users so the road is not empty.
 %
 %   THE ONCOMING VEHICLES ACTUALLY MOVE, and that was forced by measurement,
@@ -422,10 +437,38 @@ P = W.Path;
 %       Cow="blocking" is now the better scenario AND it works. Flip it if
 %       you want the real S1 encounter on screen.
 spec = actorSpec(W, CS, cowMode);
+densitySpec = {};
+if dense, densitySpec = sc.s1density(); end
+nReact = 0;
 TR = cell(1, n);
 for i = 1:n
     t = (i-1)*DT;
     A = activeActorsAt(spec, P, t);
+
+    % PHASE 8 - agents respond to the ego. This CAN work here and could not work
+    % in densityPlannerRun: demo_play REGENERATES its actors from actorSpec every
+    % step via activeActorsAt, so their velocity is computed. The density runner
+    % replays a RECORDED drivingScenario, where changing a velocity without
+    % changing the baked position recreates the ghost-track defect fixed 16 Sep.
+    % These actors - the cow, the motorcycle, the child, the dog - are also
+    % actually ON the road, unlike the density layer's parked scenery, which is
+    % why reactStep fired 0 times there and can fire here.
+    % OFF BY DEFAULT: reactStep returns A untouched when disabled.
+    if reactive
+        [A, rlog] = sc.reactStep(A, struct('XY', egoNominalXY(P, i, DT)), DT, struct('Enabled',true));
+        nReact = nReact + numel(rlog.Reacted);
+    end
+
+    % PHASE 1 - the density world's background actors, ON TOP OF the negotiation
+    % set and never instead of it: 50 of the 51 sit off the carriageway, so alone
+    % they give the planner nothing to negotiate with - measured, it cruised past
+    % at 51.6 km/h with h=NaN on every one of 817 steps.
+    if dense && ~isempty(densitySpec)
+        Ad = sc.activeDensityActorsAt(densitySpec, P, t);
+        for q = 1:numel(Ad)
+            A(end+1) = Ad(q);
+        end
+    end
     Ti = emptyTrackList();
     for a = 1:numel(A)
         Ti(end+1) = struct('TrackID',uint32(900+A(a).Row),'ClassID',uint8(A(a).ClassID), ...
@@ -433,6 +476,9 @@ for i = 1:n
             'Yaw',A(a).YawRad,'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
     end
     TR{i} = Ti;
+end
+if reactive
+    fprintf('  PHASE 8 reactive: %d agent reactions over %d steps\n', nReact, n);
 end
 end
 
@@ -546,7 +592,9 @@ end
 % =========================================================================
 %                    DEMO 3 - THE GALLI, ITS OWN WORLD AND ACTORS
 % =========================================================================
-function D = builtinRouteS3()
+function D = builtinRouteS3(dense, reactive)
+if nargin < 1, dense = false; end
+if nargin < 2, reactive = false; end
 %BUILTINROUTES3  Demo 3's own route builder - sc.s3world instead of s1world,
 %   the oncoming motorcycle instead of the cow/car/moto trio. No dedicated
 %   fallback content is needed the way demo1/demo2's builtinRoute has, since
@@ -621,7 +669,7 @@ D.Hazards = fillHazards(sc.demo3Route());
 
 D.TEnd = estimateDuration(D.Hazards, D.SStart, W.Path.Len, D.CruiseV, "none");
 nSteps = ceil(D.TEnd/0.05);
-D.Tracks = builtinTracksS3(W, nSteps, 0.05);
+D.Tracks = builtinTracksS3(W, nSteps, 0.05, dense, reactive);
 [D.Poses, D.Who, D.DIMS] = builtinPosesS3(W, nSteps, 0.05);
 end
 
@@ -755,15 +803,45 @@ spec = { ...
 };
 end
 
-function TR = builtinTracksS3(W, n, DT)
+function TR = builtinTracksS3(W, n, DT, dense, reactive)
+if nargin < 4, dense = false; end
+if nargin < 5, reactive = false; end
 %BUILTINTRACKSS3  Exact ground truth for S3's one actor - same construction
 %   as builtinTracks, just off actorSpecS3 instead of actorSpec.
 P = W.Path;
 spec = actorSpecS3();
+densitySpec = {};
+if dense, densitySpec = sc.s3density(); end
+nReact = 0;
 TR = cell(1, n);
 for i = 1:n
     t = (i-1)*DT;
     A = activeActorsAt(spec, P, t);
+
+    % PHASE 8 - agents respond to the ego. This CAN work here and could not work
+    % in densityPlannerRun: demo_play REGENERATES its actors from actorSpec every
+    % step via activeActorsAt, so their velocity is computed. The density runner
+    % replays a RECORDED drivingScenario, where changing a velocity without
+    % changing the baked position recreates the ghost-track defect fixed 16 Sep.
+    % These actors - the cow, the motorcycle, the child, the dog - are also
+    % actually ON the road, unlike the density layer's parked scenery, which is
+    % why reactStep fired 0 times there and can fire here.
+    % OFF BY DEFAULT: reactStep returns A untouched when disabled.
+    if reactive
+        [A, rlog] = sc.reactStep(A, struct('XY', egoNominalXY(P, i, DT)), DT, struct('Enabled',true));
+        nReact = nReact + numel(rlog.Reacted);
+    end
+
+    % PHASE 1 - the density world's background actors, ON TOP OF the negotiation
+    % set and never instead of it: 50 of the 51 sit off the carriageway, so alone
+    % they give the planner nothing to negotiate with - measured, it cruised past
+    % at 51.6 km/h with h=NaN on every one of 817 steps.
+    if dense && ~isempty(densitySpec)
+        Ad = sc.activeDensityActorsAt(densitySpec, P, t);
+        for q = 1:numel(Ad)
+            A(end+1) = Ad(q);
+        end
+    end
     Ti = emptyTrackList();
     for a = 1:numel(A)
         Ti(end+1) = struct('TrackID',uint32(900+A(a).Row),'ClassID',uint8(A(a).ClassID), ...
@@ -771,6 +849,9 @@ for i = 1:n
             'Yaw',A(a).YawRad,'Existence',1,'Age',uint32(30),'SensorMask',uint8(1)); %#ok<AGROW>
     end
     TR{i} = Ti;
+end
+if reactive
+    fprintf('  PHASE 8 reactive: %d agent reactions over %d steps\n', nReact, n);
 end
 end
 
@@ -852,7 +933,8 @@ e0 = 1.75;
 if isfield(D, 'EgoStartE'), e0 = D.EgoStartE; end
 st = struct();  s = D.SStart;  e = e0;  ev = 0;
 lastCmd = struct('v',v,'e',e);
-tRun = tic;  nFail = 0;  reachedEnd = false;
+tRun = tic;  nFail = 0;
+nGateUse = 0;  nGateFallback = 0;  reachedEnd = false;
 fprintf('running the real planner over %d steps (this is the slow part - it is\n', n);
 fprintf('cached afterwards so the demo itself never waits for it)\n');
 % sc.senseRig carries live tracker/RandStream state (Chat 4, 7 Sep - see its own
@@ -931,6 +1013,19 @@ for i = 1:n
     if isfinite(eHiH), ctx.EHi = eHiH; end
 
     if mod(i-1, planEvery) == 0
+        % PHASE 5 - the ML gate, live. It RECORDS a decision per track and does
+        % not alter the plan, so it cannot change this demo's behaviour; what it
+        % changes is that "the predictor is gated off" becomes a measured result
+        % on screen instead of a caption someone wrote. With no validated
+        % confidence band it returns FALLBACK for every track, which is correct:
+        % the model measures 2.089% dangerous-error against a <=1% bar.
+        for gk = 1:numel(ctx.Tracks)
+            if sih.prediction.gateYield(ctx.Tracks(gk), NaN, struct()) == "USE"
+                nGateUse = nGateUse + 1;
+            else
+                nGateFallback = nGateFallback + 1;
+            end
+        end
         [cmd, st] = sc.planSeat(st, ctx);
         cmd.MirrorsFolded = mirrorsFoldedNow;
         lastCmd = cmd;
@@ -975,6 +1070,9 @@ end
 LOG.ReachedEnd = reachedEnd;
 LOG.PlannerFP  = plannerFingerprint();
 LOG.PlanEvery  = planEvery;
+fprintf('  PHASE 5 ML gate: USE %d / FALLBACK %d - no validated band, geometric right-of-way\n', ...
+        nGateUse, nGateFallback);
+LOG.GateUse = nGateUse;  LOG.GateFallback = nGateFallback;
 fprintf('planner run done in %.1f s (%d plan failures)\n', toc(tRun), nFail);
 end
 
@@ -1448,17 +1546,32 @@ end
 function R = play(D, LOG, DT, opts)
 %PLAY  Draw the recorded run at the true DT against a real clock.
 n = numel(LOG.t);
-sc.plannerView('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
+view = @sc.plannerView;
+if opts.SubmissionView, view = @sc.submissionView; end
+view('init', struct('P',D.W.Path,'W',D.W,'CS',D.CS, ...
     'Hazards',D.Hazards,'Title',D.Title,'ViewSpan',opts.ViewSpan, ...
     'Interactive',opts.Interactive,'EnableInjection',opts.Interactive, ...
-    'Sensed',D.Sensed));
+    'Sensed',D.Sensed,'ReplaySource',D.ReplaySource, ...
+    'CameraVideo',opts.CameraVideo));
 
 if strlength(opts.Snap) > 0                       % one frame, for a screenshot
     i = max(1, round(n/2));
-    sc.plannerView('step', frameOf(LOG, i));
-    sc.plannerView('snap', struct('file',char(opts.Snap)));
-    sc.plannerView('close');
-    R = struct('Frames',1,'Snapped',opts.Snap);
+    if strlength(opts.SnapState) > 0
+        for k = 1:n
+            if isfield(LOG.cmd{k},'State') && contains(string(LOG.cmd{k}.State),opts.SnapState, ...
+                    'IgnoreCase',true)
+                i = k;
+                break
+            end
+        end
+    end
+    firstSnapFrame = max(1,i-max(1,round(opts.SnapWarmupFrames))+1);
+    for k = firstSnapFrame:i
+        view('step', frameOf(LOG, k));
+    end
+    view('snap', struct('file',char(opts.Snap)));
+    view('close', struct());
+    R = struct('Frames',i-firstSnapFrame+1,'Snapped',opts.Snap);
     fprintf('wrote %s\n', opts.Snap);
     return
 end
@@ -1480,7 +1593,7 @@ if batchStartupOptionUsed && strlength(opts.Snap) == 0
              'the playback leg is skipped - there is nothing to watch and no\n' ...
              'Snap= was asked for. Re-run from a MATLAB session WITH a display\n' ...
              '(desktop, or -nodesktop) to watch it; the cache means that is fast.\n']);
-    sc.plannerView('close');
+    view('close', struct());
     R = struct('Frames',0,'Elapsed_s',0,'Quit',false,'MeanFrame_ms',NaN, ...
                'MedianFrame_ms',NaN,'P95Frame_ms',NaN,'MaxFrame_ms',NaN, ...
                'OverBudget',0,'MaxLag_s',NaN,'Headless',true);
@@ -1496,11 +1609,11 @@ lastObstacleS = NaN;  lastObstacleE = NaN;
 % fourteen labelled hazards is a genuine one-off cost (measured at ~14 s the
 % first time MATLAB touches these graphics paths) and charging it to the
 % playback clock would make the car appear to sprint to catch up.
-sc.plannerView('step', frameOf(LOG, 1));
+view('step', frameOf(LOG, 1));
 tClock = tic;  pausedFor = 0;  quit = false;  drawn = 1;
 i = 2;
 while i <= n
-    ctl = sc.plannerView('step', frameOf(LOG, i));
+    ctl = view('step', frameOf(LOG, i));
     if isfinite(opts.InjectStep) && i == round(opts.InjectStep) && all(isfinite(opts.InjectXY))
         % Deterministic twin of a mouse event for regression testing and a
         % pre-scripted rehearsal fallback. The normal demo leaves this off.
@@ -1516,7 +1629,7 @@ while i <= n
             % terminal line. Four m/s makes this a controlled pass; the local
             % re-solve still decides the candidate trajectory and speed below.
             liveHz = hz("barrier", hs, he, "LIVE OBSTACLE - judge click", 0.35, 4.0, 0);
-            sc.plannerView('status', struct('Text',sprintf( ...
+            view('status', struct('Text',sprintf( ...
                 'LIVE RE-PLAN TRIGGERED AT s=%.1f m, e=%+.1f m', hs, he)));
             nextD = D;  nextD.Hazards(end+1) = liveHz;
             try
@@ -1527,19 +1640,19 @@ while i <= n
                 nReplans = nReplans + 1;
                 lastReplanS = LOG.s(i);
                 lastObstacleS = hs;  lastObstacleE = he;
-                sc.plannerView('addHazard', struct('Hazard',liveHz));
-                sc.plannerView('status', struct('Text',sprintf( ...
+                view('addHazard', struct('Hazard',liveHz));
+                view('status', struct('Text',sprintf( ...
                     'LIVE RE-PLAN COMPLETE FROM s=%.1f m  (%g Hz)', LOG.s(i), 20/opts.PlanEvery)));
             catch me
                 % The already-watched prefix and the original cached tail both
                 % survive. A failed live feature must not destroy the demo.
-                sc.plannerView('status', struct('Text', ...
+                view('status', struct('Text', ...
                     "LIVE RE-PLAN FAILED - ORIGINAL SAFE TAIL RETAINED"));
                 warning('demo_play:liveReplan','live re-plan failed: %s',me.message);
             end
         else
             nRejected = nRejected + 1;
-            sc.plannerView('status', struct('Text',"OBSTACLE NOT PLACED - " + why));
+            view('status', struct('Text',"OBSTACLE NOT PLACED - " + why));
         end
     end
     drawn = i;
@@ -1585,7 +1698,7 @@ fprintf('  frames over the %.0f ms budget: %d (%.2f%%)\n', 1000*DT, R.OverBudget
         100*R.OverBudget/max(drawn,1));
 fprintf('  worst drift from the real clock: %.3f s\n', R.MaxLag_s);
 fprintf('  live re-plans: %d  rejected clicks: %d\n', R.LiveReplans, R.RejectedClicks);
-if ~quit, fprintf('  (window left open - close it or call sc.plannerView(''close''))\n'); end
+if ~quit, fprintf('  (presentation window left open - close it when finished)\n'); end
 end
 
 function fp = plannerFingerprint()
@@ -1678,6 +1791,13 @@ d = struct('t',LOG.t(i),'s',LOG.s(i),'e',LOG.e(i),'v',LOG.v(i), ...
            'ego',[LOG.x(i) LOG.y(i)],'yaw',LOG.yaw(i), ...
            'tracks',LOG.tracks{i},'cmd',LOG.cmd{i}, ...
            'HazardNote',LOG.capWhy(i),'Chapter',LOG.chapter(i));
+% PHASE 7 - hand the gate's REAL decision counts to the HUD. Until now the panel
+% carried a hand-written "gated off" caption and a judge had to take it on trust;
+% sc.plannerView's gateRow now prints the measured tally instead. Absent counts
+% are passed as absent, never as zero - gateRow reports "not reported" for that,
+% because a missing measurement and a measurement of zero are different claims.
+if isfield(LOG,'GateUse'),      d.GateUse      = LOG.GateUse;      end
+if isfield(LOG,'GateFallback'), d.GateFallback = LOG.GateFallback; end
 end
 
 function v = pick(y, p)
@@ -1738,4 +1858,17 @@ if ~isfolder(d), mkdir(d); end
 save(f, 'LOG', '-v7.3');
 q = dir(f);
 fprintf('cached to %s (%.0f MB)\n', f, q.bytes/1e6);
+end
+
+function xy = egoNominalXY(P, i, DT)
+%EGONOMINALXY  Where the ego roughly is at step i, for the reaction trigger.
+%   The track list is built BEFORE the planner runs, so the ego's true pose is
+%   not available here; this is nominal progress along the route.
+%   Acceptable ONLY because reactStep's trigger is a coarse 'is something in my
+%   lane ahead' test rather than a collision check - AND because a reaction
+%   derived from the planner's ACTUAL state would be precisely the home-field
+%   advantage sih26037-end-goal-locked forbids. Said plainly so nobody mistakes
+%   this for the ego's real pose.
+sNom = min(P.Len - 1, 25 + 12 * (i-1) * DT);
+xy = P.at(sNom, 0);
 end

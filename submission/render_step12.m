@@ -1,0 +1,9 @@
+%RENDER_STEP12 Export one verified S1 frame through the MATLAB submission view.
+repoRoot = fileparts(fileparts(mfilename('fullpath')));
+addpath(genpath(fullfile(repoRoot, 'matlab')));
+outputFile = fullfile(repoRoot, 'submission', 'step12_matlab_shell.png');
+cameraVideo = fullfile(repoRoot, 'submission', 'assets', 'footage', ...
+    'drive_10 - Trim.mp4');
+demo_play("demo1", SubmissionView=true, Snap=string(outputFile), SnapState="PROBE", ...
+    SnapWarmupFrames=40, CameraVideo=string(cameraVideo), ...
+    WriteResults=false, Interactive=false);
